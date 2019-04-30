@@ -12,10 +12,10 @@ def getPath(file_name):
 rule trim_reads:
     input:
         lambda wildcards: getPath(wildcards.name)
-
     output:
         "preprocessing/{name}",
         "preprocessing/{name}.fastp.json"
-
+    group:
+        "fastp"
     shell:
         "fastp --in1 {input} --out1 {output} -h preprocessing/{wildcards.name}.html -j preprocessing/{wildcards.name}.fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
