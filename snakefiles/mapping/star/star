@@ -1,0 +1,77 @@
+from os import listdir
+from os.path import isfile, splitext, isdir
+
+
+rule all:
+    input:
+        "%%INDEX_DIR%%",
+        expand("mapping/host/{A}.bam", A=sorted(config['entries'].keys())),
+        expand("mapping/host/{A}Log.final.out", A=sorted(config['entries'].keys())),
+        "mapping/host/stats/mapping_stats.tsv"
+       #expand("mapping/host/unmapped/{A}.fastq", A=sorted(config['entries'].keys()))
+    
+    
+rule mapping_stats_tsv:
+    input:
+        expand("mapping/host/{sample}Log.final.out", sample=config['entries'].keys())
+    output:
+        "mapping/host/stats/mapping_stats.tsv"
+    run:
+        
+        with open(output[0], 'w') as summary_file:
+            summary_file.write("sample	total_reads	avg_input_read_length	uniquely_mapped	uniquely_mapped_percent	avg_mapped_read_length	num_splices	num_annotated_splices	num_GT/AG_splices	num_GC/AG_splices	num_AT/AC_splices	num_noncanonical_splices	mismatch_rate	deletion_rate	deletion_length	insertion_rate	insertion_length	multimapped	multimapped_percent	multimapped_toomany	multimapped_toomany_percent	unmapped_mismatches_percent	unmapped_tooshort_percent	unmapped_other_percent	chimeric	chimeric_percent\n")
+            #pattern = {}
+            for i in input:
+                summary_file.write(i.replace("Log.final.out", "").replace("mapping/host/", "") + "	")
+                #with open(i, "r") as input_file:
+                for line in shell("tail -n +5 {i}", iterable=True):
+                        if "|" in line:
+                            line_data = line.split("|")
+                            summary_file.write(line_data[1].split()[0] + "	")
+                summary_file.write("\n")
+        
+
+        
+rule star_index:
+    input:
+        genome="%%GENOME_FASTA%%",
+        #index_dir="%%INDEX_DIR%%"
+    output:
+        directory("%%INDEX_DIR%%")
+        #"%%INDEX_DIR%%"+"SAindex"
+    log:
+        "mapping/host/logs/star_index.log"
+    threads:
+        32
+    shell:
+        "STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir %%INDEX_DIR%% --genomeFastaFiles {input.genome} --sjdbGTFfile %%GENOME_GTF%% --sjdbOverhang %%SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%PARENT_TAG%% 2>&1 |"
+        "tee {log}"
+
+
+rule star_mapping:
+    params:
+        prefix="mapping/host/{sample}" #.Aligned.sortedByCoord.out.bam".split(".Aligned")[0]
+    input:
+        index_dir="%%INDEX_DIR%%",
+        reads=lambda wildcards: os.path.join('preprocessing', os.path.basename(config['entries'][wildcards.sample]['main']['reads'])).strip('.gz')
+    output:
+        bam="mapping/host/{sample}.bam",
+        summary="mapping/host/{sample}Log.final.out",
+        fasta="mapping/host/{sample}Unmapped.out.mate1"
+    log:
+        "mapping/host/logs/star_mapping.{sample}.log"
+    threads:
+        4
+    shell:
+        #--outReadsUnmapped Fastx
+        "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx 2>&1 |" 
+        "tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"
+        
+
+rule unmapped_to_fastq:
+    input:
+        "mapping/host/{sample}Unmapped.out.mate1"
+    output:
+        "mapping/host/unmapped/{sample}.fastq"
+    shell:
+        "mv {input} {output}"

@@ -1,0 +1,23 @@
+from os.path import splitext
+
+
+rule all:
+    input:
+        directory("%%INDEX_DIR%%")
+    
+
+rule star_index:
+    params:
+        prefix=splitext("%%GENOME_FASTA%%")[0]
+    input:
+        genome="%%GENOME_FASTA%%",
+        index_dir="%%INDEX_DIR%%"
+    output:
+        directory("%%INDEX_DIR%%")
+    log:
+        "mapping/logs/star_index.log"
+    threads:
+        32
+    shell:
+        "mkdir input.index_dir && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir input.index_dir --genomeFastaFiles {input.genome} --sjdbGTFfile %%GENOME_GTF%% --sjdbOverhang %%SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%PARENT_TAG%% 2>&1 |"
+        "tee {log}"

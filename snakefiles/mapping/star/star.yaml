@@ -1,0 +1,34 @@
+name: 'star'
+
+required_settings:
+
+  index_dir:
+    description: 'Path to genome index output'
+    type: 'directory'
+
+  genome_fasta:
+    description: 'Path to genome fasta file'
+    type: 'file'
+
+  genome_gtf:
+    description: 'Path to genome gtf/gff file'
+    type: 'file'
+
+  sj_overhang:
+    description: 'Length of genomic sequence around annotated junction [best: ReadLength-1]'
+    type: 'integer'
+    
+  parent_tag:
+    description: 'Tag name to be used as exons transcript-parent (GTF: transcript_id, GFF: Parent)'
+    type: 'string'
+
+    
+optional_settings:
+
+  additional_STAR_options:
+    description: 'Additional options to use in shell command'
+    type: 'string'
+
+
+single_end:
+  snakefile: 'star'

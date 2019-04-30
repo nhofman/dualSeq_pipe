@@ -1,0 +1,53 @@
+name: 'combined'
+
+columns:
+  virus_genome:
+    description: "Path to virus reference genome"
+    type: "file"
+  
+  virus_genome_annotation:
+    description: "Path to virus reference genome annotation"
+    type: "file"
+
+required_settings:
+
+  bowtie2_alignment_type:
+    description: 'Choose local or end-to-end alignment'
+    type: 'enum'
+    choices:
+      local: '--very-sensitive-local'
+      end-to-end: '--very-sensitive'
+
+  star_index_dir:
+    description: 'Path to genome index output'
+    type: 'directory'
+
+  host_genome:
+    description: 'Path to genome fasta file'
+    type: 'file'
+
+  host_gtf:
+    description: 'Path to genome gtf/gff file'
+    type: 'file'
+
+  star_sj_overhang:
+    description: 'Length of genomic sequence around annotated junction [best: ReadLength-1]'
+    type: 'integer'
+    
+  star_parent_tag:
+    description: 'Tag name to be used as exons transcript-parent (GTF: transcript_id, GFF: Parent)'
+    type: 'string'
+
+    
+optional_settings:
+
+  additional_bowtie2_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+
+  additional_star_options:
+    description: 'Additional options to use in shell command'
+    type: 'string'
+    
+single_end:
+  snakefile: 'combined_se'
