@@ -4,7 +4,9 @@ from os.path import isfile
 def getConditions():
     return set([seqRun['deseq2']['condition'] for seqRun in config['entries'].values()])
 
-#print(list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
+localrules: deseq2__create_conditions_human, deseq2__create_conditions_virus
+
+
 rule all:
     input:
         "analyses/host/deseq2/counts.txt",
@@ -21,6 +23,8 @@ rule all:
 #        'analyses/%%DIRECTORY%%/deseq2/summary/{COND}.xlsx'
 #    params:
 #        number_conditions = len(getConditions())-1
+#    group:
+#        "deseq2"
 #    shell:
 #        "python3 lib/deseq2_summary_tsv_to_xlsx.py --tsv {input} --conditions {params.number_conditions} --gff '%%GFF_PATH%%' --identifier '%%GFF_FEATURE_NAME%%' "
 #        "--feature '%%GFF_FEATURE_TYPE%%' --attributes %%ATTRIBUTE_COLUMNS%% --output {output}"
@@ -32,9 +36,11 @@ rule count_reads_host:
         counts = "analyses/host/deseq2/counts.txt",
         summary = "analyses/host/deseq2/counts.txt.summary"
     threads:
-        32
+        1
     log:
         log="analyses/host/deseq2/logs/featurecounts.log"
+    group:
+        "count_reads"
     shell:
         "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 |"
         "tee {log}"
@@ -47,8 +53,10 @@ rule count_reads_virus:
         summary = "analyses/virus/deseq2/{virus}/{virus}_counts.txt.summary"
     params:
         gff = lambda wildcards: config['entries'][wildcards.virus+"_3h_1"]['combined']['virus_genome_annotation']
+    group:
+        "count_reads"
     threads:
-        32
+        1
     log:
         log = "analyses/virus/deseq2/logs/{virus}_featurecounts.log"
     shell:
@@ -88,12 +96,14 @@ rule deseq2_human:
         assignment_statistics="analyses/host/deseq2/counts_assignment.pdf",
         #summary=expand('analyses/host/deseq2/summary/{COND}.tsv', COND=getConditions())
         #comparisons=directory("analyses/host/deseq2/deseq2_comparisons")
+    group:
+        "deseq2"
     params:
         output_folder="analyses/host/deseq2/"
     log:
         log="analyses/host/deseq2/logs/deseq2.log"
     threads:
-        32
+        1
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
@@ -118,13 +128,15 @@ rule deseq2_virus:
         assignment_statistics="analyses/virus/deseq2/{virus}/counts_assignment.pdf",
         #summary=expand('analyses/virus/deseq2/summary/{COND}.tsv', COND=getConditions()),
         #comparisons=directory("analyses/virus/deseq2/deseq2_comparisons")
+    group:
+        "deseq2"
     params:
         output_folder="analyses/virus/deseq2/{virus}/",
         color=lambda wildcards: getColor(wildcards.virus)
     log:
         log="analyses/virus/deseq2/logs/{virus}_deseq2.log"
     threads:
-        32
+        1
     shell:
         "R --vanilla --file=lib/deseq2_analysis_virus.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_VIRUS%% --output {params.output_folder} "
         "--counttable_host {input.counttable_host} --featcounts {input.feature_counts_log} --color {params.color} 2>&1 | tee {log}"

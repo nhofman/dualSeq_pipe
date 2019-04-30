@@ -1,3 +1,4 @@
+# Parse arguments
 args <- commandArgs(TRUE)
 counttable_file <- args[match('--counttable', args) + 1]
 condition_file <- args[match('--conditions', args) + 1]
@@ -27,8 +28,7 @@ for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "
     }
 }
 
-
-
+# Heatmap showing similarities between samples (needs a count table and conditions )
 create_correlation_matrix <- function(countdata, conditiontable) {
     countdata.normalized.processed <- as.matrix(countdata)
     countdata.normalized.processed <- countdata.normalized.processed[rowSums(countdata.normalized.processed) >= 10,]
@@ -38,7 +38,7 @@ create_correlation_matrix <- function(countdata, conditiontable) {
     return(pheatmap(sample_cor, annotation_col = conditiontable, annotation_row = conditiontable))
 }
 
-
+# Bar charts showing the assignment of allignments to genes (featureCounts statistics)
 create_feature_counts_statistics <- function(featureCountsLog) {
     d <- read.table(featureCountsLog, header = T, row.names = 1)
     colnames(d) <- gsub(".bam", "", colnames(d))
@@ -64,8 +64,8 @@ create_feature_counts_statistics <- function(featureCountsLog) {
     return(list(assignment.absolute, assignment.relative))
 }
 
-plotHeatmap2 <- function(x, name = "no_name_set.pdf", row_subset = NA, distMethod = "euclidean", clusterMethod = "complete", clrn = NA, ...){
-    require('gplots')
+# Heatmap showing log fold change of one condition versus all others (TODO legend and description)
+plotHeatmap2 <- function(x, name = "no_name_set.pdf", row_subset = NA, distMethod = "euclidean", clusterMethod = "complete", clrn = NA){
     if (! is.na(clrn)) {
         # set the custom distance and clustering functions
         hclustfunc <- function(x) hclust(x, method = clusterMethod)
@@ -175,16 +175,24 @@ pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData 
 plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = time)) + geom_point(size=3)
 ggsave("PCA_vst.png", plot = plot_PCA, device = "png", path = output_folder)
 
-pdf(paste(output_folder, 'correlation_heatmap.pdf', sep = ""), width = 15, height = 15, onefile = FALSE)
-print(create_correlation_matrix(countdata.normalized, conditiontable))
-dev.off()
+# Heatmap showing similarities between samples (needs a count table and conditions )
+if ("pheatmap" %in% rownames(installed.packages())) {
+    pdf(paste(output_folder, 'correlation_heatmap.pdf', sep = ""), width = 8, height = 8, onefile = FALSE)
+    print(create_correlation_matrix(countdata.normalized, conditiontable))
+    dev.off()
+}
 
-pdf(paste(output_folder, 'counts_assignment.pdf', sep = ""), width = 15, height = 15)
-invisible(lapply(create_feature_counts_statistics(feature_counts_log_file), print))
-dev.off()
+# Bar charts showing the assignment of allignments to genes (featureCounts statistics)
+if (("ggplot2" %in% rownames(installed.packages())) && ("reshape2" %in% rownames(installed.packages()))) {
+    pdf(paste(output_folder, 'counts_assignment.pdf', sep = ""))
+    invisible(lapply(create_feature_counts_statistics(feature_counts_log_file), print))
+    dev.off()
+}
 
 # Create all DESeq2 comparisons from comparison table
-dir.create(paste(output_folder, "deseq2_comparisons", sep = ""))
+if (!file.exists(paste(output_folder, "deseq2_comparisons", sep = ""))) {
+    dir.create(paste(output_folder, "deseq2_comparisons", sep = ""))
+}
 
 res.list <- list()
 lfc <- NULL
@@ -203,6 +211,7 @@ for (n in 1:nrow(comparisons.df)) {
     #plotMA(res, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
     #dev.off()
     write.table(res, file = paste(output_folder, "deseq2_comparisons/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".csv", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
+
 }
 colnames(lfc) <- lfc_names
 names(lfc_filtered_reg) <- lfc_names
@@ -226,7 +235,7 @@ for (virus in unique(conditiontable$treatment)) {
     }
 }
 
-human.uniprot <- UniProt.ws(taxId=9606)
+#human.uniprot <- UniProt.ws(taxId=9606)
 intersections_up <- list()
 intersections_down <- list()
 for(time in unique(conditiontable$time)[-5]){

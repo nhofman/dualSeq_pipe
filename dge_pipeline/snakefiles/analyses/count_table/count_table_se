@@ -15,10 +15,12 @@ rule count_reads_host:
     output:
         counts = "analyses/host/count_table/counts.txt",
         summary = "analyses/host/count_table/counts.txt.summary"
-    threads:
-        32
     log:
         log="analyses/host/count_table/logs/featurecounts.log"
+    group:
+        "count_reads_host"
+    threads:
+        1
     shell:
         "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 |"
         "tee {log}"
@@ -31,8 +33,10 @@ rule count_reads_virus:
         summary = "analyses/virus/count_table/{A}_counts.txt.summary"
     params:
         gff = lambda wildcards: config['entries'][wildcards.A]['combined']['virus_genome_annotation']
+    group:
+        "count_reads_virus"
     threads:
-        32
+        1
     log:
         log="analyses/virus/count_table/logs/{A}_featurecounts.log"
     shell:

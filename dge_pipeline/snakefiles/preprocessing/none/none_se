@@ -9,6 +9,8 @@ def getPath(file_name):
     print('Cannot find {} in groups file'.format(file_name), file=sys.stderr)
     
 
+localrules: none__create_symlink
+
 rule create_symlink:
     input:
         lambda wildcards: getPath(wildcards.name)

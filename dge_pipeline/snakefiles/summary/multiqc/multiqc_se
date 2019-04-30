@@ -27,6 +27,8 @@ rule multiqc:
         "analyses/host/count_table/counts.txt.summary"
     output:
         "summary/multiqc/multiqc_report.html"
+    group:
+        "multiqc"
     params:
         #"summary/multiqc/fastqc",
         "preprocessing/",

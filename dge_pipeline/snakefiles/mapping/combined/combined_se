@@ -20,6 +20,8 @@ rule star_mapping_stats_tsv:
         expand("mapping/host/{sample}Log.final.out", sample=config['entries'].keys())
     output:
         "mapping/host/stats/mapping_stats.tsv"
+    group:
+        "star_statistics"
     run:
 
         with open(output[0], 'w') as summary_file:
@@ -40,6 +42,8 @@ rule bowtie2_mapping_stats_xlsx:
         "mapping/virus/stats/mapping_stats.tsv"
     output:
         "mapping/virus/stats/mapping_stats.xlsx"
+    group:
+        "bowtie2_statistics"
     shell:
         "python3 lib/se_mapping_stats_tsv_to_xlsx.py {input} {output}"
 
@@ -49,6 +53,8 @@ rule bowtie2_mapping_stats_tsv:
         expand("mapping/virus/logs/bowtie2_mapping.{name}.log", name=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
     output:
         "mapping/virus/stats/mapping_stats.tsv"
+    group:
+        "bowtie2_statistics"
     shell:
         """
         echo "sample	reads	reads[%]	aligned_0_times	aligned_0_times[%]	aligned_1_time	aligned_1_time[%]	aligned_more_than_1_times	aligned_more_than_1_times[%]	overall_alignment_rate" > {output}
@@ -68,10 +74,12 @@ rule star_index:
         genome="%%HOST_GENOME%%"
     output:
         directory("%%STAR_INDEX_DIR%%")
+    group:
+        "star_index"
     log:
         "mapping/host/logs/star_index.log"
     threads:
-        32
+        8
     shell:
         "STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 |"
         "tee {log}"
@@ -85,6 +93,8 @@ rule star_mapping:
         bam="mapping/host/{sample}.bam",
         summary="mapping/host/{sample}Log.final.out",
         fasta="mapping/host/{sample}Unmapped.out.mate1"
+    group:
+        "star_mapping"
     params:
         prefix="mapping/host/{sample}"
     log:
@@ -92,7 +102,7 @@ rule star_mapping:
     benchmark:
         "mapping/host/benchmark/{sample}.tsv"
     threads:
-        4
+        2
     shell:
         #--outReadsUnmapped Fastx
         "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx %%ADDITIONAL_STAR_OPTIONS%% 2>&1 |"
@@ -104,6 +114,8 @@ rule star_unmapped_to_fastq:
         "mapping/host/{sample}Unmapped.out.mate1"
     output:
         "mapping/host/unmapped/{sample}.fastq"
+    group:
+        "star_mapping"
     shell:
         "mv {input} {output}"
 
@@ -114,11 +126,13 @@ rule bowtie2_index:
         "{genome_name}"
     output:
         "{genome_name}.1.bt2"
+    group:
+        "bowtie2_index"
     log:
         #"mapping/virus/logs/bowtie2_index.log"
         "{genome_name}.bowtie2.log"
     threads:
-        32
+        8
     shell:
         "bowtie2-build --threads {threads} {input} {input} 2>&1 |"
         "tee -a {log}"
@@ -133,6 +147,8 @@ rule bowtie2_mapping:
         sam=temp("mapping/virus/sam/{name}.sam"),
         unmapped="mapping/virus/unmapped/{name}_unmapped.fastq",
         log="mapping/virus/logs/bowtie2_mapping.{name}.log"
+    group:
+        "bowtie2_mapping"
     params:
        genome_base=lambda wildcards: config['entries'][wildcards.name]['combined']['virus_genome']
     log:
@@ -140,7 +156,7 @@ rule bowtie2_mapping:
     benchmark:
         "mapping/virus/benchmark/{name}.tsv"
     threads:
-        4
+        2
     shell:
         "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {params.genome_base} -U {input.reads} -S {output.sam} --un {output.unmapped} 2>&1 |"
         "tee {log}"
@@ -181,8 +197,10 @@ rule bowtie2_sam_to_bam:
         bam="mapping/virus/{name}.bam",
         bai="mapping/virus/{name}.bam.bai",
         bam_unmapped="mapping/virus/unmapped/{name}_unmap.bam"
+    group:
+        "bowtie2_mapping"
     threads:
-        4
+        2
     shell:
         "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam};"
         "samtools view -f 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
