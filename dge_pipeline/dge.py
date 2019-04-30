@@ -21,8 +21,10 @@ SNAKEFILES_TARGET_DIRECTORY = 'snakemake_lib'  # type: str
 def main():
     args = parse_arguments()
     used_modules, paired_end = load_config_file(args.config_file)
+    #print(used_modules)
     validate_argsfiles(args.groups_file, args.config_file)
     groups = parse_groups_file(args.groups_file, used_modules, paired_end)
+    #print(groups)
     create_output_directory(args.output_folder)
     snakefile = create_snakefile(args.output_folder, groups, used_modules)
     if not snakemake(str(snakefile), cores=args.threads, workdir=str(args.output_folder), verbose=args.verbose,
@@ -50,7 +52,11 @@ def check_columns(col_names: List[str], modules: Dict[str, List['Module']], pair
             raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('reads'))
         else:
             col2module[col_names.index('reads')] = ('main', 'file')
-
+    #if 'virus' not in col_names:
+    #    raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('name'))
+    #else:
+    #    col2module[col_names.index('virus')] = ('main', 'string')
+        
     for module in [module for module_list in modules.values() for module in module_list]:
         if len(module.columns) > 0:
             for col_name, properties in module.columns.items():
@@ -88,13 +94,16 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
     modules = {"preprocessing": [],
                "premapping": [],
                "mapping": [],
-               "analyses": []}  # type: Dict[str, List[str]]
+               "analyses": [],
+               "summary": []}  # type: Dict[str, List[str]]
 
     used_modules = {"preprocessing": [],
                     "premapping": [],
                     "mapping": [],
-                    "analyses": []}  # type: Dict[str, List['Module']]
+                    "analyses": [],
+                    "summary": []}  # type: Dict[str, List['Module']]
     config = yaml.load(config_file.open('r'))
+    #print(config)
     if "preprocessing" in config:
         if "module" in config["preprocessing"]:
             if not isinstance(config["preprocessing"]["module"], str):
@@ -117,7 +126,7 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 for module in config["premapping"]["modules"]:
                     modules["premapping"].append(module)
         elif "module" in config["premapping"]:
-            if not isinstance(config["premapping"]["modules"], str):
+            if not isinstance(config["premapping"]["module"], str):
                 raise InvalidConfigFileError('premapping: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["premapping"].append(config["premapping"]["module"])
@@ -127,6 +136,14 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 raise InvalidConfigFileError("mapping: Only one module as a string is allowed")
             else:
                 modules["mapping"].append(config["mapping"]["module"])
+        elif "modules" in config["mapping"]:
+            if "module" in config["mapping"]:
+                raise InvalidConfigFileError('mapping: Please use either "module" or "modules"')
+            if not isinstance(config["mapping"]["modules"], list):
+                raise InvalidConfigFileError("mapping: modules must be a LIST of modules")
+            else:
+                for module in config["mapping"]["modules"]:
+                    modules["mapping"].append(module)
     if "analyses" in config:
         if "modules" in config["analyses"]:
             if "module" in config["analyses"]:
@@ -141,6 +158,18 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 raise InvalidConfigFileError('analyses: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["analyses"].append(config["analyses"]["module"])
+    if "summary" in config:
+        if "module" in config["summary"]:
+            if not isinstance(config["summary"]["module"], str):
+                raise InvalidConfigFileError("summary: Only one module as a string is allowed")
+            elif config["summary"]["module"] == '':
+                modules["summary"].append('none')
+            else:
+                modules["summary"].append(config["summary"]["module"])
+        else:
+            modules["summary"].append('none')
+    #else:
+        #modules["summary"].append('none')
     if "pipeline" in config:
         if "paired_end" in config["pipeline"]:
             if not isinstance(config["pipeline"]["paired_end"], bool) and not (
@@ -284,7 +313,7 @@ def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, 
         with module.snakefile.open('r') as module_file:
             module_content = module_file.read()
             # change rule name from <rule name> to <module name>__<rule name>
-            module_content = re_rule_name.sub('rule {}__\g<rule_name>:'.format(module.name.lower()), module_content)
+            module_content = re_rule_name.sub('rule {}__\g<rule_name>:'.format(module.name.lower().replace('-','_')), module_content)
             module_content = re_lib_folder.sub('{}/{}_lib/\g<file_name>'.format(SNAKEFILES_TARGET_DIRECTORY, module.name.lower()), module_content)
             for (wildcard, value) in module.settings.items():
                 module_content = module_content.replace("%%{}%%".format(wildcard.upper()), value)
@@ -308,6 +337,8 @@ def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, 
 
     snakefile_main_path = output_folder / 'Snakefile'
     with snakefile_main_path.open('w') as snakefile:
+        #snakefile.write('import pandas as pd\n\n')
+        #snakefile.write('genomes = pd.read_csv("{}", sep="\t").set_index("virus", drop=False)\n\n'.format(genome))
         snakefile.write(
             'configfile: "{}"\n\n'.format(os.path.join(SNAKEFILES_TARGET_DIRECTORY, config_file.name)))
         for path in snakefile_module_paths:
@@ -315,8 +346,8 @@ def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, 
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('premapping', 'analyses', 'mapping')]:
-            snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name))
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('premapping', 'analyses', 'mapping', 'summary')]:
+            snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-','_')))
 
     return snakefile_main_path
 
@@ -350,6 +381,7 @@ def parse_arguments() -> argparse.Namespace:
     required.add_argument('--groups', dest='groups_file', required=True)
     required.add_argument('--config', dest='config_file', required=True)
     required.add_argument('--output', dest='output_folder', required=True)
+    #required.add_argument('--genome', dest='genome_info_file', required=True)
 
     other = parser.add_argument_group('Other arguments')
     other.add_argument('-t', '--threads', dest='threads', default=1, type=int, help="Number of threads")

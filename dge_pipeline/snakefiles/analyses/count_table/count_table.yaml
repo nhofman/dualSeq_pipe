@@ -2,26 +2,34 @@ name: count_table
 
 required_settings:
 
-  gff_feature_type:
+  gff_feature_type_virus:
     description: Used feature type, e.g. gene or exon
     type: string
 
-  gff_feature_name:
+  gff_feature_name_virus:
+    description: Descriptor for gene name, e.g. ID or gene_id
+    type: string
+    
+  gff_feature_type_human:
+    description: Used feature type, e.g. gene or exon
+    type: string
+
+  gff_feature_name_human:
     description: Descriptor for gene name, e.g. ID or gene_id
     type: string
 
-  gff_path:
+  gff_human:
     description: File path to gff file
     type: file
-
-
+    
+  
 optional_settings:
 
-  additional_options:
+  additional_featcounts_options:
     description: Additional options to use in shell command
     type: string
-
-
+    
+  
 single_end:
   snakefile: "count_table_se"
 

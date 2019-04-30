@@ -3,24 +3,24 @@ from os.path import isfile, splitext
 
 rule all:
     input:
-        "mapping/stats/mapping_stats.xlsx",
-        expand("mapping/{A}.bam", A=sorted(config['entries'].keys()))
+        "mapping/virus/stats/mapping_stats.xlsx",
+        expand("mapping/virus/{A}.bam", A=sorted(config['entries'].keys()))
 
 
 rule mapping_stats_xlsx:
     input:
-        "mapping/stats/mapping_stats.tsv"
+        "mapping/virus/stats/mapping_stats.tsv"
     output:
-        "mapping/stats/mapping_stats.xlsx"
+        "mapping/virus/stats/mapping_stats.xlsx"
     shell:
         "python3 lib/se_mapping_stats_tsv_to_xlsx.py {input} {output}"
 
 
 rule mapping_stats_tsv:
     input:
-        expand("mapping/logs/bowtie2_mapping.{name}.log", name=config['entries'].keys())
+        expand("mapping/virus/logs/bowtie2_mapping.{name}.log", name=config['entries'].keys())
     output:
-        "mapping/stats/mapping_stats.tsv"
+        "mapping/virus/stats/mapping_stats.tsv"
     shell:
         """
         echo "sample	reads	reads[%]	aligned_0_times	aligned_0_times[%]	aligned_1_time	aligned_1_time[%]	aligned_more_than_1_times	aligned_more_than_1_times[%]	overall_alignment_rate" > {output}
@@ -43,7 +43,7 @@ rule bowtie2_index:
     output:
         splitext("%%GENOME_FASTA%%")[0] + ".1.bt2"
     log:
-        "mapping/logs/bowtie2_index.log"
+        "mapping/virus/logs/bowtie2_index.log"
     threads:
         32
     shell:
@@ -58,24 +58,28 @@ rule bowtie2_mapping:
         genome="%%GENOME_FASTA%%",
         genome_index=splitext("%%GENOME_FASTA%%")[0] + ".1.bt2",
         reads=lambda wildcards: os.path.join('preprocessing', os.path.basename(config['entries'][wildcards.name]['main']['reads'])).strip('.gz')
+        #reads="preprocessing/{name}"
     output:
-        temp("mapping/sam/{name}.sam")
+        sam=temp("mapping/virus/sam/{name}.sam"),
+        unmapped="mapping/virus/unmapped/{name}_unmapped.fastq"
+    benchmark:
+        'maped/virus/benchmark/{name}.tsv'
     log:
-        "mapping/logs/bowtie2_mapping.{name}.log"
+        "mapping/virus/logs/bowtie2_mapping.{name}.log"
     threads:
         4
     shell:
-        "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%ALIGNMENT_TYPE%% -x {params.prefix} -U {input.reads} -S {output} 2>&1 |"
+        "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%ALIGNMENT_TYPE%% -x {params.prefix} -U {input.reads} -S {output.sam} --un {output.unmapped} 2>&1 |"
         "tee {log}"
 
 
 rule sam_to_bam:
     input:
-        "mapping/sam/{sample}.sam"
+        "mapping/virus/sam/{sample}.sam"
     output:
-        bam="mapping/{sample}.bam",
-        bai="mapping/{sample}.bam.bai",
-        bam_unmapped="mapping/{sample}_unmapped.bam"
+        bam="mapping/virus/{sample}.bam",
+        bai="mapping/virus/{sample}.bam.bai",
+        bam_unmapped="mapping/virus/unmapped/{sample}_unmap.bam"
     threads:
         4
     shell:

@@ -3,7 +3,7 @@ from os.path import isfile, basename, splitext
 
 rule all:
     input:
-        expand("premapping/fastqc/{A}_fastqc.html", A=[splitext(basename(seqRun['main']['reads']))[0] for seqRun in config['entries'].values()])
+        expand("premapping/fastqc/{A}_fastqc.html", A=[splitext(basename(seqRun['main']['reads']))[0] for seqRun in config['entries'].values()]) #A=sorted(config['entries'].keys()))
 
 rule fastqc:
     input:

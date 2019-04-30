@@ -1,20 +1,21 @@
 from os import listdir
-from os.path import isfile, dirname
+from os.path import isfile, splitext
+
 
 def getPath(file_name):
-    print(file_name)
+    #print(file_name)
     for seqRun in config['entries'].values():
             if os.path.basename(seqRun['main']['reads']) == file_name:
                 return seqRun['main']['reads']
     print('Cannot find {} in groups file'.format(file_name), file=sys.stderr)
-    
 
-rule create_symlink:
+rule trim_reads:
     input:
         lambda wildcards: getPath(wildcards.name)
+
     output:
-        "preprocessing/{name}"
-    threads:
-        1
+        "preprocessing/{name}",
+        "preprocessing/{name}.fastp.json"
+
     shell:
-        "ln -s `readlink -f {input}` {output}"
+        "fastp --in1 {input} --out1 {output} -h preprocessing/{wildcards.name}.html -j preprocessing/{wildcards.name}.fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
