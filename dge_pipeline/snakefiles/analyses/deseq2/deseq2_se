@@ -45,14 +45,20 @@ rule count_reads_host:
         "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 |"
         "tee {log}"
         
+def get_virus_bam(wildcards):
+    bam = list()
+    for entry in config['entries'].keys():
+        if wildcards.virus in entry:
+            bam.append("mapping/virus/"+entry+".bam")
+            gff = config['entries'][entry]['combined']['virus_genome_annotation']
+    return {'gff': gff, 'bam' : bam}            
+
 rule count_reads_virus:
     input:
-        expand("mapping/virus/{{virus}}_{treatment}.bam", treatment=list(set([entry.split('_',1)[1] for entry in config['entries'].keys() if "Mock" not in entry])))
+        unpack(get_virus_bam)
     output:
         counts = "analyses/virus/deseq2/{virus}/{virus}_counts.txt",
         summary = "analyses/virus/deseq2/{virus}/{virus}_counts.txt.summary"
-    params:
-        gff = lambda wildcards: config['entries'][wildcards.virus+"_3h_1"]['combined']['virus_genome_annotation']
     group:
         "count_reads"
     threads:
@@ -60,7 +66,7 @@ rule count_reads_virus:
     log:
         log = "analyses/virus/deseq2/logs/{virus}_featurecounts.log"
     shell:
-        "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -O --fraction -t '%%GFF_FEATURE_TYPE_VIRUS%%' -g '%%GFF_FEATURE_NAME_VIRUS%%' -a {params.gff} -o {output.counts} {input} 2>&1 |"
+        "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -O --fraction -t '%%GFF_FEATURE_TYPE_VIRUS%%' -g '%%GFF_FEATURE_NAME_VIRUS%%' -a {input.gff} -o {output.counts} {input.bam} 2>&1 |"
         "tee {log}"
 
 rule create_conditions_human:
@@ -107,6 +113,7 @@ rule deseq2_human:
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
+        # Befehl um biolo. Prozesse ab 2. Eintrag auf GO-Nummern zu beschränken: sed 's/[^]]*\[\(GO:[0-9]*\)\]/;\1/2g' /nfs/sfb1021/SFB1021_Virus/dge_analyses2/analyses/host/deseq2/Uniprot_24h_3_up.txt.csv
     
 def getColor(virus):
     #list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))
@@ -139,4 +146,5 @@ rule deseq2_virus:
         1
     shell:
         "R --vanilla --file=lib/deseq2_analysis_virus.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_VIRUS%% --output {params.output_folder} "
-        "--counttable_host {input.counttable_host} --featcounts {input.feature_counts_log} --color {params.color} 2>&1 | tee {log}"
+        "--counttable_host {input.counttable_host} --featcounts {input.feature_counts_log} 2>&1 | tee {log}"
+        #--color {params.color} 2>&1 | tee {log}"
