@@ -1,0 +1,41 @@
+rule all:
+    input:
+        "analyses/virus/deseq2/deseq2.RData"
+
+rule create_conditions_virus:  
+    output:
+        temp("analyses/virus/deseq2/conditions.txt")
+    run:
+        for o in output:
+            with(open(o, 'w')) as output_file:
+                for name in sorted([entry for entry in config['entries'].keys() if 'Mock' not in entry]):
+                    output_file.write('{}\t{}\n'.format(name, config['entries'][name]['main']['condition']))
+
+rule expression_virus:
+    input:
+        conditions = "analyses/virus/deseq2/conditions.txt",
+        counttable_host = "analyses/host/deseq2/counts.txt",
+        counttable_sum_host = "analyses/host/deseq2/counts.txt.summary",
+        mapping_stat_host = "mapping/host/stats/mapping_stats.tsv",
+        bam=expand("mapping/virus/{virus}.bam", virus=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])) 
+    output:
+        dump="analyses/virus/deseq2/deseq2.RData"
+        #counts_normalized="analyses/virus/deseq2/counts_normalized.txt",
+        #correlation_heatmap="analyses/virus/deseq2/correlation_heatmap.pdf",
+        #assignment_statistics="analyses/virus/deseq2/counts_assignment.pdf",
+        #summary=expand('analyses/virus/deseq2/summary/{COND}.tsv', COND=getConditions()),
+        #comparisons=directory("analyses/virus/deseq2/deseq2_comparisons")
+    group:
+        "deseq2"
+    params:
+        output_folder="analyses/virus/deseq2/",
+        gff=expand("{gff}", gff=set([config['entries'][entry]['combined']['virus_genome_annotation'] for entry in config['entries'].keys() if 'Mock' not in entry])),
+    log:
+        log="analyses/virus/deseq2/logs/virus_expression.log"
+    threads:
+        1
+    run:
+        gff = ','.join(params.gff)
+        bam = ','.join(input.bam)
+        shell("R --vanilla --file=lib/virus_expression_analysis.R --args --threads {threads} --bam {bam} --conditions {input.conditions} --output {params.output_folder} --counttable_host {input.counttable_host} --counttable_sum_host {input.counttable_sum_host} --stat_host {input.mapping_stat_host} 2>&1 | tee {log}")
+        
