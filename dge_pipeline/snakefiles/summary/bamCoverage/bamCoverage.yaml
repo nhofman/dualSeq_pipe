@@ -1,0 +1,13 @@
+name: bamCoverage
+
+
+optional_settings:
+  additional_bamcoverage_options:
+    description: Additional options to use in shell command
+    type: string
+    
+single_end:
+  snakefile: "bamCoverage"
+
+paired_end:
+  snakefile: "bamCoverage"

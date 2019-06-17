@@ -1,0 +1,17 @@
+from os import listdir
+from os.path import isfile
+
+rule all:
+    input:
+        expand("summary/bigwig/host/{A}.bigWig", A=sorted(config['entries'].keys()))
+
+rule create_bigwig:
+    input:
+        bam = "mapping/host/{sample}.bam",
+        bai = "mapping/host/{sample}.bam.bai"
+    output:
+        "summary/bigwig/host/{sample}.bigWig"
+    threads:
+        4
+    shell:
+        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} %%ADDITIONAL_BAMCOVERAGE_OPTIONS%%"
