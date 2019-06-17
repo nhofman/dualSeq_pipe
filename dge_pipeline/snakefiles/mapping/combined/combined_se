@@ -3,12 +3,11 @@ from os.path import isfile, splitext
 import csv, glob
 
 
-
 rule all:
     input:
         "mapping/virus/stats/mapping_stats.xlsx",
         expand("mapping/virus/{A}.bam", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        #expand("mapping/virus/{ctrl}_{virus}.bam", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([config['entries'][entry]['combined']['virus_genome'] for entry in config['entries'].keys() if "Mock" not in entry]))),
+        expand("mapping/virus/ctrl/{ctrl}_{virus}.bam", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([entry.split("_")[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
         "%%STAR_INDEX_DIR%%",
         expand("mapping/host/{A}.bam", A=sorted(config['entries'].keys())),
         expand("mapping/host/{A}Log.final.out", A=sorted(config['entries'].keys())),
@@ -23,17 +22,16 @@ rule star_mapping_stats_tsv:
     group:
         "star_statistics"
     run:
-
         with open(output[0], 'w') as summary_file:
             summary_file.write("sample	total_reads	avg_input_read_length	uniquely_mapped	uniquely_mapped_percent	avg_mapped_read_length	num_splices	num_annotated_splices	num_GT/AG_splices	num_GC/AG_splices	num_AT/AC_splices	num_noncanonical_splices	mismatch_rate	deletion_rate	deletion_length	insertion_rate	insertion_length	multimapped	multimapped_percent	multimapped_toomany	multimapped_toomany_percent	unmapped_mismatches_percent	unmapped_tooshort_percent	unmapped_other_percent	chimeric	chimeric_percent\n")
             #pattern = {}
             for i in input:
-                summary_file.write(i.replace("Log.final.out", "").replace("mapping/host/", "") + "	")
+                summary_file.write(i.replace("Log.final.out", "").replace("mapping/host/", ""))
                 #with open(i, "r") as input_file:
                 for line in shell("tail -n +5 {i}", iterable=True):
                         if "|" in line:
                             line_data = line.split("|")
-                            summary_file.write(line_data[1].split()[0] + "	")
+                            summary_file.write("	" + line_data[1].split()[0])
                 summary_file.write("\n")
 
 
@@ -50,7 +48,8 @@ rule bowtie2_mapping_stats_xlsx:
 
 rule bowtie2_mapping_stats_tsv:
     input:
-        expand("mapping/virus/logs/bowtie2_mapping.{name}.log", name=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+        expand("mapping/virus/logs/bowtie2_mapping.{name}.log", name=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+        expand("mapping/virus/ctrl/bowtie2_mapping.{ctrl}_{virus}.log", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([entry.split("_")[0] for entry in config['entries'].keys() if "Mock" not in entry])))
     output:
         "mapping/virus/stats/mapping_stats.tsv"
     group:
@@ -99,8 +98,6 @@ rule star_mapping:
         prefix="mapping/host/{sample}"
     log:
         "mapping/host/logs/star_mapping.{sample}.log"
-    benchmark:
-        "mapping/host/benchmark/{sample}.tsv"
     threads:
         2
     shell:
@@ -146,61 +143,78 @@ rule bowtie2_mapping:
     output:
         sam=temp("mapping/virus/sam/{name}.sam"),
         unmapped="mapping/virus/unmapped/{name}_unmapped.fastq",
-        log="mapping/virus/logs/bowtie2_mapping.{name}.log"
+        #log="mapping/virus/logs/bowtie2_mapping.{name}.log"
     group:
         "bowtie2_mapping"
     params:
        genome_base=lambda wildcards: config['entries'][wildcards.name]['combined']['virus_genome']
     log:
        "mapping/virus/logs/bowtie2_mapping.{name}.log"
-    benchmark:
-        "mapping/virus/benchmark/{name}.tsv"
     threads:
         2
     shell:
         "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {params.genome_base} -U {input.reads} -S {output.sam} --un {output.unmapped} 2>&1 |"
         "tee {log}"
-
-"""
+        
+def getGenome(wildcards):
+    for entry in config['entries'].keys():
+        if "Mock" not in entry:
+            if wildcards.virus in entry:
+                return config['entries'][entry]['combined']['virus_genome']+".1.bt2"
+        
 rule ctrl_mapping:
     input:
-        #reads=expand("mapping/host/unmapped/{ctrl}.fastq", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry]),
-        #genome=expand("{virus}.1.bt2", virus=list(set([config['entries'][entry]['combined']['virus_genome'] for entry in config['entries'].keys() if "Mock" not in entry])))
-        reads="mapping/host/unmapped/{ctrl}.fastq",
-        genome="{virus}.1.bt2"
+        index = getGenome,
+        reads="mapping/host/unmapped/{ctrl}.fastq"
     output:
-        #sam=expand(temp("mapping/virus/sam/{ctrl}_{virus}.sam"), ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([config['entries'][entry]['combined']['virus_genome'] for entry in config['entries'].keys() if "Mock" not in entry])))
-        sam=temp("mapping/virus/sam/{ctrl}_{virus}.sam")
+        sam=temp("mapping/virus/ctrl/{ctrl}_{virus}.sam")
     params:
-       genome_base="{virus}" #set([config['entries'][entry]['combined']['virus_genome'] for entry in config['entries'].keys() if "Mock" not in entry])
+        genome = lambda wildcards, input: input[0][:-6]
     log:
-       #expand("mapping/virus/logs/bowtie2_mapping.{ctrl}_{virus}.log", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([config['entries'][entry]['combined']['virus_genome'] for entry in config['entries'].keys() if "Mock" not in entry])))
-       "mapping/virus/logs/bowtie2_mapping.{ctrl}_{virus}.log"
+       "mapping/virus/ctrl/bowtie2_mapping.{ctrl}_{virus}.log"
     threads:
         4
-
-    run:
-        for ctrl_name in {input.reads}:
-            print(ctrl_name)
-            for virus_name in set([config['entries'][entry]['combined']['virus_genome'] for entry in config['entries'].keys() if "Mock" not in entry]):
-                print(virus_name)
-                shell("bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {ctrl_name} -U {input.reads} -S {virus_name} 2>&1 | tee 'mapping/virus/logs/bowtie2_mapping.{ctrl_name}_{virus_name}.log'")
-
     shell:
-        "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {params.genome_base} -U {input.reads} -S {output.sam} 2>&1 | tee {log}"
-"""
+        "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {params.genome} -U {input.reads} -S {output.sam} 2>&1 | tee {log}"
+
+        
+rule star_index_bam:
+    input:
+        "mapping/host/{sample}.bam"
+    output:
+        "mapping/host/{sample}.bam.bai"
+    threads:
+        2
+    shell:
+        #"samtools sort -@ {threads} -o {output} {input} && samtools index {output}"
+        "samtools index -@ {threads} {input}"
+    
 
 rule bowtie2_sam_to_bam:
     input:
-        "mapping/virus/sam/{name}.sam"
+        "mapping/virus/sam/{name}.sam",
     output:
         bam="mapping/virus/{name}.bam",
         bai="mapping/virus/{name}.bam.bai",
         bam_unmapped="mapping/virus/unmapped/{name}_unmap.bam"
     group:
         "bowtie2_mapping"
+    wildcard_constraints:
+        name="[^\\/]+"
     threads:
         2
     shell:
         "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam};"
         "samtools view -f 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
+        
+rule ctrl_sam_to_bam:
+    input:
+        "mapping/virus/ctrl/{ctrl}_{virus}.sam"
+    output:
+        bam="mapping/virus/ctrl/{ctrl}_{virus}.bam"
+    group:
+        "bowtie2_mapping"
+    threads:
+        2
+    shell:
+        "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam}"
