@@ -52,10 +52,10 @@ def check_columns(col_names: List[str], modules: Dict[str, List['Module']], pair
             raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('reads'))
         else:
             col2module[col_names.index('reads')] = ('main', 'file')
-    #if 'virus' not in col_names:
-    #    raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('name'))
-    #else:
-    #    col2module[col_names.index('virus')] = ('main', 'string')
+    if 'condition' not in col_names:
+        raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('name'))
+    else:
+        col2module[col_names.index('condition')] = ('main', 'string')
         
     for module in [module for module_list in modules.values() for module in module_list]:
         if len(module.columns) > 0:
