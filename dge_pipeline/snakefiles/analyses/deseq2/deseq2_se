@@ -11,9 +11,9 @@ rule all:
     input:
         "analyses/host/deseq2/counts.txt",
         "analyses/host/deseq2/counts_normalized.txt",
-        "analyses/host/deseq2/deseq2.RData",
-        expand("analyses/virus/deseq2/{virus}/{virus}_counts.txt", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
-        expand("analyses/virus/deseq2/{virus}/deseq2.RData", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
+        #"analyses/host/deseq2/deseq2.RData",
+        #expand("analyses/virus/deseq2/{virus}/{virus}_counts.txt", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
+        #expand("analyses/virus/deseq2/{virus}/deseq2.RData", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
         #expand('analyses/{human_or_virus}/deseq2/summary/{COND}.xlsx', COND=getConditions())
 
 #rule summary_tsv_to_xslx:
@@ -36,7 +36,7 @@ rule count_reads_host:
         counts = "analyses/host/deseq2/counts.txt",
         summary = "analyses/host/deseq2/counts.txt.summary"
     threads:
-        1
+        8
     log:
         log="analyses/host/deseq2/logs/featurecounts.log"
     group:
@@ -51,23 +51,28 @@ def get_virus_bam(wildcards):
         if wildcards.virus in entry:
             bam.append("mapping/virus/"+entry+".bam")
             gff = config['entries'][entry]['combined']['virus_genome_annotation']
-    return {'gff': gff, 'bam' : bam}            
+    bam.insert(0,gff)
+    return bam            
 
 rule count_reads_virus:
     input:
-        unpack(get_virus_bam)
+        get_virus_bam
     output:
         counts = "analyses/virus/deseq2/{virus}/{virus}_counts.txt",
         summary = "analyses/virus/deseq2/{virus}/{virus}_counts.txt.summary"
     group:
         "count_reads"
     threads:
-        1
+        2
     log:
         log = "analyses/virus/deseq2/logs/{virus}_featurecounts.log"
-    shell:
-        "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -O --fraction -t '%%GFF_FEATURE_TYPE_VIRUS%%' -g '%%GFF_FEATURE_NAME_VIRUS%%' -a {input.gff} -o {output.counts} {input.bam} 2>&1 |"
-        "tee {log}"
+    run:
+        gff = input[0]
+        bam = input[1:]
+        print(gff)
+        print(bam)
+        shell("featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -O --fraction -t '%%GFF_FEATURE_TYPE_VIRUS%%' -g '%%GFF_FEATURE_NAME_VIRUS%%' -a {gff} -o {output.counts} {bam} 2>&1 |"
+        "tee {log}")
 
 rule create_conditions_human:
     output:
@@ -75,28 +80,16 @@ rule create_conditions_human:
     run:
         with(open(output[0], 'w')) as output_file:
             for name in sorted(config['entries'].keys()):
-                output_file.write('{}\t{}\n'.format(name, config['entries'][name]['deseq2']['condition']))
+                output_file.write('{}\t{}\n'.format(name, config['entries'][name]['main']['condition']))
 
-                
-rule create_conditions_virus:  
-    output:
-        expand(temp("analyses/virus/deseq2/{virus}/{virus}_conditions.txt"), virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
-    run:
-        for o in output:
-            print(o)
-            with(open(o, 'w')) as output_file:
-                for name in sorted([entry for entry in config['entries'].keys() if os.path.basename(o).split('_')[0] in entry]):
-                    print(name)
-                    output_file.write('{}\t{}\n'.format(name, config['entries'][name]['deseq2']['condition']))
-            
-                
+                         
 rule deseq2_human:
     input:
         counttable = "analyses/host/deseq2/counts.txt",
         conditions = "analyses/host/deseq2/conditions.txt",
         feature_counts_log = "analyses/host/deseq2/counts.txt.summary"
     output:
-        dump="analyses/host/deseq2/deseq2.RData",
+        #dump="analyses/host/deseq2/deseq2.RData",
         counts_normalized="analyses/host/deseq2/counts_normalized.txt",
         correlation_heatmap="analyses/host/deseq2/correlation_heatmap.pdf",
         assignment_statistics="analyses/host/deseq2/counts_assignment.pdf",
@@ -109,12 +102,21 @@ rule deseq2_human:
     log:
         log="analyses/host/deseq2/logs/deseq2.log"
     threads:
-        1
+        16
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
         # Befehl um biolo. Prozesse ab 2. Eintrag auf GO-Nummern zu beschränken: sed 's/[^]]*\[\(GO:[0-9]*\)\]/;\1/2g' /nfs/sfb1021/SFB1021_Virus/dge_analyses2/analyses/host/deseq2/Uniprot_24h_3_up.txt.csv
-    
+"""   
+rule create_conditions_virus:  
+    output:
+        expand(temp("analyses/virus/deseq2/{virus}/{virus}_conditions.txt"), virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
+    run:
+        for o in output:
+            with(open(o, 'w')) as output_file:
+                for name in sorted([entry for entry in config['entries'].keys() if os.path.basename(o).split('_')[0] in entry]):
+                    output_file.write('{}\t{}\n'.format(name, config['entries'][name]['deseq2']['condition']))
+            
 def getColor(virus):
     #list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))
     for entry in config['entries'].keys():
@@ -124,10 +126,11 @@ def getColor(virus):
 
 rule deseq2_virus:
     input:
-        counttable = "analyses/virus/deseq2/{virus}/{virus}_counts.txt",
+        #counttable = "analyses/virus/deseq2/{virus}/{virus}_counts.txt",
         conditions = "analyses/virus/deseq2/{virus}/{virus}_conditions.txt",
-        feature_counts_log = "analyses/virus/deseq2/{virus}/{virus}_counts.txt.summary",
-        counttable_host = "analyses/host/deseq2/counts.txt"
+        #feature_counts_log = "analyses/virus/deseq2/{virus}/{virus}_counts.txt.summary",
+        counttable_host = "analyses/host/deseq2/counts.txt",
+        bam=get_virus_bam
     output:
         dump="analyses/virus/deseq2/{virus}/deseq2.RData",
         #counts_normalized="analyses/virus/deseq2/{virus}/counts_normalized.txt",
@@ -139,12 +142,16 @@ rule deseq2_virus:
         "deseq2"
     params:
         output_folder="analyses/virus/deseq2/{virus}/",
-        color=lambda wildcards: getColor(wildcards.virus)
+        #color=lambda wildcards: getColor(wildcards.virus)
     log:
         log="analyses/virus/deseq2/logs/{virus}_deseq2.log"
     threads:
         1
-    shell:
-        "R --vanilla --file=lib/deseq2_analysis_virus.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_VIRUS%% --output {params.output_folder} "
-        "--counttable_host {input.counttable_host} --featcounts {input.feature_counts_log} 2>&1 | tee {log}"
+    run:
+        gff = input.bam[0]
+        bam = ','.join(input.bam[1:])
+        shell("R --vanilla --file=lib/deseq2_analysis_virus.R --args --threads {threads} --gff {gff} --bam {bam} --conditions {input.conditions} --output {params.output_folder} --counttable_host {input.counttable_host} 2>&1 | tee {log}")
+        #"R --vanilla --file=lib/deseq2_analysis_virus.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --output {params.output_folder} "
+        #"--counttable_host {input.counttable_host} --featcounts {input.feature_counts_log} 2>&1 | tee {log}"
         #--color {params.color} 2>&1 | tee {log}"
+"""
