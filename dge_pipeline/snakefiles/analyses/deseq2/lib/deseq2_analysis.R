@@ -71,9 +71,9 @@ create_feature_counts_statistics <- function(featureCountsLog) {
 # Get Uniprot ID and Proteinname
 get_uniprot <- function(gene, human.uniprot){
   gene_bitr <- bitr(gene, fromType="SYMBOL", toType="UNIPROT", "org.Hs.eg.db")
-  gene_uni <- select(human.uniprot, gene_bitr$UNIPROT, c("PROTEIN-NAMES","REVIEWED"), "UNIPROTKB")
+  gene_uni <- UniProt.ws::select(human.uniprot, gene_bitr$UNIPROT, c("PROTEIN-NAMES","REVIEWED"), "UNIPROTKB")
   #gene_bitr <- merge(data.frame(SYMBOL=gene),gene_bitr, all.x = T)
-  gene.df <- merge(gene_uni[gene_uni$REVIEWED=="reviewed",c(1,2)], gene_bitr, by.x = "UNIPROTKB", by.y = "UNIPROT")
+  gene.df <- merge(gene_bitr, gene_uni[gene_uni$REVIEWED=="reviewed",c(1,2)], by.x = "UNIPROT", by.y = "UNIPROTKB")
   #gene.df <- rbind(gene.df, data.frame("UNIPROTKB"=NA, "PROTEIN-NAMES"=NA, "SYMBOL"=setdiff(gene, gene_bitr$SYMBOL), check.names = F))
   return(unique(gene.df))
 }
@@ -303,55 +303,56 @@ if (!dir.exists(paste(output_folder, "plots", sep = ""))) {
 }
 
 res.list <- list()
-res.list.filter <- list()
-#for (n in 1:1) {
-res.list.shrunk <- mclapply(1:nrow(comparisons.df), function(n){
-    print(comparisons.df[n,])
-    res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
-    res.list[[comparisons.df[n,2]]] <- res 
-    resLFC <- lfcShrink(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), type = "ashr", res = res)
-    #pdf(paste(output_folder, "plots/MA-plot/MAplot_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".pdf", sep = ""))
-    #plotMA(res, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
-    #dev.off()
-    pdf(paste(output_folder, "plots/MAplot_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""))
-    plotMA(resLFC, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
-    dev.off()
-    
-    res <- as.data.frame(resLFC)
-    res <- cbind(res, `-log10(padj)` = -log10(res$padj))
-
-    #plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
-    #  theme(axis.title = element_text(size=18, face = "bold")) +
-    #  geom_hline(yintercept = -log10(0.05), color = "red")
-    #ggsave(paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/Volcano/", sep = ""))
-    
-    
-    write.table(res, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_forHTML.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
-    #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
-    res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,2]),sub("_",".*_",comparisons.df[n,1]), sep="|"),colnames(countdata.normalized))])
-    res <- cbind(SYMBOL = rownames(res), res)
-    genes.uniprot.filter <- genes.uniprot[genes.uniprot$SYMBOL %in% res$SYMBOL,] %>% group_by(SYMBOL) %>% summarise_at(c("UNIPROTKB","PROTEIN-NAMES"),paste, collapse = ";")
-    res <- merge(genes.uniprot.filter, res, by = "SYMBOL", all.y = T)
-    for(x in as.character(res$SYMBOL)){try(res[res$SYMBOL == x,"PATHWAY"] <- paste(query.unlist[[x]]$PATHWAY, collapse = ";"))} # add associated pathways for each gene
-    colnames(res)[10:(ncol(res)-1)] <- paste0("normalized_", colnames(res)[10:(ncol(res)-1)])
-    res <- merge(res, genes.GO.df, by = "SYMBOL") # add associated GO terms
-    res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
-    res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
-    write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".csv", sep = ""), row.names = TRUE, col.names = NA)
-    write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".xlsx", sep = ""))
-    
-    res[is.na(res$`-log10(padj)`),"-log10(padj)"] <- 0
-    res[is.na(res$padj),"padj"] <- 1
-    glXYPlot(x = res$log2FoldChange, y = res$`-log10(padj)`, counts = res[,c(10:(ncol(res_filter)-1))], groups = sub("_[[:digit:]]$","",colnames(res[,c(10:(ncol(res_filter)-1))])), 
-             status = ifelse(res$log2FoldChange>1 & res$padj<0.05, 1, ifelse(res$log2FoldChange<(-1) & res$padj<0.05, -1, 0)), 
-             xlab = "log2FoldChange", ylab = "-log10(padj)", anno = res, side.main = "SYMBOL",
-             display.columns = c("SYMBOL", "UNIPROTKB", "PROTEIN.NAMES", "PATHWAY", "padj"), 
-             html = paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], sep = ""),
-             folder = "glimma_plots", path = output_folder, launch = F)
-    
-    return(res)
-}, mc.cores = threads)
-names(res.list.shrunk) <- comparisons.df[,2]
+res.list.shrunk <- list()
+for (n in 1:nrow(comparisons.df)) {
+#res.list <- mclapply(1:nrow(comparisons.df), function(n){
+      print(comparisons.df[n,])
+      res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
+      res.list[[comparisons.df[n,2]]] <- res 
+      write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
+      
+      resLFC <- lfcShrink(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), type = "ashr", res = res)
+      #pdf(paste(output_folder, "plots/MA-plot/MAplot_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".pdf", sep = ""))
+      #plotMA(res, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
+      #dev.off()
+      pdf(paste(output_folder, "plots/MAplot_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""))
+      plotMA(resLFC, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
+      dev.off()
+      
+      res <- as.data.frame(resLFC)
+      res <- cbind(res, `-log10(padj)` = -log10(res$padj))
+  
+      #plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
+      #  theme(axis.title = element_text(size=18, face = "bold")) +
+      #  geom_hline(yintercept = -log10(0.05), color = "red")
+      #ggsave(paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/Volcano/", sep = ""))
+      
+      
+      #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
+      res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,2]),sub("_",".*_",comparisons.df[n,1]), sep="|"),colnames(countdata.normalized))])
+      res <- cbind(SYMBOL = rownames(res), res)
+      genes.uniprot.filter <- genes.uniprot[genes.uniprot$SYMBOL %in% res$SYMBOL,] %>% group_by(SYMBOL) %>% summarise_at(c("UNIPROTKB","PROTEIN-NAMES"),paste, collapse = ";")
+      res <- merge(genes.uniprot.filter, res, by = "SYMBOL", all.y = T)
+      for(x in as.character(res$SYMBOL)){try(res[res$SYMBOL == x,"PATHWAY"] <- paste(query.unlist[[x]]$PATHWAY, collapse = ";"))} # add associated pathways for each gene
+      colnames(res)[10:(ncol(res)-1)] <- paste0("normalized_", colnames(res)[10:(ncol(res)-1)])
+      #res <- merge(res, genes.GO.df, by = "SYMBOL") # add associated GO terms
+      res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
+      res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
+      write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".csv", sep = ""), row.names = TRUE, col.names = NA)
+      write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".xlsx", sep = ""))
+      
+      res[is.na(res$`-log10(padj)`),"-log10(padj)"] <- 0
+      res[is.na(res$padj),"padj"] <- 1
+      glXYPlot(x = res$log2FoldChange, y = res$`-log10(padj)`, counts = res[,c(10:(ncol(res_filter)-1))], groups = sub("_[[:digit:]]$","",colnames(res[,c(10:(ncol(res_filter)-1))])), 
+               status = ifelse(res$log2FoldChange>1 & res$padj<0.05, 1, ifelse(res$log2FoldChange<(-1) & res$padj<0.05, -1, 0)), 
+               xlab = "log2FoldChange", ylab = "-log10(padj)", anno = res, side.main = "SYMBOL",
+               display.columns = c("SYMBOL", "UNIPROTKB", "PROTEIN.NAMES", "PATHWAY", "padj"), 
+               html = paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], sep = ""),
+               folder = "glimma_plots", path = output_folder, launch = F)
+     res.list.shrunk[[comparisons.df[n,2]]] <- res 
+    #  return(res)
+  }#, mc.cores = threads)
+#names(res.list.shrunk) <- comparisons.df[,2]
 
 res.list.shrunk.filter <- sapply(res.list.shrunk, function(x){x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & abs(x$log2FoldChange) > 1),]})
 
@@ -392,7 +393,7 @@ count.genes <- separate(count.genes, "Sample", c("Virus","Time"), "_", F)
 count.genes$Count <- as.numeric(count.genes$Count) 
 for(LFC.cut in unique(count.genes$LFC_cutoff)){
   p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = c("3h","6h","12h","24h","48h","BPL")), group=Direction, fill=Direction)) + 
-    geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus) + xlab("Time") + 
+    geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
     scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
     geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
   ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
