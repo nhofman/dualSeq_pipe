@@ -1,12 +1,17 @@
 set.seed(123)
 # Parse arguments
-args <- commandArgs(TRUE)
+args <- commandArgs(F)
+file.dir <- dirname(sub("--file=","",args[grep("--file=",args)]))
 counttable_file <- args[match('--counttable', args) + 1]
 condition_file <- args[match('--conditions', args) + 1]
 comparisons_file <- args[match('--comparisons', args) + 1]
 feature_counts_log_file <- args[match('--featcounts-log', args) + 1]
 output_folder <- args[match('--output', args) + 1]
 threads <- args[match('--threads', args) + 1]
+
+# source functions for enrichment and protein interaction analysis
+source(paste0(file.dir, "enrichment.R"))
+source(paste0(file.dir, "STRINGdb.R"))
 
 # Required packages
 for (package in c("DESeq2")) {
@@ -30,44 +35,6 @@ for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "
     }
 }
 
-# Heatmap showing similarities between samples (needs a count table and conditions )
-create_correlation_matrix <- function(countdata, conditiontable) {
-    countdata.normalized.processed <- as.matrix(countdata)
-    countdata.normalized.processed <- countdata.normalized.processed[rowSums(countdata.normalized.processed) >= 10,]
-    countdata.normalized.processed <- log2(countdata.normalized.processed + 1)
-    sample_cor <- cor(countdata.normalized.processed, method = 'pearson', use = 'pairwise.complete.obs')
-
-    return(pheatmap(sample_cor, annotation_col = conditiontable, annotation_row = conditiontable))
-}
-
-# Bar charts showing the assignment of allignments to genes (featureCounts statistics)
-create_feature_counts_statistics <- function(featureCountsLog) {
-    d <- read.table(featureCountsLog, header = T, row.names = 1)
-    colnames(d) <- gsub("mapping\\..*\\.(.*)\\.bam", "\\1", colnames(d))
-    d <- d[,mixedorder(colnames(d))]
-
-    dpct <- t(t(d) / colSums(d))
-
-    dm <- melt(t(d))
-    dpctm <- melt(t(dpct))
-
-    colnames(dm) <- c("Sample", "Group", "Reads")
-    dm$Group <- factor(dm$Group, levels = rev(levels(dm$Group)[order(levels(dm$Group))]))
-
-    assignment.absolute <- ggplot(dm[dm$Reads > 0,], aes(x = Sample, y = Reads)) +
-        geom_bar(aes(fill = Group), stat = "identity", group = 1) +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-    colnames(dpctm) <- c("Sample", "Group", "Reads")
-    dpctm$Group = factor(dpctm$Group, levels = rev(levels(dpctm$Group)[order(levels(dpctm$Group))]))
-    assignment.relative <- ggplot(dpctm[dpctm$Reads > 0,], aes(x = Sample, y = Reads)) +
-        geom_bar(aes(fill = Group), stat = "identity", group = 1) +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1)) #+
-        #theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), legend.text = element_text(size=12, face="bold"))
-
-    return(list(assignment.absolute, assignment.relative))
-}
-
 # Get Uniprot ID and Proteinname
 get_uniprot <- function(gene, human.uniprot){
   gene_bitr <- bitr(gene, fromType="SYMBOL", toType="UNIPROT", "org.Hs.eg.db")
@@ -76,95 +43,6 @@ get_uniprot <- function(gene, human.uniprot){
   gene.df <- merge(gene_bitr, gene_uni[gene_uni$REVIEWED=="reviewed",c(1,2)], by.x = "UNIPROT", by.y = "UNIPROTKB")
   #gene.df <- rbind(gene.df, data.frame("UNIPROTKB"=NA, "PROTEIN-NAMES"=NA, "SYMBOL"=setdiff(gene, gene_bitr$SYMBOL), check.names = F))
   return(unique(gene.df))
-}
-
-# Over-representation analysis for a set of genes
-calc_ora <- function(gene, main = "", filename, subdir, GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05){
-    gene_bitr <- bitr(gene, fromType="SYMBOL", toType="ENTREZID", "org.Hs.eg.db")
-    ora.list <- list()
-    if(GO){
-      for(o in ont){
-        ora_go <- try(enrichGO(gene_bitr$ENTREZID, keyType = "ENTREZID", OrgDb = "org.Hs.eg.db", ont = o, readable = T, pvalueCutoff = p.cut))
-        if(nrow(data.frame(ora_go)) > 0){
-        	plot_go <- dotplot(ora_go, showCategory = 20) + ggtitle(main)
-        	ggsave(paste(filename,"_",o,"_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(output_folder, subdir, sep = ""), width = 18, height = 15)
-        	write.table(data.frame(ora_go), file = paste(output_folder, subdir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
-        }
-        ora.list[[o]] <- ora_go
-      }
-    }
-    if(KEGG){
-      ora_kegg <- try(enrichKEGG(gene_bitr$ENTREZID, organism = "hsa", use_internal_data = FALSE, pvalueCutoff = p.cut))
-      if(nrow(data.frame(ora_kegg)) > 0){
-        ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
-  	    plot_kegg <- dotplot(ora_kegg, showCategory = 20) + ggtitle(main)
-  	    ggsave(paste(filename,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(output_folder, subdir, sep = ""), width = 18, height = 15)
-  	    write.table(data.frame(ora_kegg), file = paste(output_folder, subdir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
-      }
-      ora.list[["KEGG"]] <- ora_kegg
-    }
-    if(REACTOME){
-      ora_reactome <- try(enrichPathway(gene_bitr$ENTREZID, organism = "human", readable = T, pvalueCutoff = p.cut))
-      if(nrow(data.frame(ora_reactome)) > 0){
-        plot_reactome <- dotplot(ora_reactome, showCategory = 20) + ggtitle(main)
-        ggsave(paste(filename,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(output_folder, subdir, sep = ""), width = 18, height = 15)
-        write.table(data.frame(ora_reactome), file = paste(output_folder, subdir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
-      }
-      ora.list[["REACTOME"]] <- ora_reactome
-    }
-    return(ora.list)
-}
-
-# Gene Set Enrichment Analysis
-calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T, REACTOME = F, nPerm = 1000, p.cut = 0.05, subfol = "GSEA/"){
-    if(!dir.exists(paste0(output_folder, subfol))){
-      dir.create(paste0(output_folder, subfol))
-    }
-    gsea.list <- list()
-    gene_bitr <- bitr(res$SYMBOL, fromType="SYMBOL", toType="ENTREZID", "org.Hs.eg.db")
-    res <- merge(res, gene_bitr, by = "SYMBOL")
-    res <- res[order(res[,sort.by], decreasing = TRUE),]
-    geneset_num <- as.numeric(res[,sort.by])
-    names(geneset_num) <- res$ENTREZID
-    if(KEGG){
-      gsea_kegg <- try(gseKEGG(geneList = geneset_num, organism = "hsa", nPerm = nPerm, pvalueCutoff = p.cut, seed = T))
-      if(nrow(data.frame(gsea_kegg)) > 0){
-      	plot_kegg <- dotplot(gsea_kegg, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
-      	ggsave(paste(name,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(output_folder, subfol, sep = ""), width = 18, height = 15)
-      	gsea_kegg.df <- data.frame(gsea_kegg)
-      	gsea_kegg.df$core_enrichment_SYMBOL <- sapply(gsea_kegg.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-      	write.table(gsea_kegg.df, file = paste(output_folder, subfol, "/", name, "_KEGG.csv", sep = ""), sep = ",", row.names = FALSE)
-      	gsea.list[["KEGG"]] <- gsea_kegg
-      }
-    }
-    if(GO){
-      for(o in ont){
-        gsea_go <- try(gseGO(geneset_num, ont = o, OrgDb = org.Hs.eg.db, keyType = "ENTREZID", nPerm = nPerm, pvalueCutoff = p.cut, seed = T))
-        if(nrow(data.frame(gsea_go)) > 0){
-          plot_go <- dotplot(gsea_go, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
-          ggsave(paste(name, "_GO_", o, "_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(output_folder, subfol, sep = ""), width = 18, height = 15)
-          gsea_go.df <- data.frame(gsea_go)
-          gsea_go.df$core_enrichment_SYMBOL <- sapply(gsea_go.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-          write.table(gsea_go.df, file = paste(output_folder, subfol, "/", name, "_GO_", o, ".csv", sep = ""), sep = ",", row.names = FALSE)
-          gsea.list[[o]] <- gsea_go
-          # Problem: Bei gleichem value von by werden alle Pathways mit diesem Wert ausgegeben!
-          # Loesung: by = pvalue?
-          gsea.list[[paste0(o,"_simplify")]] <- simplify(gsea_go, cutoff = 0.5, by = "pvalue")
-        }
-      }
-    }
-    if(REACTOME){
-      gsea_reactome <- try(gsePathway(geneset_num, nPerm = nPerm, pvalueCutoff = p.cut, seed = T))
-      if(nrow(data.frame(gsea_reactome)) > 0){
-        plot_reactome <- dotplot(gsea_reactome, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
-        ggsave(paste(name,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(output_folder, subfol, sep = ""), width = 18, height = 15)
-        gsea_reactome.df <- data.frame(gsea_reactome)
-        gsea_reactome.df$core_enrichment_SYMBOL <- sapply(gsea_reactome.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-        write.table(gsea_reactome.df, file = paste(output_folder, subfol, "/", name, "_REACTOME.csv", sep = ""), sep = ",", row.names = FALSE)
-        gsea.list[["REACTOME"]] <- gsea_reactome
-      }
-    }
-    return(gsea.list)
 }
 
 loadKEGG <- function(geneID){
@@ -426,14 +304,20 @@ for (virus in unique(conditiontable$treatment)) {
 }
 
 
-# GSEA analysis
 gsea.list <- list()
 for(n in names(res.list)){
   print(n)
 	res <- res.list[[n]]
 	res <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
+	res <- res[order(res$log2FoldChange, decreasing = T),]
+  # GSEA analysis
 	gsea.list[[n]] <- calc_gsea(res, n, sort.by = "log2FoldChange", REACTOME = T, ont = c("CC", "MF", "BP"), nPerm = 10000,
-  	p.cut = 0.05, subfol = "GSEA")
+  	p.cut = 0.05, out.dir = paste0(output_folder,"/GSEA"))
+  # Protein-protein interaction analysis with STRING
+	string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05]), filename = paste0(n, "_up"), out.dir = paste0(output_folder, "/STRING"))
+	string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05]), filename = paste0(n, "_down"), out.dir = paste0(output_folder, "/STRING"))
+	res <- res[order(abs(res$log2FoldChange), decreasing = T),]
+	string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL), filename = paste0(n, "_top_absolut"), out.dir = paste0(output_folder, "/STRING"))
 	gc()
 }
-calc_ora(gene = res$SYMBOL[res$padj<padj.cut & res$log2FoldChange>LFC.cut], main = "", filename = paste0(comparisons.df[n,2],"up"), subdir = "ORA/",)
+#calc_ora(gene = res$SYMBOL[res$padj<padj.cut & res$log2FoldChange>LFC.cut], main = "", filename = paste0(comparisons.df[n,2],"up"), subdir = "ORA/",)
