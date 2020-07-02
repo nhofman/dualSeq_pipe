@@ -1,7 +1,9 @@
 library(clusterProfiler)
+library(ReactomePA)
+#library(stringr)
 
 # Over-representation analysis for a set of genes
-calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05){
+calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05, label.size = 12){
   if(!dir.exists(out.dir)){
     dir.create(out.dir)
   }
@@ -11,7 +13,7 @@ calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = 
     for(o in ont){
       ora_go <- try(enrichGO(gene_bitr$ENTREZID, keyType = "ENTREZID", OrgDb = "org.Hs.eg.db", ont = o, readable = T, pvalueCutoff = p.cut))
       if(nrow(data.frame(ora_go)) > 0){
-        plot_go <- dotplot(ora_go, showCategory = 20) + ggtitle(main)
+        plot_go <- dotplot(ora_go, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_",o,"_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
         write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
       }
@@ -22,7 +24,7 @@ calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = 
     ora_kegg <- try(enrichKEGG(gene_bitr$ENTREZID, organism = "hsa", use_internal_data = FALSE, pvalueCutoff = p.cut))
     if(nrow(data.frame(ora_kegg)) > 0){
       ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
-      plot_kegg <- dotplot(ora_kegg, showCategory = 20) + ggtitle(main)
+      plot_kegg <- dotplot(ora_kegg, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
       ggsave(paste(filename,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
       write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
     }
@@ -31,7 +33,7 @@ calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = 
   if(REACTOME){
     ora_reactome <- try(enrichPathway(gene_bitr$ENTREZID, organism = "human", readable = T, pvalueCutoff = p.cut))
     if(nrow(data.frame(ora_reactome)) > 0){
-      plot_reactome <- dotplot(ora_reactome, showCategory = 20) + ggtitle(main)
+      plot_reactome <- dotplot(ora_reactome, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
       ggsave(paste(filename,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
       write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
     }
