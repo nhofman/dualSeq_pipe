@@ -105,7 +105,7 @@ dev.off()
 
 # Calculate differential expression analysis steps
 deseq.results <- DESeq(object = deseqDataset, parallel = TRUE)
-
+  
 # Calculate variance-stabilized read counts
 deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
 
@@ -114,8 +114,9 @@ deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
 # Plot PCA
 pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE) 
 #shape <- c(1:length(unique(pca$time)))
-plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = time)) + geom_point(size=3)
-ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder)
+plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = factor(time, levels = mixedsort(levels(pca$time))))) + geom_point(size=3) + 
+  labs(color = "Treatment", shape = "Time")
+ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder, width = 10, height = 6)
 
 for (time in unique(conditiontable$time)) {
     pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
@@ -180,13 +181,13 @@ if (!dir.exists(paste(output_folder, "plots", sep = ""))) {
   dir.create(paste(output_folder, "plots", sep = ""))
 }
 
+res.list.raw <- list()
 res.list <- list()
-res.list.shrunk <- list()
 for (n in 1:nrow(comparisons.df)) {
 #res.list <- mclapply(1:nrow(comparisons.df), function(n){
       print(comparisons.df[n,])
       res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
-      res.list[[comparisons.df[n,2]]] <- res 
+      res.list.raw[[comparisons.df[n,2]]] <- res 
       write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
       
       resLFC <- lfcShrink(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), type = "ashr", res = res)
@@ -227,12 +228,12 @@ for (n in 1:nrow(comparisons.df)) {
                display.columns = c("SYMBOL", "UNIPROTKB", "PROTEIN.NAMES", "PATHWAY", "padj"), 
                html = paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], sep = ""),
                folder = "glimma_plots", path = output_folder, launch = F)
-     res.list.shrunk[[comparisons.df[n,2]]] <- res 
+     res.list[[comparisons.df[n,2]]] <- res 
     #  return(res)
   }#, mc.cores = threads)
 #names(res.list.shrunk) <- comparisons.df[,2]
 
-res.list.shrunk.filter <- sapply(res.list.shrunk, function(x){x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & abs(x$log2FoldChange) > 1),]})
+res.list.filter <- sapply(res.list, function(x){x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & abs(x$log2FoldChange) > 1),]})
 
 lfc.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){x.df <- data.frame(res.list[[x]][,c("SYMBOL","log2FoldChange")]); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df) <- lfc.df$SYMBOL
