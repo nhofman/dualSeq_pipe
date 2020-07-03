@@ -1,7 +1,7 @@
 # Differential gene expression pipeline
 
-Patrick Blumenkamp<br />
-patrick.blumenkamp@computational.bio<br />
+Nina Hofmann<br />
+nina.hofmann@computational.bio<br />
 
 Institute for Bioinformatics and Systems Biology<br />
 Justus Liebig University Giessen<br />
