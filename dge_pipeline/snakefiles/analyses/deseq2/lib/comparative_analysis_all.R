@@ -34,6 +34,14 @@ res.list.filter <- sapply(names(res.list), function(n){
   return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
 })
 
+# plot number of diffeerentially expressed genes - sorted by customized order
+p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = mixedsort(unique(count.genes$Time))), group=Direction, fill=Direction)) + 
+  geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + xlab("Time") + 
+  scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
+  geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
+ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
+ 
+
 # “How many genes are regulated (up or down) during how may time points?”
 # UpSet plot or bar chart
 virus.dge.binary <- list2binary(lapply(res.list.filter, "[[", "SYMBOL"))#, paste0(out.dir,"/all_genes_binary.csv"))
