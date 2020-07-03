@@ -247,7 +247,6 @@ padj.df <- padj.df[,mixedorder(colnames(padj.df))]
 write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), row.names = T)
 
 lfc.df[is.na(lfc.df)] <- 0
-save.image(paste(output_folder, "/deseq2.RData", sep = ""))
 
 # Count differentially expressed genes
 padj_cut <- 0.05
@@ -271,13 +270,16 @@ write.table(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunke
 count.genes <- separate(count.genes, "Sample", c("Virus","Time"), "_", F)
 count.genes$Count <- as.numeric(count.genes$Count) 
 for(LFC.cut in unique(count.genes$LFC_cutoff)){
-  p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = c("3h","6h","12h","24h","48h","BPL")), group=Direction, fill=Direction)) + 
+  p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = mixedsort(unique(count.genes$Time))), group=Direction, fill=Direction)) + 
     geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
     scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
     geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
   ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 10, height = 7)
 }
+
+# save session
+save.image(paste(output_folder, "/deseq2.RData", sep = ""))
 
 # create boxplot over LFC (for every virus separatly) -> show course of infection 
 par(mfrow = c(3,4))
