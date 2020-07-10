@@ -5,6 +5,7 @@ source("plot_heatmap.R")
 source("enrichment.R")
 source("STRINGdb.R")
 source("venn.R")
+source("tfbs.R")
 
 # common subset of diff. expressed genes
 # - separate up- and down-regulated genes
@@ -38,8 +39,10 @@ res.list.filter <- sapply(names(res.list), function(n){
 p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = mixedsort(unique(count.genes$Time))), group=Direction, fill=Direction)) + 
   geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + xlab("Time") + 
   scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
-  geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
-ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
+  geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green")) +
+  theme(axis.title = element_text(size = 18, face = "bold"), axis.text = element_text(size = 12, face = "bold"), strip.text = element_text(size = 20, face = "bold"),
+        legend.text = element_text(size = 15), legend.title = element_text(size = 18, face = "bold"))
+ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder, width = 12, height = 10)
  
 
 # “How many genes are regulated (up or down) during how may time points?”
@@ -55,7 +58,7 @@ for(v in virus.levels){
   dev.off()
 }
 
-  # Common genes between viruses at any time point 
+# Common genes between viruses at any time point 
 virus.dge <- sapply(virus.levels,function(virus){unique(unlist(sapply(res.list.filter[grep(paste0(virus,".*h"), names(res.list.filter))], function(x){return(x$SYMBOL)})))}, USE.NAMES = T)
 out.dir <- paste0(output_folder,"/common_pattern")
 genes.common <- Reduce(intersect, virus.dge[grep("CoV229E|MERS|H1N1|H5N1|RSV|RVFV|EBOV|NIV|SFSV", names(virus.dge))])
@@ -82,6 +85,25 @@ ora <- calc_ora(genes.common, filename = "ORA_common_", out.dir = paste0(out.dir
 string_ppi(string_db, gene.df = data.frame("SYMBOL"=genes.common), filename = "common_genes", out.dir = paste0(out.dir, "/STRING"), link = F, 
            cluster = T, required_score = 400)
 
+# Transcription factor binding site analysis
+#Convert gtf to GRanges object
+gtf.human <- "/vol/sfb1021/SFB1021_Virus/genomes/hg38/genes.gtf"
+human.GRanges <- getTranscriptsfromGFF(gtf.human)
+human.GRanges <- keepStandardChromosomes(human.GRanges, pruning.mode = "coarse")
+
+# TFBS analysis with MEME
+path2meme <- "/home/nina/meme/bin/"
+motifDB <- "/home/nina/Documents/Virus_project/motif_databases/JASPAR/JASPAR2020_CORE_vertebrates_redundant.meme"
+motifDB <- "/home/nina/Documents/Virus_project/motif_databases/HUMAN/HOCOMOCOv11_full_HUMAN_mono_meme_format.meme"
+fasta.file <- "/vol/sfb1021/SFB1021_Virus/genomes/hg38/genome.fa"
+out.dir <- paste0(out.dir, "/TFBS/HOCOMOCO")
+promotor_prim <- "promotor.common.fa"
+promotor_back <- "promotor.bg.fa"
+writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, genes.common, upstream = 1000, downstream = 100)
+meme.res <- meme(path2meme, outdir = out.dir, paste0(output_folder,"/common_pattern/TFBS/",promotor_prim), paste0(output_folder,"/common_pattern/TFBS/",promotor_back), nmotif = 10)
+tomtom(path2meme, motifDB, motif_file = meme.res, outdir = out.dir)
+ame(path2meme, motifDB, paste0(output_folder,"/common_pattern/TFBS/",promotor_prim), paste0(output_folder,"/common_pattern/TFBS/",promotor_back), out.dir)
+
 ### Compare 2 groups of viruses ###
 
 # Compare two sets and find set specific and common values
@@ -103,7 +125,7 @@ compare_geneset <- function(set1.list, set2.list, set1.name, set2.name){
 # comparison of extremly pathogenic vs low pathogenic viruses
 # extremly pathogenic: EBOV, NIV
 # low pathogenic: 229E, SFSV
-subdir <- "weak_vs_high"
+out.dir <- paste0(output_folder, "/weak_vs_high")
 high <- virus.levels[grep("EBOV|NIV", virus.levels)]
 low <- virus.levels[grep("CoV229E|SFSV", virus.levels)]
 lfc.sub <- lfc.df[,grep(paste(high, low, sep = "|", collapse = "|"), colnames(lfc.df))]
@@ -112,10 +134,10 @@ annCol <- data.frame("Pathogenicity"=ifelse(grepl(paste0(high,collapse = "|"),co
 my_color <- list(Pathogenicity=c("high pathogenic"="dark blue", "low pathogenic"="light blue"))
 
 venn.intersect <- draw_venn(virus.dge[grep(paste(high, low, sep = "|", collapse = "|"), names(virus.dge))], 
-                            out_name = paste(out.dir, subdir, paste(high, low, sep = "_", collapse = "_"), sep = "/"), 
+                            out_name = paste(out.dir, paste(high, low, sep = "_", collapse = "_"), sep = "/"), 
                             imagetype = "svg", fill = c("red", "blue", "green", "orange"), margin = 0.1)
 # venn.intersect <- venn.intersect[grep(paste(paste(low,collapse = ":"),paste(high,collapse = ":"),names(venn.intersect)[grep(".+:.+:.+:.+",names(venn.intersect))],sep = "$|^"), names(venn.intersect))]
-virus.heat <- plotHeatmap(lfc.sub, filename = paste0(out.dir,"/",subdir,"/Heatmap_",paste(high, low, sep = "_", collapse = "_"),"_LFC",LFC.cut,".pdf"), 
+virus.heat <- plotHeatmap(lfc.sub, filename = paste0(out.dir,"/Heatmap_",paste(high, low, sep = "_", collapse = "_"),"_LFC",LFC.cut,".pdf"), 
                           row_subset = Reduce(union, virus.dge[grep(paste(high, low, sep = "|", collapse = "|"), names(virus.dge))]), 
                           colClust = F, clusterMethod = "ward.D2", legend.limit = 1, clrn = 1,
                           fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA)
@@ -123,20 +145,22 @@ list.intersect <- compare_geneset(set1.list = virus.dge[grep(paste0(high,collaps
                                   set2.list = virus.dge[grep(paste0(low,collapse = "|"),names(virus.dge))], set2.name = "low")
 #lapply(names(venn.intersect), function(x){
 sapply(names(list.intersect), function(x){ 
-  virus.heat <- plotHeatmap(lfc.sub, filename = paste0(out.dir,"/",subdir,"/Heatmap_",x,"_LFC",LFC.cut,".pdf"), 
+  virus.heat <- plotHeatmap(lfc.sub, filename = paste0(out.dir,"/Heatmap_",x,"_LFC",LFC.cut,".pdf"), 
                             row_subset = list.intersect[[x]], 
                             colClust = F, clusterMethod = "ward.D2", legend.limit = 1, clrn = 1,
                             fontsize_row = 3.5, fontsize_col = 6, height = 7, border_col = NA, 
                             annCol = annCol, annotation_colors = my_color)
 })
-list.intersect.ENTREZ <- lapply(list.intersect, function(x)bitr(x, "SYMBOL", "ENTREZID", org.Hs.eg.db)$ENTREZID)
-cc <- compareCluster(list.intersect.ENTREZ, fun = "enrichKEGG", pvalueCutoff = 0.1)
-cc.plot <- dotplot(cc) 
+list.intersect.ENTREZ <- lapply(venn.intersect, function(x)bitr(x, "SYMBOL", "ENTREZID", org.Hs.eg.db)$ENTREZID)
+calc_compareCluster(dataset = list.intersect.ENTREZ, filename = "Compare_high_low_pathogenic_all", out.dir = out.dir, GO = F, 
+                    ont = c("CC","BP","MF"), label.size = 20, w = 30, REACTOME = T)
+calc_ora(c(list.intersect.ENTREZ$`CoV229E:SFSV`), filename = "ORA_low_specific", out.dir = out.dir, GO = F, ont = "BP", 
+         p.cut = 0.05, label.size = 20, keytype = "ENTREZID")
 
 # negative sense vs positive sense 
 # (+)sense: CoV229E, MERS, HCV
 # (-)sense: Infuenza, EBOV, MARV, NIV, RSV, (RVFV, SFSV)
-subdir <- "positive_vs_negative"
+out.dir <- paste0(output_folder, "positive_vs_negative")
 positive <- virus.levels[grep("CoV229E|MERS", virus.levels)]
 negative <- virus.levels[grep("H1N1|H5N1|EBOV|NIV|RSV|RVFV|SFSV", virus.levels)]
 lfc.sub <- lfc.df[,grep(paste(positive, negative, sep = "|", collapse = "|"), colnames(lfc.df))]
@@ -144,10 +168,15 @@ lfc.sub <- lfc.sub[,unlist(sapply(c(positive,negative), function(v){grep(v,colna
 annCol <- data.frame("Sense"=ifelse(grepl(paste0(positive,collapse = "|"),colnames(lfc.sub)),"positive-sense","negative-sense"), row.names = colnames(lfc.sub))
 my_color <- list(Sense=c("positive-sense"="dark blue", "negative-sense"="light blue"))
 
+svglite::svglite(paste(out.dir, "UpSet.svg", sep = "/"), width = 14, height = 8)
+  print(upset(fromList(virus.dge[grep(paste(c(positive, negative), collapse = "|"), names(virus.dge))]), keep.order = T,
+        intersections = list(list(positive), list(negative)), text.scale = c(1.75,1.75,1.5,1.5,1.5,1.75)))
+dev.off()
+
 list.intersect <- compare_geneset(set1.list = virus.dge[grep(paste0(positive,collapse = "|"),names(virus.dge))], set1.name = "positive",
                                   set2.list = virus.dge[grep(paste0(negative,collapse = "|"),names(virus.dge))], set2.name = "negative")
 sapply(names(list.intersect), function(x){ 
-  virus.heat <- plotHeatmap(lfc.sub, filename = paste0(out.dir,"/",subdir,"/Heatmap_",x,"_LFC",LFC.cut,".pdf"), 
+  virus.heat <- plotHeatmap(lfc.sub, filename = paste0(out.dir,"/Heatmap_",x,"_LFC",LFC.cut,".pdf"), 
                             row_subset = list.intersect[[x]], 
                             colClust = F, clusterMethod = "ward.D2", legend.limit = 1, clrn = 1,
                             fontsize_row = 4.5, fontsize_col = 6, height = 7, border_col = NA,
