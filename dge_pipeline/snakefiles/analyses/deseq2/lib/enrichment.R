@@ -5,7 +5,7 @@ library(org.Hs.eg.db)
 
 # Over-representation analysis for a set of genes
 calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05, label.size = 12, 
-                     keytype = "SYMBOL"){
+                     legend.size = 8, keytype = "SYMBOL"){
   if(!dir.exists(out.dir)){
     dir.create(out.dir)
   }
@@ -19,7 +19,8 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
     for(o in ont){
       ora_go <- try(enrichGO(gene_bitr$ENTREZID, keyType = "ENTREZID", OrgDb = "org.Hs.eg.db", ont = o, readable = T, pvalueCutoff = p.cut))
       if(nrow(data.frame(ora_go)) > 0){
-        plot_go <- dotplot(ora_go, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+        plot_go <- dotplot(ora_go, showCategory = 20, font.size = label.size) + ggtitle(main) +
+          theme(legend.text = element_text(size = legend.size), legend.title = element_text(size = legend.size)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_",o,"_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
         write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
       }
@@ -30,7 +31,8 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
     ora_kegg <- try(enrichKEGG(gene_bitr$ENTREZID, organism = "hsa", use_internal_data = FALSE, pvalueCutoff = p.cut))
     if(nrow(data.frame(ora_kegg)) > 0){
       ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
-      plot_kegg <- dotplot(ora_kegg, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+      plot_kegg <- dotplot(ora_kegg, showCategory = 20, font.size = label.size) + ggtitle(main) +
+        theme(legend.text = element_text(size = legend.size), legend.title = element_text(size = legend.size)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
       ggsave(paste(filename,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
       write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
     }
@@ -39,7 +41,8 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
   if(REACTOME){
     ora_reactome <- try(enrichPathway(gene_bitr$ENTREZID, organism = "human", readable = T, pvalueCutoff = p.cut))
     if(nrow(data.frame(ora_reactome)) > 0){
-      plot_reactome <- dotplot(ora_reactome, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+      plot_reactome <- dotplot(ora_reactome, showCategory = 20, font.size = label.size) + ggtitle(main) +
+        theme(legend.text = element_text(size = legend.size), legend.title = element_text(size = legend.size)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
       ggsave(paste(filename,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
       write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
     }
@@ -108,16 +111,21 @@ calc_gsea <- function(geneset.df, filename, ont = "BP", sort.by = "stat", KEGG =
 
 # Comparative overrepresentation analysis
 calc_compareCluster <- function(dataset, filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05, label.size = 12, 
-                                main = "", w = 18, h = 15){
+                                legend.size = 8, main = "", w = 18, h = 15, keytype = "SYMBOL"){
   if(!dir.exists(out.dir)){
     dir.create(out.dir)
   }
-  
+  if(keytype != "ENTREZID"){
+    if(class(dataset)=="list"){
+      dataset <- lapply(dataset, function(x)bitr(x, keytype, "ENTREZID", org.Hs.eg.db)$ENTREZID)
+    }
+  }
   if(GO){
     for(o in ont){
       cc_go <- try(compareCluster(dataset, fun = "enrichGO", keyType = "ENTREZID", OrgDb = "org.Hs.eg.db", ont = o, readable = T, pvalueCutoff = p.cut))
       if(nrow(data.frame(cc_go)) > 0){
-        plot_go <- dotplot(cc_go, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+        plot_go <- dotplot(cc_go, showCategory = 20, font.size = label.size) + ggtitle(main) +
+          theme(legend.text = element_text(size = legend.size), legend.title = element_text(size = legend.size)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_",o,"_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = out.dir, width = w, height = h)
         write.table(data.frame(cc_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
       }
@@ -126,7 +134,8 @@ calc_compareCluster <- function(dataset, filename, out.dir = "ORA", GO = T, KEGG
   if(KEGG){
     cc_kegg <- try(compareCluster(dataset, "enrichKEGG", organism = "hsa", use_internal_data = FALSE, pvalueCutoff = p.cut))
     if(nrow(data.frame(cc_kegg)) > 0){
-      plot_kegg <- dotplot(cc_kegg, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+      plot_kegg <- dotplot(cc_kegg, showCategory = 20, font.size = label.size) + ggtitle(main) +
+        theme(legend.text = element_text(size = legend.size), legend.title = element_text(size = legend.size)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
       ggsave(paste(filename,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = out.dir, width = w, height = h)
       write.table(data.frame(cc_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
     }
@@ -134,7 +143,8 @@ calc_compareCluster <- function(dataset, filename, out.dir = "ORA", GO = T, KEGG
   if(REACTOME){
     cc_reactome <- try(compareCluster(dataset, "enrichPathway", organism = "human", readable = T, pvalueCutoff = p.cut))
     if(nrow(data.frame(cc_reactome)) > 0){
-      plot_reactome <- dotplot(cc_reactome, showCategory = 20, font.size = label.size) + ggtitle(main) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+      plot_reactome <- dotplot(cc_reactome, showCategory = 20, font.size = label.size) + ggtitle(main) +
+        theme(legend.text = element_text(size = legend.size), legend.title = element_text(size = legend.size)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
       ggsave(paste(filename,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = out.dir, width = w, height = h)
       write.table(data.frame(cc_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
     }
