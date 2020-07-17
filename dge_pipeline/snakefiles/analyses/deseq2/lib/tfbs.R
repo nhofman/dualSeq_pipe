@@ -1,6 +1,7 @@
 library("GenomicFeatures")
 library("rtracklayer")
 library("Biostrings")
+library("Rsamtools")
 
 # calculate GRanges object from hg38 annotation
 getTranscriptsfromGFF <- function(gffFilePath){
@@ -32,17 +33,17 @@ writeGRanges2Fasta <- function(GRanges, outdir, promotor_prim, promotor_back, fa
   human.promoter.select <- subset(human.promoter, gene_id %in% geneset)
   human.promoter.bg <- subset(human.promoter, !(gene_id %in% geneset))
   
-  fa <- open.FaFile(FaFile(fasta.file))
+  #fa <- open.FaFile(FaFile(fasta.file))
   
-  human.promoter.select.seq <- getSeq(fa, param = human.promoter.select)
+  human.promoter.select.seq <- getSeq(FaFile(fasta.file), param = human.promoter.select)
   names(human.promoter.select.seq) <- paste(names(human.promoter.select.seq), as.character(human.promoter.select$gene_id), sep=":")
   writeXStringSet(human.promoter.select.seq, filepath = paste(outdir,promotor_prim,sep="/"))
   
-  human.promoter.bg.seq <- getSeq(fa, param = human.promoter.bg)
+  human.promoter.bg.seq <- getSeq(FaFile(fasta.file), param = human.promoter.bg)
   names(human.promoter.bg.seq) <- paste(names(human.promoter.bg.seq), as.character(human.promoter.bg$gene_id), sep=":")
-  writeXStringSet(human.promoter.bg.seq, filepath = paste0(outdir,promotor_back,sep="/"))
+  writeXStringSet(human.promoter.bg.seq, filepath = paste(outdir,promotor_back,sep="/"))
   
-  close.FaFile(FaFile(fasta.file))
+  #close.FaFile(FaFile(fasta.file))
 }
 
 
