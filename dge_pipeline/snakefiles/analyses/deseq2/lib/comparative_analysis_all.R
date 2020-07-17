@@ -54,7 +54,7 @@ for(v in virus.levels){
   p <- ggplot(data.frame("sum"=rowSums(virus.sub)), aes(x=sum)) + geom_bar() + labs(x = "Number of time points", y = "# genes") + ggtitle(v)
   ggsave(paste0("Time_count_",v,".svg"), p, "svg", output_folder)
   svglite::svglite(paste0(output_folder, "UpSet_",v,".svg"), width = 10, height = 8)
-  print(upset(virus.sub, order.by = "freq", nsets = 4, nintersects = NA))
+  print(upset(virus.sub, order.by = "freq", nsets = 4, nintersects = NA, text.scale = c(2,2,2,2,2,2)))
   dev.off()
 }
 
@@ -64,10 +64,11 @@ out.dir <- paste0(output_folder,"/common_pattern")
 genes.common <- Reduce(intersect, virus.dge[grep("CoV229E|MERS|H1N1|H5N1|RSV|RVFV|EBOV|NIV|SFSV", names(virus.dge))])
 # Venn diagram or better UpSet plot of gene sets
 virus.dge.binary <- list2binary(virus.dge)#, paste0(out.dir,"/all_genes_binary.csv"))
-svglite::svglite(paste0(output_folder, "UpSet_minus_LASV_HCV_MARV.svg"), width = 15, height = 8)
-print(upset(virus.dge.binary, nsets = 9, nintersects = 40, order.by = "freq"))
+  svglite::svglite(paste0(out.dir, "/UpSet_minus_LASV_HCV_MARV.svg"), width = 20, height = 8)
+print(upset(virus.dge.binary, nsets = 9, nintersects = 40, order.by = "freq", text.scale = c(2,2,1.5,1.5,2,2),
+            queries = list(list(query = intersects, params = list("CoV229E","MERS","H1N1","H5N1","RVFV","SFSV","RSV","NIV","EBOV"), active = T, color = "red"))))
 dev.off()
-upset_json(file = "UpSet_minus_LASV_HCV_MARV", out.dir = output_folder, name = "DGE Virus", start = 1, end = 12)
+  upset_json(file = "UpSet_minus_LASV_HCV_MARV", out.dir = output_folder, name = "DGE Virus", start = 1, end = 12)
 
 # plot heatmap of common gene set
 virus.heat <- plotHeatmap(lfc.df, filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,".pdf"), 
@@ -79,9 +80,10 @@ write.xlsx(res.list[[1]][res.list[[1]]$SYMBOL %in% genes.common, c("SYMBOL","UNI
 # How to define up and down since we have multiple time points?
 
 # over-representation analysis
-ora <- calc_ora(genes.common, filename = "ORA_common_", out.dir = paste0(out.dir, "/ORA"), GO = T, REACTOME = T, ont = c("CC","BP","MF"), p.cut = 0.05, label.size = 20)
+ora <- calc_ora(genes.common, filename = "ORA_common_", out.dir = paste0(out.dir, "/ORA"), GO = T, REACTOME = T, ont = c("CC","BP","MF"), 
+                p.cut = 0.05, label.size = 20, legend.size = 15)
 
-# network analysis using STRING
+    # network analysis using STRING
 string_ppi(string_db, gene.df = data.frame("SYMBOL"=genes.common), filename = "common_genes", out.dir = paste0(out.dir, "/STRING"), link = F, 
            cluster = T, required_score = 400)
 
@@ -152,8 +154,8 @@ sapply(names(list.intersect), function(x){
                             annCol = annCol, annotation_colors = my_color)
 })
 list.intersect.ENTREZ <- lapply(venn.intersect, function(x)bitr(x, "SYMBOL", "ENTREZID", org.Hs.eg.db)$ENTREZID)
-calc_compareCluster(dataset = list.intersect.ENTREZ, filename = "Compare_high_low_pathogenic_all", out.dir = out.dir, GO = F, 
-                    ont = c("CC","BP","MF"), label.size = 20, w = 30, REACTOME = T)
+calc_compareCluster(dataset = list.intersect, filename = "Compare_high_low_pathogenic_all", out.dir = out.dir, GO = F, 
+                    ont = c("CC","BP","MF"), label.size = 20, w = 30, REACTOME = F, keytype = "SYMBOL", legend.size = 15)
 calc_ora(c(list.intersect.ENTREZ$`CoV229E:SFSV`), filename = "ORA_low_specific", out.dir = out.dir, GO = F, ont = "BP", 
          p.cut = 0.05, label.size = 20, keytype = "ENTREZID")
 
