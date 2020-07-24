@@ -68,7 +68,7 @@ virus.dge.binary <- list2binary(virus.dge)#, paste0(out.dir,"/all_genes_binary.c
 print(upset(virus.dge.binary, nsets = 9, nintersects = 40, order.by = "freq", text.scale = c(2,2,1.5,1.5,2,2),
             queries = list(list(query = intersects, params = list("CoV229E","MERS","H1N1","H5N1","RVFV","SFSV","RSV","NIV","EBOV"), active = T, color = "red"))))
 dev.off()
-  upset_json(file = "UpSet_minus_LASV_HCV_MARV", out.dir = output_folder, name = "DGE Virus", start = 1, end = 12)
+upset_json(file = "UpSet_minus_LASV_HCV_MARV", out.dir = output_folder, name = "DGE Virus", start = 1, end = 12)
 
 # plot heatmap of common gene set
 virus.heat <- plotHeatmap(lfc.df, filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,".pdf"), 
@@ -98,11 +98,11 @@ path2meme <- "/home/nina/meme/bin/"
 motifDB <- "/home/nina/Documents/Virus_project/motif_databases/JASPAR/JASPAR2020_CORE_vertebrates_redundant.meme"
 motifDB <- "/home/nina/Documents/Virus_project/motif_databases/HUMAN/HOCOMOCOv11_full_HUMAN_mono_meme_format.meme"
 fasta.file <- "/vol/sfb1021/SFB1021_Virus/genomes/hg38/genome.fa"
-out.dir <- paste0(out.dir, "/TFBS/HOCOMOCO")
+out.dir <- paste0(out.dir, "/TFBS/")
 promotor_prim <- "promotor.common.fa"
 promotor_back <- "promotor.bg.fa"
 writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, genes.common, upstream = 1000, downstream = 100)
-meme.res <- meme(path2meme, outdir = out.dir, paste0(output_folder,"/common_pattern/TFBS/",promotor_prim), paste0(output_folder,"/common_pattern/TFBS/",promotor_back), nmotif = 10)
+meme.res <- meme(path2meme, outdir = out.dir, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), nmotif = 10, alph = "dna", objfun = "de")
 tomtom(path2meme, motifDB, motif_file = meme.res, outdir = out.dir)
 ame(path2meme, motifDB, paste0(output_folder,"/common_pattern/TFBS/",promotor_prim), paste0(output_folder,"/common_pattern/TFBS/",promotor_back), out.dir)
 
