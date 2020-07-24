@@ -48,7 +48,7 @@ writeGRanges2Fasta <- function(GRanges, outdir, promotor_prim, promotor_back, fa
 
 
 # call meme
-meme <- function(path2meme, outdir, promotor_prim, promotor_back, nmotif = 1){
+meme <- function(path2meme, outdir, promotor_prim, promotor_back = NA, nmotif = 1, alph = "dna", objfun = "classic", add_arg = ""){
   if(!dir.exists(outdir)){
     dir.create(outdir)
   }
@@ -57,13 +57,18 @@ meme <- function(path2meme, outdir, promotor_prim, promotor_back, nmotif = 1){
   #if(file.exists(bash_file)) file.remove(bash_file)
   f <- file(bash_file, open = "w")
   meme_command <- paste(paste0(path2meme, "meme"),
-         promotor_prim,
-         paste0("-neg ", promotor_back),
-         paste0("-oc ", outdir),
-         "-objfun de",
-         "-dna",
-         paste0("-nmotifs ", nmotif), sep = " ")
-  cat(paste("echo \"", meme_command, "\"\n"), file=f)
+                        promotor_prim,
+                        if(!is.na(promotor_back)) paste0("-neg ", promotor_back),
+                        paste0("-oc ", outdir),
+                        paste0("-objfun ", objfun),
+                        if(tolower(alph) %in% c("dna","rna","protein")){
+                          paste0("-", tolower(alph))
+                        }else{
+                          paste0("-alph ", alph) 
+                        },
+                        paste0("-nmotifs ", nmotif), 
+                        paste0(add_arg, collapse = " "), sep = " ")
+  cat(paste("echo \"", meme_command, "\"\n")) #, file=f)
   cat(meme_command, file=f) 
   close(f)
   meme_cmd_out <- system2("bash", args = bash_file, stderr = TRUE, stdout = TRUE)
@@ -73,7 +78,7 @@ meme <- function(path2meme, outdir, promotor_prim, promotor_back, nmotif = 1){
 }
 
 # call tomtom
-tomtom <- function(path2meme, motifDB, motif_file, outdir){
+tomtom <- function(path2meme, motifDB, motif_file, outdir, add_arg = ""){
   if(!dir.exists(outdir)){
     dir.create(outdir)
   }
@@ -82,9 +87,10 @@ tomtom <- function(path2meme, motifDB, motif_file, outdir){
   #if(file.exists(bash_file)) file.remove(bash_file)
   f <- file(bash_file, open = "w")
   tomtom_command <- paste(paste0(path2meme, "tomtom"),
-         paste0("-oc ", outdir),
-         motif_file,
-         motifDB, sep = " ")
+                          paste0(add_arg, collapse = " "),
+                          paste0("-oc ", outdir),
+                          motif_file,
+                          motifDB, sep = " ")
   cat(paste("echo \"", tomtom_command, "\"\n"), file=f)
   cat(tomtom_command, file=f) 
   close(f)
@@ -94,7 +100,7 @@ tomtom <- function(path2meme, motifDB, motif_file, outdir){
 }
 
 # call ame
-ame <- function(path2meme, motifDB, promotor_prim, promotor_back, outdir){
+ame <- function(path2meme, motifDB, promotor_prim, promotor_back = NA, outdir, method = "fisher", scoring = "avg", add_arg = ""){
   if(!dir.exists(outdir)){
     dir.create(outdir)
   }
@@ -103,10 +109,13 @@ ame <- function(path2meme, motifDB, promotor_prim, promotor_back, outdir){
   #if(file.exists(bash_file)) file.remove(bash_file)
   f <- file(bash_file, open = "w")
   ame_command <- paste(paste0(path2meme, "ame"),
-         paste0("-oc ", outdir),
-         paste0("--control ",promotor_back),
-         promotor_prim,
-         motifDB, sep = " ")
+                       paste0(add_arg, collapse = " "),
+                       paste0("--method ", method),
+                       paste0("--scoring ", scoring),
+                       paste0("-oc ", outdir),
+                       if(!is.na(promotor_back)) paste0("--control ", promotor_back),
+                       promotor_prim,
+                       motifDB, sep = " ")
   cat(paste("echo \"", ame_command, "\"\n"), file=f)
   cat(ame_command, file=f) 
   close(f)
