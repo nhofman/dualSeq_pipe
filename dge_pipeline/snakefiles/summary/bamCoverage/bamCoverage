@@ -3,15 +3,32 @@ from os.path import isfile
 
 rule all:
     input:
-        expand("summary/bigwig/host/{A}.bigWig", A=sorted(config['entries'].keys()))
+        expand("summary/bigwig/host/{A}.bigWig", A=sorted(config['entries'].keys())),
+        expand("summary/bigwig/virus/{A}.bigWig", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
 
-rule create_bigwig:
+rule create_bigwig_host:
     input:
         bam = "mapping/host/{sample}.bam",
         bai = "mapping/host/{sample}.bam.bai"
     output:
         "summary/bigwig/host/{sample}.bigWig"
+    group: "bigwig_host"
     threads:
         4
     shell:
-        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} %%ADDITIONAL_BAMCOVERAGE_OPTIONS%%"
+        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize %%EFFECTIVEGENOMESIZE%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%%"
+
+rule create_bigwig_virus:
+    input:
+        bam = "mapping/virus/{sample}.bam",
+        bai = "mapping/virus/{sample}.bam.bai"
+    output:
+        "summary/bigwig/virus/{sample}.bigWig"
+    group: "bigwig_virus"
+    benchmark:
+        repeat("benchmarks/bigwig/{sample}.tsv", 1)
+    threads:
+        1
+    run:
+        for line in shell("samtools view -H  {input.bam} | awk '$1 ~ /^@SQ/{{split($3,a,/:/);print a[2]}}' | awk '{{s+=$1}} END {{print s}}'", iterable=True):
+                shell("bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize {line} %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%%")
