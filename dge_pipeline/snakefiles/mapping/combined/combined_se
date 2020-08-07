@@ -67,6 +67,16 @@ rule bowtie2_mapping_stats_tsv:
         done;
         """
 
+rule plot_mapping_stat:
+    input:
+        stat_host="mapping/host/stats/mapping_stats.tsv",
+        stat_virus="mapping/virus/stats/mapping_stats.tsv"
+    output:
+        /mapping/mapping_stat_dual.svg,
+        /mapping/mapping_stat_mock.svg
+    group:
+    shell:
+        "R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus}"
 
 rule star_index:
     input:
