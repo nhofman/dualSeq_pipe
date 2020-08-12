@@ -18,7 +18,7 @@ source("tfbs.R")
 # “How many genes are regulated (up or down) during how may time points?”
 
 virus.levels <- c("H1N1","H5N1","MERS","CoV229E","RVFV","RSV","NIV","SFSV","EBOV","MARV","HCV","LASV")
-lfc.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){x.df <- data.frame(res.list[[x]]$SYMBOL,res.list[[x]]$log2FoldChange); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
+lfc.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list)[grep(".*h", names(res.list))], function(x){x.df <- data.frame(res.list[[x]]$SYMBOL,res.list[[x]]$log2FoldChange); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df) <- lfc.df$SYMBOL
 lfc.df <- lfc.df[,-1]
 lfc.df <- lfc.df[,mixedorder(colnames(lfc.df))]
@@ -30,7 +30,7 @@ lfc.df <- lfc.df[,grep(".*h$", colnames(lfc.df))]
 res.list <- res.list[mixedorder(names(res.list))]
 
 LFC.cut <- 1
-res.list.filter <- sapply(names(res.list), function(n){
+res.list.filter <- sapply(names(res.list)[grep(".*h", names(res.list))], function(n){
   x <- res.list[[n]]
   return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
 })
@@ -49,12 +49,14 @@ ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder, width = 
 # UpSet plot or bar chart
 virus.dge.binary <- list2binary(lapply(res.list.filter, "[[", "SYMBOL"))#, paste0(out.dir,"/all_genes_binary.csv"))
 for(v in virus.levels){
+  print(v)
   virus.sub <- virus.dge.binary[,grep(v,colnames(virus.dge.binary))]
   virus.sub <- virus.sub[rowSums(virus.sub)>0,]
   p <- ggplot(data.frame("sum"=rowSums(virus.sub)), aes(x=sum)) + geom_bar() + labs(x = "Number of time points", y = "# genes") + ggtitle(v)
   ggsave(paste0("Time_count_",v,".svg"), p, "svg", output_folder)
   svglite::svglite(paste0(output_folder, "UpSet_",v,".svg"), width = 10, height = 8)
-  print(upset(virus.sub, order.by = "freq", nsets = 4, nintersects = NA, text.scale = c(2,2,2,2,2,2)))
+  print(upset(virus.sub, order.by = "freq", nsets = 4, nintersects = NA, text.scale = c(2,2,2,2,2,2), 
+              sets = colnames(virus.sub[,colSums(virus.sub)>0])[mixedorder(colnames(virus.sub[,colSums(virus.sub)>0]), decreasing = T)], keep.order = TRUE))
   dev.off()
 }
 
