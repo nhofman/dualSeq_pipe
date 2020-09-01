@@ -1,7 +1,7 @@
 set.seed(123)
 # Parse arguments
 args <- commandArgs(F)
-file.dir <- dirname(sub("--file=","",args[grep("--file=",args)]))
+file.dir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
 counttable_file <- args[match('--counttable', args) + 1]
 condition_file <- args[match('--conditions', args) + 1]
 comparisons_file <- args[match('--comparisons', args) + 1]
@@ -33,29 +33,6 @@ for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "
         print(paste("Import:", package))
         library(package, character.only=TRUE)
     }
-}
-
-# Get Uniprot ID and Proteinname
-get_uniprot <- function(gene, human.uniprot){
-  gene_bitr <- bitr(gene, fromType="SYMBOL", toType="UNIPROT", "org.Hs.eg.db")
-  gene_uni <- UniProt.ws::select(human.uniprot, gene_bitr$UNIPROT, c("PROTEIN-NAMES","REVIEWED"), "UNIPROTKB")
-  #gene_bitr <- merge(data.frame(SYMBOL=gene),gene_bitr, all.x = T)
-  gene.df <- merge(gene_bitr, gene_uni[gene_uni$REVIEWED=="reviewed",c(1,2)], by.x = "UNIPROT", by.y = "UNIPROTKB")
-  #gene.df <- rbind(gene.df, data.frame("UNIPROTKB"=NA, "PROTEIN-NAMES"=NA, "SYMBOL"=setdiff(gene, gene_bitr$SYMBOL), check.names = F))
-  return(unique(gene.df))
-}
-
-loadKEGG <- function(geneID){
-  query_names <- paste0("hsa:", geneID)
-  query <- try(keggGet(query_names))
-  query.unlist <- unlist(query, recursive=F)
-}
-
-getPATHWAY <- function(genes, kegg){
-  pathway.list <- lapply(genes, function(x) try(kegg[[x]]$PATHWAY))
-  pathway.list <- lapply(1:length(pathway.list), function(x){if(class(pathway.list[[x]])=="try-error"){pathway.list[[x]]<-NULL};return(pathway.list[[x]])})
-  #rownames(pathway.list) <- genes
-  return(pathway.list)
 }
 
 # Run on multiple threads
@@ -147,31 +124,6 @@ if (("ggplot2" %in% rownames(installed.packages())) && ("reshape2" %in% rownames
     dev.off()
 }
 
-# Proteinname and Uniprot ID for each gene
-human.uniprot <- UniProt.ws(taxId=9606)
-genes.uniprot <- get_uniprot(rownames(countdata.normalized), human.uniprot)
-save(human.uniprot, genes.uniprot, file = paste(output_folder,"uniprot.RData", sep = ""))
-load(paste(output_folder,"uniprot.RData", sep = ""))
-
-# Gene associations with KEGG pathways
-load(paste0(output_folder, "hsa_kegg.RData"))
-# Gene associations with GO terms
-genes.GO <- select(org.Hs.eg.db, rownames(countdata.normalized), "GO", "SYMBOL")
-genes.GO$Description <- select(GO.db,genes.GO$GO, "TERM")$TERM
-genes.GO.group <- data.frame(genes.GO %>% group_by(SYMBOL,ONTOLOGY) %>% summarise_at("Description", paste, collapse = ";"))
-genes.GO.df <- Reduce(rbind,mclapply(unique(genes.GO.group$SYMBOL), function(x){
-  y <- genes.GO.group[genes.GO.group$SYMBOL==x,]
-  if(!is.na(y[,"ONTOLOGY"])[1]){
-    data.frame(SYMBOL=x,
-               BP=ifelse(nrow(y[y$ONTOLOGY=="BP",])>0,y[y$ONTOLOGY=="BP","Description"],NA),
-               MF=ifelse(nrow(y[y$ONTOLOGY=="MF",])>0,y[y$ONTOLOGY=="MF","Description"],NA),
-               CC=ifelse(nrow(y[y$ONTOLOGY=="CC",])>0,y[y$ONTOLOGY=="CC","Description"],NA))
-  }else{
-    data.frame(SYMBOL=x,BP=NA,MF=NA,CC=NA)
-  }
-}, mc.cores = 4))
-save(genes.GO, file = "/home/nina/Documents/Virus_project/genes2GO.RData")
-
 # Create all DESeq2 comparisons from comparison table
 if (!dir.exists(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))) {
     dir.create(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))
@@ -209,10 +161,11 @@ for (n in 1:nrow(comparisons.df)) {
       #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
       res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,2]),sub("_",".*_",comparisons.df[n,1]), sep="|"),colnames(countdata.normalized))])
       res <- cbind(SYMBOL = rownames(res), res)
-      genes.uniprot.filter <- genes.uniprot[genes.uniprot$SYMBOL %in% res$SYMBOL,] %>% group_by(SYMBOL) %>% summarise_at(c("UNIPROTKB","PROTEIN-NAMES"),paste, collapse = ";")
-      res <- merge(genes.uniprot.filter, res, by = "SYMBOL", all.y = T)
-      for(x in as.character(res$SYMBOL)){try(res[res$SYMBOL == x,"PATHWAY"] <- paste(query.unlist[[x]]$PATHWAY, collapse = ";"))} # add associated pathways for each gene
-      colnames(res)[10:(ncol(res)-1)] <- paste0("normalized_", colnames(res)[10:(ncol(res)-1)])
+      #genes.uniprot.filter <- genes.uniprot[genes.uniprot$SYMBOL %in% res$SYMBOL,] %>% group_by(SYMBOL) %>% summarise_at(c("UNIPROTKB","PROTEIN-NAMES"),paste, collapse = ";")
+      #res <- merge(genes.uniprot.filter, res, by = "SYMBOL", all.y = T)
+      #for(x in as.character(res$SYMBOL)){try(res[res$SYMBOL == x,"PATHWAY"] <- paste(query.unlist[[x]]$PATHWAY, collapse = ";"))} # add associated pathways for each gene
+      #colnames(res)[10:(ncol(res)-1)] <- paste0("normalized_", colnames(res)[10:(ncol(res)-1)])
+      colnames(res)[8:(ncol(res))] <- paste0("normalized_", colnames(res)[8:(ncol(res))])
       #res <- merge(res, genes.GO.df, by = "SYMBOL") # add associated GO terms
       res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
       res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
