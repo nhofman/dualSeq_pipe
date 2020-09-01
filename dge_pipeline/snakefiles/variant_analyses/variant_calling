@@ -1,0 +1,29 @@
+
+rule all:
+	input:
+		expand("variant_analyses/variant_calling/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+
+rule call_variant:
+	input:
+		bam="variant_analyses/preprocessing/{sample}_indel.bam",
+		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+	output:
+		"variant_analyses/variant_calling/{sample}.vcf"
+	threads:
+	group:
+	shell:
+		"lofreq call %%ADDITIONAL_LOFREQ_OPTIONS%% -f {input.genome} -o {output} {input.bam}"
+
+#rule annotate_variant:
+#	input:
+#		vcf="variant_analyses/variant_calling/{sample}.vcf"
+#	output:
+#
+#	shell:
+# 
+#
+#rule visualize:
+#	input:
+#	output:
+#	shell:
+		 

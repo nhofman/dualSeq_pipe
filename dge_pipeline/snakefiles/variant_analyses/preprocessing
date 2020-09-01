@@ -1,0 +1,40 @@
+rule all:
+	input:
+		expand("variant_analyses/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+
+rule markDuplicates:
+	input:
+		"mapping/virus/{sample}.bam"
+	output:
+		bam="variant_analyses/preprocessing/{sample}_dedup.bam",
+		metric="variant_analyses/preprocessing/Duplicate_Metric/{sample}"
+	threads:
+	group:
+	shell:
+		"picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}"
+
+# (Probabilistic) realignment
+# correct for mapping errors
+rule realign:
+	input:
+		bam="variant_analyses/preprocessing/{sample}_dedup.bam",
+		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+	output:
+		"variant_analyses/preprocessing/{sample}_realign.bam"
+	threads:
+	group:
+	shell:
+		"lofreq viterbi -f {input.genome} {input.bam} | samtools sort - > {output}"
+		
+# Insert indel qualities
+rule indel_qual:
+	input:
+		bam="variant_analyses/preprocessing/{sample}_realign.bam",
+		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+	output:
+		"variant_analyses/preprocessing/{sample}_indel.bam"
+	threads:
+	group:
+	shell:
+		"lofreq indelqual --dindel -f {input.genome} -o {output} {input.bam}"
+		 
