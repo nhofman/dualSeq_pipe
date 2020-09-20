@@ -1,6 +1,7 @@
 library(clusterProfiler)
 library(ReactomePA)
 library(org.Hs.eg.db)
+library(ggplot2)
 #library(stringr)
 
 # Over-representation analysis for a set of genes
