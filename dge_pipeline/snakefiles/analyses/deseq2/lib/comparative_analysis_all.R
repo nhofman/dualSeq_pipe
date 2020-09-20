@@ -36,9 +36,11 @@ res.list.filter <- sapply(names(res.list)[grep(".*h", names(res.list))], functio
 })
 
 # plot number of diffeerentially expressed genes - sorted by customized order
-p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = mixedsort(unique(count.genes$Time))), group=Direction, fill=Direction)) + 
+count.genes.mod <- count.genes[count.genes$Vs!="Mock_BPL",]
+count.genes.mod$Time <- ifelse(count.genes.mod$Control=="inactive", "BPL", count.genes.mod$Time)
+p <- ggplot(count.genes.mod[count.genes.mod$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = mixedsort(unique(count.genes.mod$Time))), group=Direction, fill=Direction)) + 
   geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + xlab("Time") + 
-  scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
+  scale_y_continuous(breaks = pretty(count.genes.mod$Count[count.genes.mod$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes.mod$Count[count.genes.mod$LFC_cutoff==LFC.cut], n=10))) + 
   geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green")) +
   theme(axis.title = element_text(size = 18, face = "bold"), axis.text = element_text(size = 12, face = "bold"), strip.text = element_text(size = 20, face = "bold"),
         legend.text = element_text(size = 15), legend.title = element_text(size = 18, face = "bold"))
@@ -61,7 +63,7 @@ for(v in virus.levels){
 }
 
 # Common genes between viruses at any time point 
-virus.dge <- sapply(virus.levels,function(virus){unique(unlist(sapply(res.list.filter[grep(paste0(virus,".*h"), names(res.list.filter))], function(x){return(x$SYMBOL)})))}, USE.NAMES = T)
+virus.dge <- sapply(virus.levels,function(virus){unique(unlist(sapply(res.list.filter[grep(paste0(virus,".*h.*Mock"), names(res.list.filter))], function(x){return(x$SYMBOL)})))}, USE.NAMES = T)
 out.dir <- paste0(output_folder,"/common_pattern")
 genes.common <- Reduce(intersect, virus.dge[grep("CoV229E|MERS|H1N1|H5N1|RSV|RVFV|EBOV|NIV|SFSV", names(virus.dge))])
 # Venn diagram or better UpSet plot of gene sets
