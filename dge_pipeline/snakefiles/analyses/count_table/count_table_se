@@ -40,5 +40,5 @@ rule count_reads_virus:
     log:
         log="analyses/virus/count_table/logs/{A}_featurecounts.log"
     shell:
-       "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_VIRUS%%' -g '%%GFF_FEATURE_NAME_VIRUS%%' -a {params.gff} -o {output.counts} {input} 2>&1 |"
+       "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS_VIRUS%% -t '%%GFF_FEATURE_TYPE_VIRUS%%' -g '%%GFF_FEATURE_NAME_VIRUS%%' -a {params.gff} -o {output.counts} {input} 2>&1 |"
        "tee {log}"

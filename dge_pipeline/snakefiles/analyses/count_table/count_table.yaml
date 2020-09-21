@@ -29,7 +29,10 @@ optional_settings:
     description: Additional options to use in shell command
     type: string
     
-  
+  additional_featcounts_options_virus:
+    description: Additional options to use in shell command
+    type: string
+ 
 single_end:
   snakefile: "count_table_se"
 
