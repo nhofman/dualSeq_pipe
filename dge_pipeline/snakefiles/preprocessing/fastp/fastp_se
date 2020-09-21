@@ -17,5 +17,7 @@ rule trim_reads:
         "preprocessing/{name}.fastp.json"
     group:
         "fastp"
+    threads:
+        2
     shell:
-        "fastp --in1 {input} --out1 {output} -h preprocessing/{wildcards.name}.html -j preprocessing/{wildcards.name}.fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
+        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/{wildcards.name}.html -j preprocessing/{wildcards.name}.fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
