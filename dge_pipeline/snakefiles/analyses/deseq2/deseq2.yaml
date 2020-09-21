@@ -23,11 +23,6 @@ required_settings:
   comparisons_human:
     description: "File path to comparisons file for host"
     type: "file"
-    
-  comparisons_virus:
-    description: "File path to comparisons file for virus"
-    type: "file"
-    
   
   
 optional_settings:
@@ -44,9 +39,9 @@ columns:
   condition:
     description: "Condition name of sequencing run"
     type: "string"
-  color:
-    description: "Virus color for plots"
-    type: "string"
+  #color:
+  #  description: "Virus color for plots"
+  #  type: "string"
 
 
 single_end:

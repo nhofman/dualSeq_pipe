@@ -80,7 +80,7 @@ rule create_conditions_human:
     run:
         with(open(output[0], 'w')) as output_file:
             for name in sorted(config['entries'].keys()):
-                output_file.write('{}\t{}\n'.format(name, config['entries'][name]['main']['condition']))
+                output_file.write('{}\t{}\n'.format(name, config['entries'][name]['deseq2']['condition']))
 
                          
 rule deseq2_human:

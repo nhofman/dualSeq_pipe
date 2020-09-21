@@ -10,8 +10,8 @@ output_folder <- args[match('--output', args) + 1]
 threads <- args[match('--threads', args) + 1]
 
 # source functions for enrichment and protein interaction analysis
-source(paste0(file.dir, "enrichment.R"))
-source(paste0(file.dir, "STRINGdb.R"))
+source(paste0(file.dir, "/enrichment.R"))
+source(paste0(file.dir, "/STRINGdb.R"))
 
 # Required packages
 for (package in c("DESeq2")) {
@@ -38,6 +38,34 @@ for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "
 # Run on multiple threads
 if ("BiocParallel" %in% rownames(installed.packages())) {
     register(MulticoreParam(threads))
+}
+
+# Bar charts showing the assignment of allignments to genes (featureCounts statistics)
+create_feature_counts_statistics <- function(featureCountsLog) {
+  d <- read.table(featureCountsLog, header = T, row.names = 1)
+  colnames(d) <- gsub("mapping\\..*\\.(.*)\\.bam", "\\1", colnames(d))
+  d <- d[,mixedorder(colnames(d))]
+  
+  dpct <- t(t(d) / colSums(d))
+  
+  dm <- melt(t(d))
+  dpctm <- melt(t(dpct))
+  
+  colnames(dm) <- c("Sample", "Group", "Reads")
+  dm$Group <- factor(dm$Group, levels = rev(levels(dm$Group)[order(levels(dm$Group))]))
+  
+  assignment.absolute <- ggplot(dm[dm$Reads > 0,], aes(x = Sample, y = Reads)) +
+    geom_bar(aes(fill = Group), stat = "identity", group = 1) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  colnames(dpctm) <- c("Sample", "Group", "Reads")
+  dpctm$Group = factor(dpctm$Group, levels = rev(levels(dpctm$Group)[order(levels(dpctm$Group))]))
+  assignment.relative <- ggplot(dpctm[dpctm$Reads > 0,], aes(x = Sample, y = Reads)) +
+    geom_bar(aes(fill = Group), stat = "identity", group = 1) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) #+
+  #theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), legend.text = element_text(size=12, face="bold"))
+  
+  return(list(assignment.absolute, assignment.relative))
 }
 
 # Import count table (featureCounts)
@@ -97,7 +125,7 @@ ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder)
 for (time in unique(conditiontable$time)) {
     pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
     plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = treatment)) + geom_point(size=3)
-    ggsave(paste("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
+    ggsave(paste0("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
     print(time)
 }
 
@@ -132,13 +160,13 @@ if (!dir.exists(paste(output_folder, "plots", sep = ""))) {
   dir.create(paste(output_folder, "plots", sep = ""))
 }
 
+res.list.raw <- list()
 res.list <- list()
-res.list.shrunk <- list()
 for (n in 1:nrow(comparisons.df)) {
 #res.list <- mclapply(1:nrow(comparisons.df), function(n){
       print(comparisons.df[n,])
       res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
-      res.list[[comparisons.df[n,2]]] <- res 
+      res.list.raw[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
       write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
       
       resLFC <- lfcShrink(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), type = "ashr", res = res)
@@ -174,27 +202,25 @@ for (n in 1:nrow(comparisons.df)) {
       
       res[is.na(res$`-log10(padj)`),"-log10(padj)"] <- 0
       res[is.na(res$padj),"padj"] <- 1
-      glXYPlot(x = res$log2FoldChange, y = res$`-log10(padj)`, counts = res[,c(10:(ncol(res_filter)-1))], groups = sub("_[[:digit:]]$","",colnames(res[,c(10:(ncol(res_filter)-1))])), 
+      glXYPlot(x = res$log2FoldChange, y = res$`-log10(padj)`, counts = res[,c(8:(ncol(res_filter)))], groups = sub("_[[:digit:]]$","",colnames(res[,c(8:(ncol(res_filter)))])), 
                status = ifelse(res$log2FoldChange>1 & res$padj<0.05, 1, ifelse(res$log2FoldChange<(-1) & res$padj<0.05, -1, 0)), 
                xlab = "log2FoldChange", ylab = "-log10(padj)", anno = res, side.main = "SYMBOL",
-               display.columns = c("SYMBOL", "UNIPROTKB", "PROTEIN.NAMES", "PATHWAY", "padj"), 
+               display.columns = c("SYMBOL", "padj"), #"UNIPROTKB", "PROTEIN.NAMES", "PATHWAY", "padj"), 
                html = paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], sep = ""),
                folder = "glimma_plots", path = output_folder, launch = F)
-     res.list.shrunk[[comparisons.df[n,2]]] <- res 
+     res.list[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
     #  return(res)
   }#, mc.cores = threads)
 #names(res.list.shrunk) <- comparisons.df[,2]
-
-res.list.shrunk.filter <- sapply(res.list.shrunk, function(x){x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & abs(x$log2FoldChange) > 1),]})
-
+save.image(paste(output_folder, "/deseq2.RData", sep = ""))
 lfc.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){x.df <- data.frame(res.list[[x]][,c("SYMBOL","log2FoldChange")]); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df) <- lfc.df$SYMBOL
-lfc.df <- lfc.df[,-1]
+lfc.df <- lfc.df[,-1, drop = FALSE]
 lfc.df <- lfc.df[,mixedorder(colnames(lfc.df))]
 
 padj.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){x.df <- data.frame(res.list[[x]][,c("SYMBOL","padj")]); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(padj.df) <- padj.df$SYMBOL
-padj.df <- padj.df[,-1]
+padj.df <- padj.df[,-1, drop = FALSE]
 padj.df <- padj.df[,mixedorder(colnames(padj.df))]
 write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), row.names = T)
 
@@ -267,10 +293,16 @@ for(n in names(res.list)){
 	gsea.list[[n]] <- calc_gsea(res, n, sort.by = "log2FoldChange", REACTOME = T, ont = c("CC", "MF", "BP"), nPerm = 10000,
   	p.cut = 0.05, out.dir = paste0(output_folder,"/GSEA"))
   # Protein-protein interaction analysis with STRING
-	string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05]), filename = paste0(n, "_up"), out.dir = paste0(output_folder, "/STRING"))
-	string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05]), filename = paste0(n, "_down"), out.dir = paste0(output_folder, "/STRING"))
+        if(nrow(data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05])) > 0){
+		try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05]), filename = paste0(n, "_up"), out.dir = paste0(output_folder, "/STRING")))
+        }
+        if(nrow(data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05])) > 0){
+		try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05]), filename = paste0(n, "_down"), out.dir = paste0(output_folder, "/STRING")))
+        }
 	res <- res[order(abs(res$log2FoldChange), decreasing = T),]
-	string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL), filename = paste0(n, "_top_absolut"), out.dir = paste0(output_folder, "/STRING"))
+        if(nrow(res) > 0){
+		try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL), filename = paste0(n, "_top_absolut"), out.dir = paste0(output_folder, "/STRING")))
+        }
 	gc()
 }
 #calc_ora(gene = res$SYMBOL[res$padj<padj.cut & res$log2FoldChange>LFC.cut], main = "", filename = paste0(comparisons.df[n,2],"up"), subdir = "ORA/",)

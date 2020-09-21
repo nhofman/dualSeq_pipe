@@ -74,7 +74,7 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
         gsea.list[[o]] <- gsea_go
         # Problem: Bei gleichem value von by werden alle Pathways mit diesem Wert ausgegeben!
         # Loesung: by = pvalue?
-        gsea.list[[paste0(o,"_simplify")]] <- simplify(gsea_go, cutoff = 0.5, by = "pvalue")
+        #gsea.list[[paste0(o,"_simplify")]] <- simplify(gsea_go, cutoff = 0.5, by = "pvalue")
       }
     }
   }
