@@ -1,0 +1,4 @@
+name: "preprocessing"
+
+single_end:
+  snakefile: "preprocessing"

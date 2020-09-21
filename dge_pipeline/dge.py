@@ -95,13 +95,15 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                "premapping": [],
                "mapping": [],
                "analyses": [],
-               "summary": []}  # type: Dict[str, List[str]]
+               "summary": [],
+               "variant_analyses": []}
 
     used_modules = {"preprocessing": [],
                     "premapping": [],
                     "mapping": [],
                     "analyses": [],
-                    "summary": []}  # type: Dict[str, List['Module']]
+                    "summary": [],
+                    "variant_analyses": []}  
     config = yaml.load(config_file.open('r'))
     #print(config)
     if "preprocessing" in config:
@@ -159,15 +161,33 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
             else:
                 modules["analyses"].append(config["analyses"]["module"])
     if "summary" in config:
-        if "module" in config["summary"]:
-            if not isinstance(config["summary"]["module"], str):
-                raise InvalidConfigFileError("summary: Only one module as a string is allowed")
-            elif config["summary"]["module"] == '':
-                modules["summary"].append('none')
+        if "modules" in config["summary"]:
+            if "module" in config["summary"]:
+                raise InvalidConfigFileError('summary: Please use either "module" or "modules"')
+            if not isinstance(config["summary"]["modules"], list):
+                raise InvalidConfigFileError("summary: modules must be a LIST of modules")
+            else:
+                for module in config["summary"]["modules"]:
+                    modules["summary"].append(module)
+        elif "module" in config["summary"]:
+            if not isinstance(config["summary"]["modules"], str):
+                raise InvalidConfigFileError('summary: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["summary"].append(config["summary"]["module"])
-        else:
-            modules["summary"].append('none')
+    if "variant_analyses" in config:
+        if "modules" in config["variant_analyses"]:
+            if "module" in config["variant_analyses"]:
+                raise InvalidConfigFileError('variant_analyses: Please use either "module" or "modules"')
+            if not isinstance(config["variant_analyses"]["modules"], list):
+                raise InvalidConfigFileError("variant_analyses: modules must be a LIST of modules")
+            else:
+                for module in config["variant_analyses"]["modules"]:
+                    modules["variant_analyses"].append(module)
+        elif "module" in config["variant_analyses"]:
+            if not isinstance(config["variant_analyses"]["modules"], str):
+                raise InvalidConfigFileError('variant_analyses: Only one module as a string is allowed. For multiple modules use "modules"')
+            else:
+                modules["variant_analyses"].append(config["variant_analyses"]["module"])
     #else:
         #modules["summary"].append('none')
     if "pipeline" in config:
@@ -179,7 +199,7 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 paired_end = config["pipeline"]["paired_end"]
         else:
             raise InvalidConfigFileError('Pipeline: Option "paired_end" must be set')
-
+    print(modules)
     for category in modules:
         for module_name in modules[category]:
             settings = config[category].get(module_name, {})
@@ -346,7 +366,7 @@ def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, 
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('premapping', 'analyses', 'mapping', 'summary')]:
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('premapping', 'analyses', 'mapping', 'summary', 'variant_analyses')]:
             snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-','_')))
 
     return snakefile_main_path

@@ -1,6 +1,8 @@
 rule all:
 	input:
-		expand("variant_analyses/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+		expand("variant_analyses/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+                expand("variant_analyses/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+                expand("variant_analyses/preprocessing/{sample}_dedup.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
 
 rule markDuplicates:
 	input:
@@ -8,8 +10,8 @@ rule markDuplicates:
 	output:
 		bam="variant_analyses/preprocessing/{sample}_dedup.bam",
 		metric="variant_analyses/preprocessing/Duplicate_Metric/{sample}"
-	threads:
-	group:
+	threads: 1
+	group: "dedup"
 	shell:
 		"picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}"
 
@@ -21,8 +23,8 @@ rule realign:
 		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
 	output:
 		"variant_analyses/preprocessing/{sample}_realign.bam"
-	threads:
-	group:
+	threads: 1
+	group: "realign"
 	shell:
 		"lofreq viterbi -f {input.genome} {input.bam} | samtools sort - > {output}"
 		
@@ -33,8 +35,8 @@ rule indel_qual:
 		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
 	output:
 		"variant_analyses/preprocessing/{sample}_indel.bam"
-	threads:
-	group:
+	threads: 1
+	group: "indel_qual"
 	shell:
 		"lofreq indelqual --dindel -f {input.genome} -o {output} {input.bam}"
 		 

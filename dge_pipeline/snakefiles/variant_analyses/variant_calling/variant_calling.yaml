@@ -1,0 +1,9 @@
+name: "variant_calling"
+
+optional_settings:
+  additional_lofreq_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+
+single_end:
+  snakefile: "variant_calling"
