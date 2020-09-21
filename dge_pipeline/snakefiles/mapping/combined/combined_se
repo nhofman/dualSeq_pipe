@@ -5,9 +5,8 @@ import csv, glob
 
 rule all:
     input:
-        "mapping/virus/stats/mapping_stats.xlsx",
+        #"mapping/virus/stats/mapping_stats.xlsx",
         expand("mapping/virus/{A}.bam", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        expand("mapping/virus/ctrl/{ctrl}_{virus}.bam", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([entry.split("_")[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
         "%%STAR_INDEX_DIR%%",
         expand("mapping/host/{A}.bam", A=sorted(config['entries'].keys())),
         expand("mapping/host/{A}Log.final.out", A=sorted(config['entries'].keys())),
@@ -49,7 +48,7 @@ rule bowtie2_mapping_stats_xlsx:
 rule bowtie2_mapping_stats_tsv:
     input:
         expand("mapping/virus/logs/bowtie2_mapping.{name}.log", name=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        expand("mapping/virus/ctrl/bowtie2_mapping.{ctrl}_{virus}.log", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([entry.split("_")[0] for entry in config['entries'].keys() if "Mock" not in entry])))
+        #expand("mapping/virus/ctrl/bowtie2_mapping.{ctrl}_{virus}.log", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([entry.split("_")[0] for entry in config['entries'].keys() if "Mock" not in entry])))
     output:
         "mapping/virus/stats/mapping_stats.tsv"
     group:
@@ -72,9 +71,9 @@ rule plot_mapping_stat:
         stat_host="mapping/host/stats/mapping_stats.tsv",
         stat_virus="mapping/virus/stats/mapping_stats.tsv"
     output:
-        /mapping/mapping_stat_dual.svg,
-        /mapping/mapping_stat_mock.svg
-    group:
+        "/mapping/mapping_stat_dual.svg",
+        "/mapping/mapping_stat_mock.svg"
+    group: "plot_statistics"
     shell:
         "R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus}"
 
@@ -165,27 +164,6 @@ rule bowtie2_mapping:
     shell:
         "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {params.genome_base} -U {input.reads} -S {output.sam} --un {output.unmapped} 2>&1 |"
         "tee {log}"
-        
-def getGenome(wildcards):
-    for entry in config['entries'].keys():
-        if "Mock" not in entry:
-            if wildcards.virus in entry:
-                return config['entries'][entry]['combined']['virus_genome']+".1.bt2"
-        
-rule ctrl_mapping:
-    input:
-        index = getGenome,
-        reads="mapping/host/unmapped/{ctrl}.fastq"
-    output:
-        sam=temp("mapping/virus/ctrl/{ctrl}_{virus}.sam")
-    params:
-        genome = lambda wildcards, input: input[0][:-6]
-    log:
-       "mapping/virus/ctrl/bowtie2_mapping.{ctrl}_{virus}.log"
-    threads:
-        4
-    shell:
-        "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {params.genome} -U {input.reads} -S {output.sam} 2>&1 | tee {log}"
 
         
 rule star_index_bam:
@@ -216,15 +194,4 @@ rule bowtie2_sam_to_bam:
     shell:
         "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam};"
         "samtools view -f 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
-        
-rule ctrl_sam_to_bam:
-    input:
-        "mapping/virus/ctrl/{ctrl}_{virus}.sam"
-    output:
-        bam="mapping/virus/ctrl/{ctrl}_{virus}.bam"
-    group:
-        "bowtie2_mapping"
-    threads:
-        2
-    shell:
-        "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam}"
+
