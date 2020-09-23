@@ -105,7 +105,7 @@ rule deseq2_human:
         16
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
-        "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
+        "--featcounts-log {input.feature_counts_log} --color %%COLOR%% 2>&1 | tee {log}"
         # Befehl um biolo. Prozesse ab 2. Eintrag auf GO-Nummern zu beschränken: sed 's/[^]]*\[\(GO:[0-9]*\)\]/;\1/2g' /nfs/sfb1021/SFB1021_Virus/dge_analyses2/analyses/host/deseq2/Uniprot_24h_3_up.txt.csv
 """   
 rule create_conditions_virus:  
