@@ -6,6 +6,7 @@ counttable_file <- args[match('--counttable', args) + 1]
 condition_file <- args[match('--conditions', args) + 1]
 comparisons_file <- args[match('--comparisons', args) + 1]
 feature_counts_log_file <- args[match('--featcounts-log', args) + 1]
+color_file <- args[match('--color', args) + 1]
 output_folder <- args[match('--output', args) + 1]
 threads <- args[match('--threads', args) + 1]
 
@@ -111,18 +112,34 @@ deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
 
 #deseq.results[ rowSums(counts(deseq.results)) == 0, ] <- 1 # replace rows that have no reads with pseudocount
 
+# Import color
+if(color_file != ""){
+    color.df <- read.table(color_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+    color <- color.df[,2]
+    names(color) <- color.df[,1]
+}
+print(color)
+
+
 # Plot PCA
-pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE) 
-#shape <- c(1:length(unique(pca$time)))
+shape <- if(length(unique(conditiontable$time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$time))) }else{ c(1:length(unique(conditiontable$time)))}
+names(shape) <- unique(conditiontable$time)
+pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE)
+plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = time)) + geom_point(size=3) + labs(color = "Treatment", shape = "Time") + scale_shape_manual(values=shape)
+if(exists("color")){
+    plot_PCA <- plot_PCA + scale_colour_manual(values=color)
+}
 plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = factor(time, levels = mixedsort(levels(pca$time))))) + geom_point(size=3) + 
   labs(color = "Treatment", shape = "Time")
 ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder, width = 10, height = 6)
 
 for (time in unique(conditiontable$time)) {
     pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
-    plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = treatment)) + geom_point(size=3)
-    ggsave(paste("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
-    print(time)
+    plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = treatment, shape = time)) + geom_point(size=3) + labs(color = "Treatment", shape = "Time") + scale_shape_manual(values=shape)
+    if(exists("color")){
+        plot_PCA <- plot_PCA + scale_colour_manual(values=color)
+    }
+    ggsave(paste0("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
 }
 
 # Heatmap showing correlations between samples
