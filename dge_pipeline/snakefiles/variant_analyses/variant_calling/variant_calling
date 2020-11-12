@@ -23,25 +23,36 @@ rule call_variant:
 #	shell:
 # 
 #
-def get_virus_data(wildcards):
+
+
+def get_virus_vcf(wildcards):
     vcf = list()
-    bw = list()
     for entry in config['entries'].keys():
         if wildcards.virus in entry:
             vcf.append("variant_analyses/variant_calling/"+entry+".vcf")
-            bw.append("summary/bigwig/"+entry+".bigWig")
             gff = config['entries'][entry]['combined']['virus_genome_annotation']
     vcf.insert(0,gff)
-    return list(vcf, bw)
+    return vcf
+
+def get_virus_bw(wildcards):
+    bw = list()
+    for entry in config['entries'].keys():
+        if wildcards.virus in entry:
+            bw.append("summary/bigwig/virus/"+entry+".bigWig")
+    return bw
+
+
 
 rule visualize:
-	input:
-                get_virus_data
-	output:
+        input:
+                vcf=get_virus_vcf,
+                bw=get_virus_bw
+        output:
                 "variant_analyses/variant_calling/{virus}_SNP.svg",
                 "variant_analyses/variant_calling/{virus}_Coverage.svg"
-	run:
-                gff=input[0][0]
-                vcf=input[0][1:]
+        run:
+                gff=input.vcf[0]
+                vcf=','.join(input.vcf[1:])
                 shell("R --vanilla --file=lib/plot_snp.R --args --gff {gff} --vcf {vcf}")
+
 		 
