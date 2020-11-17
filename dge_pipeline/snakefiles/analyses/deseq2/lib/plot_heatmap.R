@@ -2,7 +2,7 @@ library(pheatmap)
 
 # Heatmap 
 plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMethod = "euclidean", clusterMethod = "complete", clrn = 1, clcn = 1,
-                        rowClust = T, colClust = T, fontsize_row = 0.8, fontsize_col = 10, annCol = NA, annRow = NA, border_col = "grey60",
+                        rowClust = T, colClust = T, fontsize_row = 0.8, fontsize_col = 10, annCol = NA, annRow = NA, border_col = "grey60", plot.fig = T,
                         legend.limit = 1, filter_col = NA, annotation_colors = NA, height = NA, width = NA, break_step = 0.1, display_numbers = F){
   if(!dir.exists(dirname(filename))){
     dir.create(dirname(filename), recursive = T)
@@ -54,14 +54,16 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
     color_up <- colorRampPalette(c("white", "red"))(length(seq(0, quantile(unlist(xx), na.rm = TRUE, probs = legend.limit), break_step)))
     color <- c(color,color_up)
   }
-  if(nrow(xx)>1 | ncol(xx)>1){
+  if((nrow(xx)>1 | ncol(xx)>1) & plot.fig == T){
     heatmap.plot <- pheatmap(xx, cluster_cols=colClust, cluster_rows=rowClust, clustering_distance_rows = distMethod, clustering_distance_cols = distMethod,
                              clustering_method = clusterMethod, annotation_col=annCol, annotation_row = annRow, 
                              breaks = breakSeq, color = color, annotation_colors = annotation_colors,
                              fontsize_row = fontsize_row, fontsize_col = fontsize_col, cutree_rows = clrn, filename = filename,
                              height = height, width = width, border_color = border_col, display_numbers = display_numbers)
     system(paste("inkscape -l ", filename, ".svg ", filename, sep = ""))
-    return(list(row_cluster=gr.row, col_cluster=gr.col, heatmap_plot=heatmap.plot))
+    return(list(row_cluster=gr.row, col_cluster=gr.col, plot=heatmap.plot))
+  }else{
+    return(list(row_cluster=gr.row, col_cluster=gr.col))
   }
   #dev.off()
 }
