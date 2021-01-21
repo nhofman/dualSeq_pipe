@@ -43,7 +43,7 @@ shape <- if(length(unique(conditiontable$time)) <= 6){ scales::shape_pal()(lengt
 names(shape) <- unique(conditiontable$time)
 pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE)
 plot_PCA <- ggplot(pca, aes(PC1, PC2, color = factor(treatment, levels = c(virus.levels, "Mock")), shape = factor(time, levels = mixedsort(as.character(unique(conditiontable$time)))))) + 
-  geom_point(size=3) + labs(color = "Treatment", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
+  geom_point(size=3) + labs(color = "Infection", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
   theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16),  
         legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank()) + 
   guides(color = guide_legend(order = 2), shape = guide_legend(order = 1))
@@ -56,7 +56,7 @@ ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder, width =
 
 for (time in unique(conditiontable$time)) {
   pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
-  plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = factor(treatment, levels = c(virus.levels, "Mock")), shape = time)) + geom_point(size=3) + labs(color = "Treatment", shape = "Time") +
+  plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = factor(treatment, levels = c(virus.levels, "Mock")), shape = time)) + geom_point(size=3) + labs(color = "Infection", shape = "Time") +
     theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16),  
           legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank()) +
   scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = guide_legend(order = 1))
