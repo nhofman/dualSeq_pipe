@@ -10,6 +10,7 @@ options(ucscChromosomeNames=FALSE)
 args <- commandArgs()
 vcf <- args[match("--vcf", args) + 1]
 gff_file <- args[match("--gff", args) + 1]
+outdir <- args[match("--out", args) + 1]
 #genome_length <- gff[gff[,3]=="region",c(1,5)]
 #vcf <- "Documents/Virus_project/variant_calling/HCV_12h_1.vcf,Documents/Virus_project/variant_calling/HCV_12h_2.vcf,Documents/Virus_project/variant_calling/HCV_24h_1.vcf,Documents/Virus_project/variant_calling/HCV_24h_2.vcf"
 print(vcf)
@@ -85,7 +86,7 @@ for(x in mixedsort(unique(sub("_\\d+$", "", names(vcf.list))))){
 } #)
 chroms <- data.frame(chromosome = unique(gff$chromosome), stringsAsFactors = F)
 snp.all <- c(snp.all, ann, gtrack)
-svglite::svglite(paste0("Documents/Virus_project/variant_calling/", genome_name, "_SNP.svg"), width = 15, height = 10)
+svglite::svglite(paste0(outdir, "/", genome_name, "_SNP.svg"), width = 15, height = 10)
 print(xyplot(1 ~ chromosome | chromosome, data = chroms, panel = function(x) {
   plotTracks(snp.all, featureAnnotation = "id", ylim = c(0,1), 
              chromosome = x, add = TRUE, showId = F) },
@@ -93,7 +94,7 @@ print(xyplot(1 ~ chromosome | chromosome, data = chroms, panel = function(x) {
 dev.off()
 
 dt.all <- c(dt.all, ann, gtrack)
-svglite::svglite(paste0("Documents/Virus_project/variant_calling/", genome_name, "_Coverage.svg"), width = 15, height = 10)
+svglite::svglite(paste0(outdir, "/", genome_name, "_Coverage.svg"), width = 15, height = 10)
 print(xyplot(1 ~ chromosome | chromosome, data = chroms, panel = function(x) {
   plotTracks(dt.all, featureAnnotation = "id", ylim = c(0,max(ymaxs)),
              chromosome = x, add = TRUE, showId = F) },
