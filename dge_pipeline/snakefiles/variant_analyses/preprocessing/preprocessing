@@ -13,8 +13,8 @@ rule markDuplicates:
 	threads: 1
 	group: "dedup"
 	shell:
-		#"picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}"
-		“mkdir -p $(dirname {output.bam}) && picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}”
+		"picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}"
+		#“mkdir -p $(dirname {output.bam}) && picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}”
 
 # (Probabilistic) realignment
 # correct for mapping errors
