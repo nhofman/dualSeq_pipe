@@ -26,7 +26,7 @@ for (package in c("DESeq2")) {
 
 # "Optional" packages
 for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "clusterProfiler", "ReactomePA",
-                  "dplyr", "UniProt.ws", "htmlwidgets", "Glimma", "openxlsx", "pathview")) {
+                  "dplyr","openxlsx", "pathview")) {
     if (!(package %in% rownames(installed.packages()))) {
         stop(paste('Package "', package, '" not installed', sep=""))
     } else {
@@ -37,7 +37,14 @@ for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "
 
 # Run on multiple threads
 if ("BiocParallel" %in% rownames(installed.packages())) {
-    register(MulticoreParam(threads))
+      register(MulticoreParam(threads))
+}
+
+# Annotate genes
+annotate <- function(genes, keytype){
+  genes.ann <- AnnotationDbi::select(org.Hs.eg.db,genes,c("UNIPROT","GENENAME","PATH"), keytype)
+  genes.ann <- aggregate(genes.ann, by = list(genes.ann$SYMBOL), FUN = function(x) paste(unique(x), collapse = ";"))[,-1]
+  return(genes.ann)
 }
 
 # Import count table (featureCounts)
@@ -117,7 +124,7 @@ for (time in unique(conditiontable$time)) {
 }
 
 
-# Bar charts showing the assignment of a  lignments to genes (featureCounts statistics)
+# Bar charts showing the assignment of alignments to genes (featureCounts statistics)
 if (("ggplot2" %in% rownames(installed.packages())) && ("reshape2" %in% rownames(installed.packages()))) {
     pdf(paste(output_folder, 'counts_assignment.pdf', sep = ""), width = 20, height = 10)
     invisible(lapply(create_feature_counts_statistics(feature_counts_log_file), print))
@@ -134,17 +141,15 @@ if (!dir.exists(paste(output_folder, "plots", sep = ""))) {
 
 res.list <- list()
 res.list.shrunk <- list()
-for (n in 1:nrow(comparisons.df)) {
-#res.list <- mclapply(1:nrow(comparisons.df), function(n){
+#for (n in 1:nrow(comparisons.df)) {
+res.list <- mclapply(1:nrow(comparisons.df), function(n){
       print(comparisons.df[n,])
       res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
       res.list[[comparisons.df[n,2]]] <- res 
       write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
       
       resLFC <- lfcShrink(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), type = "ashr", res = res)
-      #pdf(paste(output_folder, "plots/MA-plot/MAplot_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".pdf", sep = ""))
-      #plotMA(res, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
-      #dev.off()
+    
       pdf(paste(output_folder, "plots/MAplot_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""))
       plotMA(resLFC, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
       dev.off()
@@ -152,37 +157,28 @@ for (n in 1:nrow(comparisons.df)) {
       res <- as.data.frame(resLFC)
       res <- cbind(res, `-log10(padj)` = -log10(res$padj))
   
-      #plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
-      #  theme(axis.title = element_text(size=18, face = "bold")) +
-      #  geom_hline(yintercept = -log10(0.05), color = "red")
-      #ggsave(paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/Volcano/", sep = ""))
+      plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
+        theme(axis.title = element_text(size=18, face = "bold")) +
+        geom_hline(yintercept = -log10(0.05), color = "red")
+      ggsave(paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/Volcano/", sep = ""))
       
       
       #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
       res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,2]),sub("_",".*_",comparisons.df[n,1]), sep="|"),colnames(countdata.normalized))])
       res <- cbind(SYMBOL = rownames(res), res)
-      #genes.uniprot.filter <- genes.uniprot[genes.uniprot$SYMBOL %in% res$SYMBOL,] %>% group_by(SYMBOL) %>% summarise_at(c("UNIPROTKB","PROTEIN-NAMES"),paste, collapse = ";")
-      #res <- merge(genes.uniprot.filter, res, by = "SYMBOL", all.y = T)
-      #for(x in as.character(res$SYMBOL)){try(res[res$SYMBOL == x,"PATHWAY"] <- paste(query.unlist[[x]]$PATHWAY, collapse = ";"))} # add associated pathways for each gene
-      #colnames(res)[10:(ncol(res)-1)] <- paste0("normalized_", colnames(res)[10:(ncol(res)-1)])
-      colnames(res)[8:(ncol(res))] <- paste0("normalized_", colnames(res)[8:(ncol(res))])
-      #res <- merge(res, genes.GO.df, by = "SYMBOL") # add associated GO terms
+      res <- merge(annotate(as.character(res$SYMBOL), "SYMBOL"), res, by = "SYMBOL", all = T)
+      colnames(res)[11:(ncol(res))] <- paste0("normalized_", colnames(res)[11:(ncol(res))])
       res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
       res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
       write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".csv", sep = ""), row.names = TRUE, col.names = NA)
       write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".xlsx", sep = ""))
       
-      res[is.na(res$`-log10(padj)`),"-log10(padj)"] <- 0
-      res[is.na(res$padj),"padj"] <- 1
-      glXYPlot(x = res$log2FoldChange, y = res$`-log10(padj)`, counts = res[,c(10:(ncol(res_filter)-1))], groups = sub("_[[:digit:]]$","",colnames(res[,c(10:(ncol(res_filter)-1))])), 
-               status = ifelse(res$log2FoldChange>1 & res$padj<0.05, 1, ifelse(res$log2FoldChange<(-1) & res$padj<0.05, -1, 0)), 
-               xlab = "log2FoldChange", ylab = "-log10(padj)", anno = res, side.main = "SYMBOL",
-               display.columns = c("SYMBOL", "UNIPROTKB", "PROTEIN.NAMES", "PATHWAY", "padj"), 
-               html = paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], sep = ""),
-               folder = "glimma_plots", path = output_folder, launch = F)
-     res.list.shrunk[[comparisons.df[n,2]]] <- res 
-    #  return(res)
-  }#, mc.cores = threads)
+      #res[is.na(res$`-log10(padj)`),"-log10(padj)"] <- 0
+      #res[is.na(res$padj),"padj"] <- 1
+     
+     #res.list.shrunk[[comparisons.df[n,2]]] <- res 
+     return(res)
+    }, mc.cores = threads)
 #names(res.list.shrunk) <- comparisons.df[,2]
 
 res.list.shrunk.filter <- sapply(res.list.shrunk, function(x){x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & abs(x$log2FoldChange) > 1),]})
@@ -230,32 +226,6 @@ for(LFC.cut in unique(count.genes$LFC_cutoff)){
   ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 10, height = 7)
 }
-
-# create boxplot over LFC (for every virus separatly) -> show course of infection 
-par(mfrow = c(3,4))
-for (virus in unique(conditiontable$treatment)) {
-    if (!grepl("Mock", virus)){
-        	print(virus)
-        	#svg(paste(output_folder, "Boxplot_", virus, "_Vs_Control_counts", ".svg", sep = ""))#, width = 1500, height = 1000)
-        	#par(mar=c(10,4,4,2))
-        	#boxplot(countdata.normalized[,grep(virus, colnames(countdata.normalized))], las = 2, outline = FALSE)
-        	#dev.off()
-        	lfc <- do.call(cbind,lapply(res.list[grep(virus, names(res.list))],function(res){res$log2FoldChange}))
-        	lfc <- lfc[,mixedorder(colnames(lfc))]
-        	svg(paste(output_folder, "Boxplot_", virus, "_Vs_Control", ".svg", sep = ""))#, width = 1500, height = 1000)
-        	par(mar=c(10,4,4,2))
-        	boxplot(lfc, las = 2)
-        	dev.off()
-        	#svg(paste(output_folder, "Boxplot_", virus, "_Vs_Control_LFC>3", ".svg", sep = ""))#, width = 1500, height = 1000)
-        	#par(mar=c(10,4,4,2))
-        	#boxplot(lfc_filtered_reg[grep(virus,names(lfc_filtered_reg))], las = 2)
-        	#dev.off()
-        	#png(paste(output_folder, "Boxplot_", virus, "_Vs_Control_LFC<1", ".png", sep = ""), width = 1500, height = 1000)
-        	#boxplot(lfc_filtered[grep(virus,names(lfc_filtered))])
-  	      #dev.off()
-    }
-}
-
 
 gsea.list <- list()
 for(n in names(res.list)){
