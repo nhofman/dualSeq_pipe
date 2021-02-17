@@ -88,7 +88,7 @@ boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalize
 dev.off()
 
 # Calculate differential expression analysis steps
-deseq.results <- DESeq(object = deseqDataset, parallel = TRUE)
+deseq.results <- DESeq(object = deseqDataset, parallel = FALSE)
 
 # Calculate variance-stabilized read counts
 deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
