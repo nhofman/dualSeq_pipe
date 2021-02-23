@@ -9,10 +9,6 @@ feature_counts_log_file <- args[match('--featcounts-log', args) + 1]
 output_folder <- args[match('--output', args) + 1]
 threads <- args[match('--threads', args) + 1]
 
-# source functions for enrichment and protein interaction analysis
-source(paste0(file.dir, "/enrichment.R"))
-source(paste0(file.dir, "/STRINGdb.R"))
-
 # Required packages
 for (package in c("DESeq2")) {
     if (!(package %in% rownames(installed.packages()))) {
@@ -25,8 +21,7 @@ for (package in c("DESeq2")) {
 }
 
 # "Optional" packages
-for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "clusterProfiler", "ReactomePA",
-                  "dplyr","openxlsx", "pathview")) {
+for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr","openxlsx","org.Hs.eg.db","AnnotationDBi")) {
     if (!(package %in% rownames(installed.packages()))) {
         stop(paste('Package "', package, '" not installed', sep=""))
     } else {
@@ -80,7 +75,6 @@ countdata.raw <- read.csv(counttable_file, header = TRUE, row.names = 1, sep = "
 countdata <- as.matrix(countdata.raw[, c(6 : length(countdata.raw))])
 colnames(countdata) <- as.vector(sapply(colnames(countdata), function(x) gsub("mapping\\..*\\.(.*)\\.bam", "\\1", x)))
 countdata <- countdata[,mixedorder(colnames(countdata))]
-print(head(countdata))
 
 # Import condition file
 conditiontable <- read.csv(condition_file, header = FALSE, row.names = 1, sep = "\t", comment.char = "#", stringsAsFactors = FALSE)
@@ -170,8 +164,8 @@ if (!dir.exists(paste(output_folder, "plots", sep = ""))) {
 res.list.raw <- list()
 res.list <- list()
 
-#for (n in 1:nrow(comparisons.df)) {
-res.list <- mclapply(1:nrow(comparisons.df), function(n){
+for (n in 1:nrow(comparisons.df)) {
+#res.list <- mclapply(1:nrow(comparisons.df), function(n){
       print(comparisons.df[n,])
       res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
       res.list.raw[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
@@ -189,7 +183,7 @@ res.list <- mclapply(1:nrow(comparisons.df), function(n){
       plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
         theme(axis.title = element_text(size=18, face = "bold")) +
         geom_hline(yintercept = -log10(0.05), color = "red")
-      ggsave(paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/Volcano/", sep = ""))
+      ggsave(paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
       
       
       #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
@@ -205,12 +199,12 @@ res.list <- mclapply(1:nrow(comparisons.df), function(n){
       #res[is.na(res$`-log10(padj)`),"-log10(padj)"] <- 0
       #res[is.na(res$padj),"padj"] <- 1
      
-     #res.list.shrunk[[comparisons.df[n,2]]] <- res 
-     return(res)
-    }, mc.cores = threads)
+     res.list[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
+     #return(res)
+    }#, mc.cores = threads)
 
 #names(res.list.shrunk) <- comparisons.df[,2]
-save.image(paste(output_folder, "/deseq2.RData", sep = ""))
+
 lfc.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){x.df <- data.frame(res.list[[x]][,c("SYMBOL","log2FoldChange")]); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df) <- lfc.df$SYMBOL
 lfc.df <- lfc.df[,-1, drop = FALSE]
@@ -223,7 +217,6 @@ padj.df <- padj.df[,mixedorder(colnames(padj.df))]
 write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), row.names = T)
 
 lfc.df[is.na(lfc.df)] <- 0
-save.image(paste(output_folder, "/deseq2.RData", sep = ""))
 
 # Count differentially expressed genes
 padj_cut <- 0.05
@@ -255,26 +248,6 @@ for(LFC.cut in unique(count.genes$LFC_cutoff)){
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 10, height = 7)
 }
 
-gsea.list <- list()
-for(n in names(res.list)){
-  print(n)
-	res <- res.list[[n]]
-	res <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
-	res <- res[order(res$log2FoldChange, decreasing = T),]
-  # GSEA analysis
-	gsea.list[[n]] <- calc_gsea(res, n, sort.by = "log2FoldChange", REACTOME = T, ont = c("CC", "MF", "BP"), nPerm = 10000,
-  	p.cut = 0.05, out.dir = paste0(output_folder,"/GSEA"))
-  # Protein-protein interaction analysis with STRING
-        if(nrow(data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05])) > 0){
-		try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05]), filename = paste0(n, "_up"), out.dir = paste0(output_folder, "/STRING")))
-        }
-        if(nrow(data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05])) > 0){
-		try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05]), filename = paste0(n, "_down"), out.dir = paste0(output_folder, "/STRING")))
-        }
-	res <- res[order(abs(res$log2FoldChange), decreasing = T),]
-        if(nrow(res) > 0){
-		try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL), filename = paste0(n, "_top_absolut"), out.dir = paste0(output_folder, "/STRING")))
-        }
-	gc()
-}
+save.image(paste(output_folder, "/deseq2.RData", sep = ""))
+
 #calc_ora(gene = res$SYMBOL[res$padj<padj.cut & res$log2FoldChange>LFC.cut], main = "", filename = paste0(comparisons.df[n,2],"up"), subdir = "ORA/",)

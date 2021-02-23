@@ -12,6 +12,8 @@ rule all:
         "analyses/host/deseq2/counts.txt",
         "analyses/host/deseq2/counts_normalized.txt",
         "analyses/host/deseq2/deseq2.RData",
+        "analyses/host/deseq2/GSEA/",
+        "analyses/host/deseq2/STRING/"
         #expand('analyses/{human_or_virus}/deseq2/summary/{COND}.xlsx', COND=getConditions())
 
 #rule summary_tsv_to_xslx:
@@ -58,7 +60,7 @@ rule deseq2_human:
         conditions = "analyses/host/deseq2/conditions.txt",
         feature_counts_log = "analyses/host/deseq2/counts.txt.summary"
     output:
-        #dump="analyses/host/deseq2/deseq2.RData",
+        rdata="analyses/host/deseq2/deseq2.RData",
         counts_normalized="analyses/host/deseq2/counts_normalized.txt",
         correlation_heatmap="analyses/host/deseq2/correlation_heatmap.pdf",
         assignment_statistics="analyses/host/deseq2/counts_assignment.pdf",
@@ -73,6 +75,22 @@ rule deseq2_human:
     threads:
         16
     shell:
-        "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
+        "/homes/nhofmann/own_R/R-4.0.3/bin/R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
         
+rule functional_analysis:
+    input:
+        rdata="analyses/host/deseq2/deseq2.RData"
+    output:
+        directory("analyses/host/deseq2/GSEA"),
+        directory("analyses/host/deseq2/STRING")
+    group:
+        "deseq2"
+    params:
+        output_folder="analyses/host/deseq2/"
+    log:
+        log="analyses/host/deseq2/logs/functional_analysis.log"
+    threads:
+        16
+    shell:
+        "/homes/nhofmann/own_R/R-4.0.3/bin/R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --rdata {input.rdata} 2>&1 | tee {log}"
