@@ -1,4 +1,7 @@
 library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ReactomePA)
+library(ggplot2)
 
 # Over-representation analysis for a set of genes
 calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05){
@@ -52,8 +55,8 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
   geneset_num <- as.numeric(res[,sort.by])
   names(geneset_num) <- res$ENTREZID
   if(KEGG){
-    gsea_kegg <- try(gseKEGG(geneList = geneset_num, organism = "hsa", nPerm = nPerm, pvalueCutoff = p.cut, seed = T))
-    if(nrow(data.frame(gsea_kegg)) > 0){
+    gsea_kegg <- try(gseKEGG(geneList = geneset_num, organism = "hsa", pvalueCutoff = p.cut, seed = T))
+    if(class(gsea_kegg) != "try-error" || nrow(data.frame(gsea_kegg)) > 0){
       plot_kegg <- dotplot(gsea_kegg, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
       ggsave(paste(name,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
       gsea_kegg.df <- data.frame(gsea_kegg)
@@ -64,8 +67,8 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
   }
   if(GO){
     for(o in ont){
-      gsea_go <- try(gseGO(geneset_num, ont = o, OrgDb = org.Hs.eg.db, keyType = "ENTREZID", nPerm = nPerm, pvalueCutoff = p.cut, seed = T))
-      if(nrow(data.frame(gsea_go)) > 0){
+      gsea_go <- try(gseGO(geneset_num, ont = o, OrgDb = org.Hs.eg.db, keyType = "ENTREZID", pvalueCutoff = p.cut, seed = T))
+      if(class(gsea_go) != "try-error" || nrow(data.frame(gsea_go)) > 0){
         plot_go <- dotplot(gsea_go, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
         ggsave(paste(name, "_GO_", o, "_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
         gsea_go.df <- data.frame(gsea_go)
@@ -79,8 +82,8 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
     }
   }
   if(REACTOME){
-    gsea_reactome <- try(gsePathway(geneset_num, nPerm = nPerm, pvalueCutoff = p.cut, seed = T))
-    if(nrow(data.frame(gsea_reactome)) > 0){
+    gsea_reactome <- try(gsePathway(geneset_num, pvalueCutoff = p.cut, seed = T))
+    if(class(gsea_reactome) != "try-error" || nrow(data.frame(gsea_reactome)) > 0){
       plot_reactome <- dotplot(gsea_reactome, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
       ggsave(paste(name,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
       gsea_reactome.df <- data.frame(gsea_reactome)
