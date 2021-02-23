@@ -9,19 +9,8 @@ feature_counts_log_file <- args[match('--featcounts-log', args) + 1]
 output_folder <- args[match('--output', args) + 1]
 threads <- args[match('--threads', args) + 1]
 
-# Required packages
-for (package in c("DESeq2")) {
-    if (!(package %in% rownames(installed.packages()))) {
-        library("crayon")
-        stop(paste('Package "', package, '" not installed', sep=""))
-    } else {
-        print(paste("Import:", package))
-        library(package, character.only=TRUE)
-    }
-}
-
-# "Optional" packages
-for (package in c("BiocParallel", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr","openxlsx","org.Hs.eg.db","AnnotationDBi")) {
+# required packages
+for (package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr", "openxlsx", "org.Hs.eg.db")) {
     if (!(package %in% rownames(installed.packages()))) {
         stop(paste('Package "', package, '" not installed', sep=""))
     } else {
