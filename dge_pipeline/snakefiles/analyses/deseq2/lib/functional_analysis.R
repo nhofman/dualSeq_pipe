@@ -5,10 +5,10 @@ file.dir <- dirname(sub("--file=","",args[grep("--file=",args)]))
 rdata <- args[match('--rdata', args) + 1]
 threads <- args[match('--threads', args) + 1]
 
+load(rdata)
+
 source(paste0(file.dir, "/enrichment.R"))
 source(paste0(file.dir, "/STRINGdb.R"))
-
-load(rdata)
 
 gsea.list <- list()
 for(n in names(res.list)){
