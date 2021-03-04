@@ -2,7 +2,7 @@
 rule all:
 	input:
 		expand("variant_analyses/variant_calling/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-                expand("variant_analyses/variant_calling/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
+                #expand("variant_analyses/variant_calling/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
 
 rule call_variant:
 	input:
