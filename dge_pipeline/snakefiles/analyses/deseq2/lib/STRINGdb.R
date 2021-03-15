@@ -46,7 +46,14 @@ string_ppi <- function(stringdb, gene.df, filename, top = 400, cluster = FALSE, 
 if(!dir.exists(paste(output_folder, "STRINGdb", sep = ""))){
   dir.create(paste(output_folder, "STRINGdb", sep = ""))
 }
-string_db <- STRINGdb$new(version="10", species=9606, input_directory=paste0(output_folder,"STRINGdb/"))
+
+if(R.Version()$major<"4"){
+  version.db <- "10"
+}else{
+  version.db <- "11"
+}
+
+string_db <- STRINGdb$new(version=version.db, species=9606, input_directory=paste0(output_folder,"STRINGdb/"))
 
 
   
