@@ -1,9 +1,11 @@
 library(pheatmap)
+library(ComplexHeatmap)
 
 # Heatmap 
 plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMethod = "euclidean", clusterMethod = "complete", clrn = 1, clcn = 1,
-                        rowClust = T, colClust = T, fontsize_row = 0.8, fontsize_col = 10, annCol = NA, annRow = NA, border_col = "grey60", plot.fig = T,
-                        legend.limit = 1, filter_col = NA, annotation_colors = NA, height = NA, width = NA, break_step = 0.1, display_numbers = F){
+                        rowClust = T, colClust = T, rowNames = T, colNames = T, fontsize_row = 0.8, fontsize_col = 10, annCol = NA, annRow = NA, border_col = "grey60", plot.fig = T,
+                        filter_col = NA, annotation_colors = NA, height = NA, width = NA, break_step = 0.1, display_numbers = F, cellwidth = NULL, cellheight = NULL, 
+                        legend.cut = 1, legend.limit.up = NA, legend.limit.down = NA, ...){
   if(!dir.exists(dirname(filename))){
     dir.create(dirname(filename), recursive = T)
   }
@@ -33,35 +35,52 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   if(!is.na(filter_col)){
     xx <- xx[,which(colMaxs(as.matrix(abs(xx)))>filter_col)]
   }
-  #pdf(filename,width=25,height=25)
-  #pdf(filename)
-  #$par(oma=c(10,4,4,10) + 0.1)
   
-  breakSeq <- seq(quantile(unlist(xx), na.rm = TRUE, probs = (1-legend.limit)), quantile(unlist(xx), na.rm = TRUE, probs = legend.limit), break_step)
-  if(length(breakSeq)==1){
-    if(sign(breakSeq)==1){
-      breakSeq <- seq(0,breakSeq,break_step)
-    }else{
-      breakSeq <- seq(breakSeq,0,break_step)
-    }
+  # Calculate legend limits, if not defined
+  if(is.na(legend.limit.up)){
+    legend.limit.up <- quantile(unlist(xx), na.rm = TRUE, probs = legend.cut)
   }
+  if(is.na(legend.limit.down)){
+    legend.limit.down <- quantile(unlist(xx), na.rm = TRUE, probs = (1-legend.cut))  
+  }
+  
   color <- vector()
   if(-1%in%sign(unlist(xx))){
-    color_down <- colorRampPalette(c("blue", "white"))(length(seq(quantile(unlist(xx), na.rm = TRUE, probs = (1-legend.limit)), 0, break_step))) #blue(n=length(breakSeq)-1) #, low="blue", mid = "white", high="red")
+    color_down <- colorRampPalette(c("blue", "white"))(length(seq(legend.limit.down, 0, break_step))) #blue(n=length(breakSeq)-1) #, low="blue", mid = "white", high="red")
     color <- c(color,color_down)
   }
   if(1%in%sign(unlist(xx))){
-    color_up <- colorRampPalette(c("white", "red"))(length(seq(0, quantile(unlist(xx), na.rm = TRUE, probs = legend.limit), break_step)))
+    color_up <- colorRampPalette(c("white", "red"))(length(seq(0, legend.limit.up, break_step)))
     color <- c(color,color_up)
   }
+  
+  if(!is.null(cellwidth) & !is.null(cellheight)){
+    cellwidth <- ncol(xx)*unit(cellwidth, "pt")
+    cellheight <- nrow(xx)*unit(cellheight, "pt")
+  }
+  
+  col_split <- sub("_.*","",colnames(xx))
+  ca <- columnAnnotation(foo = anno_empty(border = FALSE, width = max_text_width(unlist(col_split)) + unit(2, "mm"), height = unit(1, "mm")))
+  class(as.matrix(xx)[1,1])
   if((nrow(xx)>1 | ncol(xx)>1) & plot.fig == T){
-    heatmap.plot <- pheatmap(xx, cluster_cols=colClust, cluster_rows=rowClust, clustering_distance_rows = distMethod, clustering_distance_cols = distMethod,
-                             clustering_method = clusterMethod, annotation_col=annCol, annotation_row = annRow, 
-                             breaks = breakSeq, color = color, annotation_colors = annotation_colors,
-                             fontsize_row = fontsize_row, fontsize_col = fontsize_col, cutree_rows = clrn, filename = filename,
-                             height = height, width = width, border_color = border_col, display_numbers = display_numbers)
-    system(paste("inkscape -l ", filename, ".svg ", filename, sep = ""))
-    return(list(row_cluster=gr.row, col_cluster=gr.col, plot=heatmap.plot))
+    pdf(filename)
+    draw(Heatmap(as.matrix(xx), show_row_names = rowNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), 
+                 top_annotation = ca, show_column_names = colNames, col = color, width = cellwidth, height = cellheight, column_names_rot = 0,
+                 cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
+                 heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), column_names_gp = gpar(fontsize = fontsize_col), row_names_gp = gpar(fontsize = fontsize_row), ...))
+    for(i in 1:length(unique(col_split))){
+      decorate_annotation("foo", slice = i, {
+             grid.rect(x = 0, width = 1, height = unit(0.1, "mm"), gp = gpar(fill = 1, col = NA), just = "left")
+         })
+    }
+    dev.off()
+    # heatmap.plot <- pheatmap(xx, cluster_cols=colClust, cluster_rows=rowClust, clustering_distance_rows = distMethod, clustering_distance_cols = distMethod,
+    #                          clustering_method = clusterMethod, annotation_col=annCol, annotation_row = annRow, 
+    #                          breaks = breakSeq, color = color, annotation_colors = annotation_colors,
+    #                          fontsize_row = fontsize_row, fontsize_col = fontsize_col, cutree_rows = clrn, filename = filename,
+    #                          height = height, width = width, border_color = border_col, display_numbers = display_numbers, ...)
+    # system(paste("inkscape -l ", filename, ".svg ", filename, sep = ""))
+    return(list(row_cluster=gr.row, col_cluster=gr.col))
   }else{
     return(list(row_cluster=gr.row, col_cluster=gr.col))
   }
