@@ -12,7 +12,7 @@ draw_venn <- function(venn.list, out_name, h = 3000, w = 3000, cex = 2, cat.cex 
     list.intersect <- list()
     venn.plot <- venn.diagram(venn.list, fill = fill, filename = NULL, main = main, fontfamily = "sans", cat.fontfamily = "sans", imagetype = imagetype,
                              height = h, width = w, cex = cex, cat.cex = cat.cex, margin = margin, ext.text = ext.text, ext.percent = 0.12, ...)
-    ggsave(paste(basename(out_name), ".", imagetype, sep = ""), venn.plot, "svg", dirname(out_name))
+    ggsave(paste(basename(out_name), ".", imagetype, sep = ""), venn.plot, imagetype, dirname(out_name))
     #system(paste("inkscape -A ", out_name, ".pdf ", out_name, ".", imagetype, sep = ""))
     list.intersect <- attr(venn(venn.list, show.plot = F), "intersections")
     intersections <- sapply(list.intersect, "[", seq(max(sapply(list.intersect, length))))
