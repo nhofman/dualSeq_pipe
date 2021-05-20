@@ -19,7 +19,6 @@ mapping.stat$organism <- "host"
 mapping.stat$uniquely_mapped_percent <- as.numeric(mapping.stat$uniquely_mapped)/as.numeric(mapping.stat$total_reads)
 # Mapping statistics for virus
 mapping.stat.virus <- read.table(stat_virus_file, header = T, stringsAsFactors = F)
-mapping.stat.virus <- mapping.stat.virus[-grep("Mock", mapping.stat.virus$sample),]
 mapping.stat.virus <- merge(mapping.stat.virus, mapping.stat[,c(1,5)], by = "sample")
 mapping.stat.virus$uniquely_mapped_percent <- as.numeric(mapping.stat.virus$aligned_1_time)/as.numeric(mapping.stat.virus$total_read)
 mapping.stat.virus <- separate(mapping.stat.virus, "sample", c("virus","time","rep"), "_", F)

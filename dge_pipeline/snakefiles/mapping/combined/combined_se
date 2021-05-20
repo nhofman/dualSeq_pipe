@@ -11,7 +11,8 @@ rule all:
         expand("mapping/host/{A}.bam", A=sorted(config['entries'].keys())),
         expand("mapping/host/{A}Log.final.out", A=sorted(config['entries'].keys())),
         "mapping/host/stats/mapping_stats.tsv",
-        #expand("mapping/host/unmapped/{A}.fastq", A=sorted(config['entries'].keys()))
+        #expand("mapping/host/unmapped/{A}.fastq", A=sorted(config['entries'].keys())),
+        expand("mapping/mapping_stat_{A}.svg", A=["dual","mock"])
 
 rule star_mapping_stats_tsv:
     input:
@@ -22,7 +23,7 @@ rule star_mapping_stats_tsv:
         "star_statistics"
     run:
         with open(output[0], 'w') as summary_file:
-            summary_file.write("sample	total_reads	avg_input_read_length	uniquely_mapped	uniquely_mapped_percent	avg_mapped_read_length	num_splices	num_annotated_splices	num_GT/AG_splices	num_GC/AG_splices	num_AT/AC_splices	num_noncanonical_splices	mismatch_rate	deletion_rate	deletion_length	insertion_rate	insertion_length	multimapped	multimapped_percent	multimapped_toomany	multimapped_toomany_percent	unmapped_mismatches_percent	unmapped_tooshort_percent	unmapped_other_percent	chimeric	chimeric_percent\n")
+            summary_file.write("sample	total_reads	avg_input_read_length	uniquely_mapped	uniquely_mapped_percent	avg_mapped_read_length	num_splices	num_annotated_splices	num_GT/AG_splices	num_GC/AG_splices	num_AT/AC_splices	num_noncanonical_splices	mismatch_rate	deletion_rate	deletion_length	insertion_rate	insertion_length	multimapped	multimapped_percent	multimapped_toomany	multimapped_toomany_percent	unmapped_mismatches	unmapped_mismatches_percent	unmapped_tooshort	unmapped_tooshort_percent	unmapped_other	unmapped_other_percent	chimeric	chimeric_percent\n")
             #pattern = {}
             for i in input:
                 summary_file.write(i.replace("Log.final.out", "").replace("mapping/host/", ""))
@@ -71,8 +72,8 @@ rule plot_mapping_stat:
         stat_host="mapping/host/stats/mapping_stats.tsv",
         stat_virus="mapping/virus/stats/mapping_stats.tsv"
     output:
-        "/mapping/mapping_stat_dual.svg",
-        "/mapping/mapping_stat_mock.svg"
+        "mapping/mapping_stat_dual.svg",
+        "mapping/mapping_stat_mock.svg"
     group: "plot_statistics"
     shell:
         "R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus}"
@@ -96,7 +97,8 @@ rule star_index:
 rule star_mapping:
     input:
         index_dir="%%STAR_INDEX_DIR%%",
-        reads=lambda wildcards: os.path.join('preprocessing', os.path.basename(config['entries'][wildcards.sample]['main']['reads']))
+        reads="preprocessing/{sample}.fastq"
+        #reads=lambda wildcards: os.path.join('preprocessing', os.path.basename(config['entries'][wildcards.sample]['main']['reads']))
     output:
         bam="mapping/host/{sample}.bam",
         summary="mapping/host/{sample}Log.final.out",

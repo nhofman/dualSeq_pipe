@@ -2,22 +2,28 @@ from os import listdir
 from os.path import isfile, splitext
 
 
-def getPath(file_name):
+def getPath(sample_name):
     #print(file_name)
+    config['entries'][sample_name]['main']['reads']
     for seqRun in config['entries'].values():
             if os.path.basename(seqRun['main']['reads']) == file_name:
                 return seqRun['main']['reads']
     print('Cannot find {} in groups file'.format(file_name), file=sys.stderr)
 
+rule all:
+    input:
+        expand("preprocessing/{A}.fastq.gz", A=sorted(config['entries'].keys()))
+
 rule trim_reads:
     input:
-        lambda wildcards: getPath(wildcards.name)
+        lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
+        #lambda wildcards: getPath(wildcards.sample)
     output:
-        "preprocessing/{name}",
-        "preprocessing/{name}.fastp.json"
+        "preprocessing/{sample}.fastq.gz",
+        "preprocessing/{sample}.fastp.json"
     group:
         "fastp"
     threads:
         2
     shell:
-        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/{wildcards.name}.html -j preprocessing/{wildcards.name}.fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
+        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/{wildcards.sample}.html -j preprocessing/{wildcards.sample}.fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
