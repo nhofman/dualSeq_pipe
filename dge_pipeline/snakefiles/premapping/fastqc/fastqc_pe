@@ -3,14 +3,14 @@ from os.path import isfile, basename, splitext
 
 rule all:
     input:
-        expand("premapping/fastqc/{A}_fastqc.html", A=[splitext(basename(seqRun['main'][column_name]))[0] for seqRun in config['entries'].values() for column_name in seqRun['main'].keys() if column_name in ('forward_reads', 'reverse_reads')])
+        expand("premapping/fastqc/{A}_{B}_fastqc.html", A=sorted(config['entries'].keys()), B=["R1","R2"])
 
 rule fastqc:
     input:
-        "preprocessing/{A}.fastq"
+        "preprocessing/{sample}_R{direction}.fastq"
     output:
-        "premapping/fastqc/{A}_fastqc.html",
-        "premapping/fastqc/{A}_fastqc.zip"
+        "premapping/fastqc/{sample}_R{direction}_fastqc.html",
+        "premapping/fastqc/{sample}_R{direction}_fastqc.zip"
     group:
         "fastqc"
     threads:

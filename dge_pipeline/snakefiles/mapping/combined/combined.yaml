@@ -44,10 +44,15 @@ optional_settings:
   additional_bowtie2_options:
     description: "Additional options to use in shell command"
     type: "string"
+    default: ''
 
   additional_star_options:
     description: 'Additional options to use in shell command'
     type: 'string'
+    default: ''
     
 single_end:
   snakefile: 'combined_se'
+
+paired_end:
+  snakefile: 'combined_pe'
