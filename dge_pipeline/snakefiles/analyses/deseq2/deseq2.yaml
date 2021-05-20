@@ -29,10 +29,22 @@ optional_settings:
   additional_featcounts_options:
     description: "Additional options to use in shell command"
     type: "string"
+    default: ""
 
   attribute_columns:
     description: "GFF attributes to show in the beginning of the xlsx summary"
     type: "string"
+    default: ""
+
+  db:
+    description: "Database(s) used for functional analysis, has to be one or more of KEGG, GO and Reactome. Default: KEGG"
+    type: "string"
+    default: "KEGG"
+
+  ont:
+    description: "If db=GO, GO ontologies used in functional analysis"
+    type: "string"
+    default: "BP"
 
 
 columns:

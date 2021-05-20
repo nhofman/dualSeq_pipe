@@ -12,8 +12,8 @@ rule all:
         "analyses/host/deseq2/counts.txt",
         "analyses/host/deseq2/counts_normalized.txt",
         "analyses/host/deseq2/deseq2.RData",
-        "analyses/host/deseq2/GSEA/",
-        "analyses/host/deseq2/STRING/"
+        "analyses/host/deseq2/GSEA",
+        #"analyses/host/deseq2/STRING/"
         #expand('analyses/{human_or_virus}/deseq2/summary/{COND}.xlsx', COND=getConditions())
 
 #rule summary_tsv_to_xslx:
@@ -75,7 +75,7 @@ rule deseq2_human:
     threads:
         16
     shell:
-        "/homes/nhofmann/own_R/R-4.0.3/bin/R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
+        "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
         
 rule functional_analysis:
@@ -83,7 +83,7 @@ rule functional_analysis:
         rdata="analyses/host/deseq2/deseq2.RData"
     output:
         directory("analyses/host/deseq2/GSEA"),
-        directory("analyses/host/deseq2/STRING")
+        #directory("analyses/host/deseq2/STRING")
     group:
         "deseq2"
     params:
@@ -93,4 +93,4 @@ rule functional_analysis:
     threads:
         16
     shell:
-        "/homes/nhofmann/own_R/R-4.0.3/bin/R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --rdata {input.rdata} 2>&1 | tee {log}"
+        "R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --rdata {input.rdata} --db %%DB%% --ont %%ONT%% 2>&1 | tee {log}"
