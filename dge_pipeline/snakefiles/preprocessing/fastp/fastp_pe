@@ -3,12 +3,10 @@ from os.path import isfile, splitext
 
 
 def getFilePath(sample_name, forward):
-    print(sample_name)
     if forward:
         path = config['entries'][sample_name]['main']['forward_reads']
     else:
         path = config['entries'][sample_name]['main']['reverse_reads']
-    print(path)
     return path
 
 rule all:
@@ -17,10 +15,10 @@ rule all:
 
 rule trim_reads:
     input:
-        #reads_forward=lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads'],
-        #reads_reverse=lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
-        reads_forward=lambda wildcards: getFilePath(wildcards.sample, True),
-        reads_reverse=lambda wildcards: getFilePath(wildcards.sample, False)
+        reads_forward=lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads'],
+        reads_reverse=lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
+        #reads_forward=lambda wildcards: getFilePath(wildcards.sample, True),
+        #reads_reverse=lambda wildcards: getFilePath(wildcards.sample, False)
     output:
         fwd="preprocessing/{sample}_R1.fastq.gz",
         #"preprocessing/{sample}_R1.fastp.json",

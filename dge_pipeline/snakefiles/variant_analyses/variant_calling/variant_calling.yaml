@@ -8,3 +8,6 @@ optional_settings:
 
 single_end:
   snakefile: "variant_calling"
+
+paired_end:
+  snakefile: "variant_calling"

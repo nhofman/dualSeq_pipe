@@ -12,7 +12,7 @@ rule all:
         expand("mapping/host/{A}Log.final.out", A=sorted(config['entries'].keys())),
         "mapping/host/stats/mapping_stats.tsv",
         #expand("mapping/host/unmapped/{A}.fastq", A=sorted(config['entries'].keys())),
-        expand("mapping/mapping_stat_{A}.svg", A=["dual","mock"])
+        #expand("mapping/mapping_stat_{A}.svg", A=["dual","mock"])
 
 rule star_mapping_stats_tsv:
     input:
@@ -56,13 +56,19 @@ rule bowtie2_mapping_stats_tsv:
         "bowtie2_statistics"
     shell:
         """
-        echo "sample	reads	reads[%]	aligned_0_times	aligned_0_times[%]	aligned_1_time	aligned_1_time[%]	aligned_more_than_1_times	aligned_more_than_1_times[%]	overall_alignment_rate" > {output}
+        echo "sample	reads	reads[%]	aligned_conc_0_times	aligned_conc_0_times[%]	aligned_conc_1_time	aligned_conc_1_time[%]	aligned_conc_more_than_1_times	aligned_conc_more_than_1_times[%]	aligned_disconc_1_time	aligned_disconc_1_time[%]	pairs_aligned_0_times_conc_or_disconc	in_mates	mates_aligned_0_times	mates_aligned_0_times[%]	mates_aligned_1_time	mates_aligned_1_time[%]	mates_aligned_more_than_1_times	mates_aligned_more_than_1_times[%]	overall_alignment_rate" > {output}
         for i in {input}; do
             sample=$(basename $i);
             sample=${{sample%*.log}};
             sample=${{sample#bowtie2_mapping.}};
             echo -n $sample"	" >> {output};
-            tail -n+2 $i | sed -e 's/^[^0-9]*\([0-9]\{{1,\}}\) (\([0-9.]\{{1,\}}\)%).*/\\1\t\\2/' | sed -e 's/^\(.*\)%.*$/\\1/' | tr '\n' '\t' | sed -e 's/\t$//' >> {output};
+            tail -n+2 $i | \
+            sed -e '6d' -e 's/^[^0-9]*\([0-9]\{{1,\}}\) (\([0-9.]\{{1,\}}\)%).*/\\1\t\\2/' \
+            -e 's/^[^0-9]*\([0-9]\{{1,\}}\) pairs.*/\\1/' \
+            -e 's/^\(.*\)%.*$/\\1/' -e 's/^[^0-9]*\([0-9]\{{1,\}}\) mates.*/\\1/' -e 's/^.*----.*$//' | \
+            tr '\n' '\t' | \
+            sed -e 's/\t$//' | \
+            sed -e 's/\t\t/\t/g' >> {output}
             echo >> {output};
         done;
         """
@@ -76,7 +82,7 @@ rule plot_mapping_stat:
         "mapping/mapping_stat_mock.svg"
     group: "plot_statistics"
     shell:
-        "R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus}"
+        "R --vanilla --file=lib/plot_mapping_stats_pe.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus}"
 
 rule star_index:
     input:
