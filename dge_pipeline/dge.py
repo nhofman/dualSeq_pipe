@@ -103,7 +103,7 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                     "analyses": [],
                     "summary": [],
                     "variant_analyses": []}  
-    config = yaml.load(config_file.open('r'), Loader=yaml.FullLoader)
+    config = yaml.save_load(config_file.open('r'))
     #print(config)
     if "preprocessing" in config:
         if "module" in config["preprocessing"]:
@@ -211,7 +211,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
     loaded_module = Module(module_name)
     module_yaml_file = SNAKEFILES_LIBRARY / category / module_name / (module_name + '.yaml')
     if module_yaml_file.is_file():
-        module_yaml = yaml.load(module_yaml_file.open('r'), Loader=yaml.FullLoader)
+        module_yaml = yaml.save_load(module_yaml_file.open('r'))
         if 'required_settings' in module_yaml:
             for setting_name, properties in module_yaml['required_settings'].items():
                 if setting_name not in settings:
@@ -226,7 +226,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
         if 'optional_settings' in module_yaml:
             for setting_name, properties in module_yaml['optional_settings'].items():
                 if setting_name not in settings:
-                    loaded_module.add_setting(setting_name, '')
+                    loaded_module.add_setting(setting_name, properties['default'])
                 else:
                     if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
                         loaded_module.add_setting(setting_name, str((config_file_path.parent / settings[setting_name]).resolve()))
