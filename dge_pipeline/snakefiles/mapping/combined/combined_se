@@ -6,13 +6,9 @@ import csv, glob
 rule all:
     input:
         #"mapping/virus/stats/mapping_stats.xlsx",
-        expand("mapping/virus/{A}.bam", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        "%%STAR_INDEX_DIR%%",
-        expand("mapping/host/{A}.bam", A=sorted(config['entries'].keys())),
-        expand("mapping/host/{A}Log.final.out", A=sorted(config['entries'].keys())),
-        "mapping/host/stats/mapping_stats.tsv",
-        #expand("mapping/host/unmapped/{A}.fastq", A=sorted(config['entries'].keys())),
-        expand("mapping/mapping_stat_{A}.svg", A=["dual","mock"])
+        expand("mapping/combined/host/{A}.bam", A=config['entries'].keys()),
+	expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        #expand("mapping/mapping_stat_{A}.svg", A=["dual","mock"])
 
 rule star_mapping_stats_tsv:
     input:
@@ -34,16 +30,6 @@ rule star_mapping_stats_tsv:
                             summary_file.write("	" + line_data[1].split()[0])
                 summary_file.write("\n")
 
-
-rule bowtie2_mapping_stats_xlsx:
-    input:
-        "mapping/virus/stats/mapping_stats.tsv"
-    output:
-        "mapping/virus/stats/mapping_stats.xlsx"
-    group:
-        "bowtie2_statistics"
-    shell:
-        "python3 lib/se_mapping_stats_tsv_to_xlsx.py {input} {output}"
 
 
 rule bowtie2_mapping_stats_tsv:
@@ -78,37 +64,61 @@ rule plot_mapping_stat:
     shell:
         "R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus}"
 
+def virus2genome(wildcards):
+	for sample in config['entries'].keys():
+		print(wildcards.virus)
+		if wildcards.virus == "None":
+			return("None")
+		if wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
+			return(config['entries'][sample]['combined']['virus_genome'])
+		
+
 rule star_index:
     input:
-        genome="%%HOST_GENOME%%"
+        genome_host="%%HOST_GENOME%%",
+        genome_virus=virus2genome
     output:
-        directory("%%STAR_INDEX_DIR%%")
+        directory("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}")
     group:
         "star_index"
     log:
-        "mapping/host/logs/star_index.log"
+        "mapping/combined/logs/star_index_"+"{virus}"+".log"
     threads:
-        8
+        4
     shell:
-        "STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 |"
-        "tee {log}"
+        """
+	if[ {input.genome_virus} = "None" ] 
+	then
+		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 | tee {log}
+	else
+		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {input.genome_virus} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 | tee {log}
+	fi
+	"""
 
+def get_genome(wildcards):
+	host = "%%STAR_INDEX_DIR%%".rstrip("/")
+	if 'Mock' in wildcards.sample:
+		return(host+"_None")
+	else:
+		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['combined']['virus_genome']))[0]
+		return(host+"_"+virus)
 
 rule star_mapping:
     input:
-        index_dir="%%STAR_INDEX_DIR%%",
-        reads="preprocessing/{sample}.fastq"
+        index_dir=get_genome, #"%%STAR_INDEX_DIR%%",
+        reads="preprocessing/{sample}.fq.gz",
+        #index_dir=lambda wildcards: os.path.splitext(config['entries'][wildcards.sample]['combined']['virus_genome'])[0]
         #reads=lambda wildcards: os.path.join('preprocessing', os.path.basename(config['entries'][wildcards.sample]['main']['reads']))
     output:
-        bam="mapping/host/{sample}.bam",
-        summary="mapping/host/{sample}Log.final.out",
-        fasta="mapping/host/{sample}Unmapped.out.mate1"
+        bam="mapping/combined/{sample}.bam",
+        summary="mapping/combined/{sample}Log.final.out",
+        fasta="mapping/combined/{sample}Unmapped.out.mate1"
     group:
         "star_mapping"
     params:
-        prefix="mapping/host/{sample}"
+        prefix="mapping/combined/{sample}"
     log:
-        "mapping/host/logs/star_mapping.{sample}.log"
+        "mapping/combined/logs/star_mapping.{sample}.log"
     threads:
         2
     shell:
@@ -117,83 +127,26 @@ rule star_mapping:
         "tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"
 
 
-rule star_unmapped_to_fastq:
+rule split_bam_virus:
     input:
-        "mapping/host/{sample}Unmapped.out.mate1"
+        "mapping/combined/{sample}.bam"
     output:
-        "mapping/host/unmapped/{sample}.fastq"
-    group:
-        "star_mapping"
+        "mapping/combined/virus/{sample}.bam"
     shell:
-        "mv {input} {output}"
+        """
+        id=`cut -sf 1 config['entries']["{input}"]['combined']['virus_genome_annotation'] | uniq`
+        samtools -b view {input} {id} > {output}
+        """
 
-
-# Calculate Index for each genome
-rule bowtie2_index:
+rule split_bam_host:
     input:
-        "{genome_name}"
+        "mapping/combined/{sample}.bam"
     output:
-        "{genome_name}.1.bt2"
-    group:
-        "bowtie2_index"
-    log:
-        #"mapping/virus/logs/bowtie2_index.log"
-        "{genome_name}.bowtie2.log"
-    threads:
-        8
+        "mapping/combined/host/{sample}.bam"
     shell:
-        "bowtie2-build --threads {threads} {input} {input} 2>&1 |"
-        "tee -a {log}"
+        """
+        id=`cut -sf 1 config['entries']["{input}"]['combined']['virus_genome_annotation'] | uniq`
+        samtools idxstats {input} | cut -f 1 | grep -v {id} | xargs samtools view -b {input} > {output}
+        """
 
-
-# map unmapped fastq files against corresponding reference (except Mock files!!)
-rule bowtie2_mapping:
-    input:
-        reads="mapping/host/unmapped/{name}.fastq",
-        genome=lambda wildcards: config['entries'][wildcards.name]['combined']['virus_genome'] + ".1.bt2"
-    output:
-        sam=temp("mapping/virus/sam/{name}.sam"),
-        unmapped="mapping/virus/unmapped/{name}_unmapped.fastq",
-        #log="mapping/virus/logs/bowtie2_mapping.{name}.log"
-    group:
-        "bowtie2_mapping"
-    params:
-       genome_base=lambda wildcards: config['entries'][wildcards.name]['combined']['virus_genome']
-    log:
-       "mapping/virus/logs/bowtie2_mapping.{name}.log"
-    threads:
-        2
-    shell:
-        "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%BOWTIE2_ALIGNMENT_TYPE%% -x {params.genome_base} -U {input.reads} -S {output.sam} --un {output.unmapped} 2>&1 |"
-        "tee {log}"
-
-        
-rule star_index_bam:
-    input:
-        "mapping/host/{sample}.bam"
-    output:
-        "mapping/host/{sample}.bam.bai"
-    threads:
-        2
-    shell:
-        #"samtools sort -@ {threads} -o {output} {input} && samtools index {output}"
-        "samtools index -@ {threads} {input}"
-    
-
-rule bowtie2_sam_to_bam:
-    input:
-        "mapping/virus/sam/{name}.sam",
-    output:
-        bam="mapping/virus/{name}.bam",
-        bai="mapping/virus/{name}.bam.bai",
-        bam_unmapped="mapping/virus/unmapped/{name}_unmap.bam"
-    group:
-        "bowtie2_mapping"
-    wildcard_constraints:
-        name="[^\\/]+"
-    threads:
-        2
-    shell:
-        "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam};"
-        "samtools view -f 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
 
