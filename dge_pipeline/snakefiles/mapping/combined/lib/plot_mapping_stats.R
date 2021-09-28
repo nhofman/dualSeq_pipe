@@ -1,7 +1,8 @@
 # Parse arguments
 args <- commandArgs(T)
-stat_host_file <- args[match('--stat-host', args) + 1]
-stat_virus_file <- args[match('--stat-virus', args) + 1]
+stat_host <- args[match('--stat-host', args) + 1]
+stat_virus <- args[match('--stat-virus', args) + 1]
+output_folder <- args[match('--output', args) + 1] 
 
 for (package in c("ggplot2", "tidyr", "gtools", "dplyr")) {
   if (!(package %in% rownames(installed.packages()))) {
@@ -12,35 +13,53 @@ for (package in c("ggplot2", "tidyr", "gtools", "dplyr")) {
   }
 }
 
-# Mapping statistics for host
-mapping.stat <- read.table(stat_host_file, header = T, stringsAsFactors = F)
-mapping.stat <- separate(mapping.stat, "sample", c("virus","time","rep"), "_", F)
-mapping.stat$organism <- "host"
-mapping.stat$uniquely_mapped_percent <- as.numeric(mapping.stat$uniquely_mapped)/as.numeric(mapping.stat$total_reads)
-# Mapping statistics for virus
-mapping.stat.virus <- read.table(stat_virus_file, header = T, stringsAsFactors = F)
-mapping.stat.virus <- merge(mapping.stat.virus, mapping.stat[,c(1,5)], by = "sample")
-mapping.stat.virus$uniquely_mapped_percent <- as.numeric(mapping.stat.virus$aligned_1_time)/as.numeric(mapping.stat.virus$total_read)
-mapping.stat.virus <- separate(mapping.stat.virus, "sample", c("virus","time","rep"), "_", F)
-colnames(mapping.stat.virus)[colnames(mapping.stat.virus)=="aligned_1_time"] <- "uniquely_mapped"
-mapping.stat.virus$organism <- "virus"
+# read mapping statistics for every file
+stats.df <- Reduce(rbind,lapply(c(list.files(stat_host, ".*_stats.txt", full.names = T),list.files(stat_virus, ".*_stats.txt", full.names = T)), function(x){
+  tmp <- read.table(x, header = T, sep = "\t")
+  tmp$multimapped <- tmp$mapped - tmp$uniquely_mapped - tmp$mapped_to_both
+  tmp$mapped <- tmp$mapped - tmp$mapped_to_both
+  tmp$mapped_to_both <- sum(tmp$mapped_to_both)
+  return(tmp)
+}))
+write.table(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.tsv"), sep = "\t", row.names = F)
 
-mapping.stat.combi <- rbind(mapping.stat.virus[,c("virus","time","rep","uniquely_mapped_percent","uniquely_mapped","total_reads","organism")], 
-                            mapping.stat[,c("virus","time","rep","uniquely_mapped_percent","uniquely_mapped","total_reads","organism")])
-mapping.stat.combi <- mapping.stat.combi %>% group_by(virus,time,organism) %>% summarise_at("uniquely_mapped_percent", "mean")
+# transpose data frame for plotting
+stats.t <- data.frame("Sample"=character(), "Total"=integer(), "Count"=integer(), "Organism"=character(), "Category"=character())
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,3,6)], "mapped")))
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,4,6)], "uniquely mapped")))
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,7,6)], "multimapped")))
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[stats.df$group=="host",c(1,2,5,6)], "both")))
 
-plot.map <- ggplot(mapping.stat.combi[!grepl("Mock",mapping.stat.combi$virus),], aes(x=factor(time,levels=unique(mixedsort(time))), y=uniquely_mapped_percent, fill=organism, group=organism)) + 
-  geom_bar(stat = "identity", position = "stack") +
-  facet_wrap(~ virus, scales = "free_x") + xlab("Time") + ylab("Ratio of mapped reads") + ylim(c(0,1)) +
-  scale_fill_manual(breaks = c("host", "virus"), values=c("darkorange", "darkblue")) + labs(fill="Organism") +
-  theme(axis.title = element_text(size = 15), axis.text = element_text(size = 12), strip.text = element_text(size = 20, face = "bold"),
-        legend.text = element_text(size = 15), legend.title = element_text(size = 18, face = "bold"))
-ggsave("mapping_stat_dual.svg", plot.map, "svg", "mapping/", width = 12, height = 8)
+stats.t <- separate(stats.t, "Sample", c("Virus","Time", "Rep"),"_",F,extra = "merge")
+stats.t$Count_percent <- stats.t$Count/stats.t$Total
+stats.t$Category_2 <- paste(stats.t$Organism, stats.t$Category, sep = ":")
+stats.t$Time_Rep <- paste(stats.t$Time, stats.t$Rep, sep=":")
+# calculate mean of Count_percent for all replicates
+stats.t.mean <- stats.t %>% group_by(Virus,Time,Organism,Category) %>% summarise_at("Count_percent", "mean")
+stats.t.mean$Category_2 <- paste(stats.t.mean$Organism, stats.t.mean$Category, sep = ":")
 
-plot.map <- ggplot(mapping.stat.combi[grepl("Mock",mapping.stat.combi$virus),], aes(x=factor(time,levels=unique(mixedsort(time))), y=uniquely_mapped_percent, fill=organism, group=organism)) + 
-  geom_bar(stat = "identity", position = "stack") + 
-  facet_wrap(~ virus) + xlab("Time") + ylab("Ratio of mapped reads") + ylim(c(0,1)) +
-  scale_fill_manual(values=c("darkorange")) + labs(fill = "Organism") +
-  theme(axis.title = element_text(size = 15), axis.text = element_text(size = 12), strip.text = element_text(size = 20, face = "bold"),
-        legend.text = element_text(size = 15), legend.title = element_text(size = 18, face = "bold"))
-ggsave("mapping_stat_mock.svg", plot.map, "svg", "mapping/")
+# plot mapping statistic for host + virus samples
+p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Virus, scales = "free_x") +
+  xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="Category") +
+  scale_fill_manual(labels = c("Mapped to Both", "Host: Multimapped", "Host: Uniquely mapped", "Virus: Multimapped", "Virus: Uniquely mapped"), 
+                    values = c("red", "peachpuff2", "darkorange", "lightblue", "darkblue")) + 
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 15), strip.text = element_text(size = 15, face = "bold", vjust = 0.3),
+        legend.text = element_text(size = 15), legend.title = element_text(size = 18), strip.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+ggsave("mapping_statistic.svg", p, "svg", paste0(output_folder,"stats/"), width = 12, height = 8)
+ggsave("mapping_statistic.png", p, "png", paste0(output_folder,"stats/"), width = 14, height = 8)
+
+# plot mapping statistic for control samples
+p <- ggplot(stats.t.mean[!stats.t.mean$Category%in%c("mapped","both") & grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Virus, scales = "free_x") +
+  xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="Category") +
+  scale_fill_manual(labels = c("Host: Multimapped", "Host: Uniquely mapped"), 
+                    values = c("peachpuff2", "darkorange")) + 
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 15), strip.text = element_text(size = 15, face = "bold", vjust = 0.3),
+        legend.text = element_text(size = 15), legend.title = element_text(size = 18), strip.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+ggsave("mapping_statistic_mock.svg", p, "svg", paste0(output_folder,"stats/"), width = 12, height = 8)
+ggsave("mapping_statistic_mock.png", p, "png", paste0(output_folder,"stats/"), width = 14, height = 8)

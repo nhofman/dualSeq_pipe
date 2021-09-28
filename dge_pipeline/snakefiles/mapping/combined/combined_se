@@ -2,83 +2,36 @@ from os import listdir
 from os.path import isfile, splitext
 import csv, glob
 
+wildcard_constraints:
+  sample="[^/]+"
 
 rule all:
     input:
         #"mapping/virus/stats/mapping_stats.xlsx",
         expand("mapping/combined/host/{A}.bam", A=config['entries'].keys()),
-	expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+	      expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/combined/virus/stats/{sample}_stats.txt", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/combined/host/stats/{sample}_stats.txt", sample=config['entries'].keys()),
+        "mapping/combined/stats/mapping_statistic.tsv",
+        "mapping/combined/stats/mapping_statistic.svg"
         #expand("mapping/mapping_stat_{A}.svg", A=["dual","mock"])
-
-rule star_mapping_stats_tsv:
-    input:
-        expand("mapping/host/{sample}Log.final.out", sample=config['entries'].keys())
-    output:
-        "mapping/host/stats/mapping_stats.tsv"
-    group:
-        "star_statistics"
-    run:
-        with open(output[0], 'w') as summary_file:
-            summary_file.write("sample	total_reads	avg_input_read_length	uniquely_mapped	uniquely_mapped_percent	avg_mapped_read_length	num_splices	num_annotated_splices	num_GT/AG_splices	num_GC/AG_splices	num_AT/AC_splices	num_noncanonical_splices	mismatch_rate	deletion_rate	deletion_length	insertion_rate	insertion_length	multimapped	multimapped_percent	multimapped_toomany	multimapped_toomany_percent	unmapped_mismatches	unmapped_mismatches_percent	unmapped_tooshort	unmapped_tooshort_percent	unmapped_other	unmapped_other_percent	chimeric	chimeric_percent\n")
-            #pattern = {}
-            for i in input:
-                summary_file.write(i.replace("Log.final.out", "").replace("mapping/host/", ""))
-                #with open(i, "r") as input_file:
-                for line in shell("tail -n +5 {i}", iterable=True):
-                        if "|" in line:
-                            line_data = line.split("|")
-                            summary_file.write("	" + line_data[1].split()[0])
-                summary_file.write("\n")
-
-
-
-rule bowtie2_mapping_stats_tsv:
-    input:
-        expand("mapping/virus/logs/bowtie2_mapping.{name}.log", name=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        #expand("mapping/virus/ctrl/bowtie2_mapping.{ctrl}_{virus}.log", ctrl=[entry for entry in config['entries'].keys() if "Mock" in entry], virus=list(set([entry.split("_")[0] for entry in config['entries'].keys() if "Mock" not in entry])))
-    output:
-        "mapping/virus/stats/mapping_stats.tsv"
-    group:
-        "bowtie2_statistics"
-    shell:
-        """
-        echo "sample	reads	reads[%]	aligned_0_times	aligned_0_times[%]	aligned_1_time	aligned_1_time[%]	aligned_more_than_1_times	aligned_more_than_1_times[%]	overall_alignment_rate" > {output}
-        for i in {input}; do
-            sample=$(basename $i);
-            sample=${{sample%*.log}};
-            sample=${{sample#bowtie2_mapping.}};
-            echo -n $sample"	" >> {output};
-            tail -n+2 $i | sed -e 's/^[^0-9]*\([0-9]\{{1,\}}\) (\([0-9.]\{{1,\}}\)%).*/\\1\t\\2/' | sed -e 's/^\(.*\)%.*$/\\1/' | tr '\n' '\t' | sed -e 's/\t$//' >> {output};
-            echo >> {output};
-        done;
-        """
-
-rule plot_mapping_stat:
-    input:
-        stat_host="mapping/host/stats/mapping_stats.tsv",
-        stat_virus="mapping/virus/stats/mapping_stats.tsv"
-    output:
-        "mapping/mapping_stat_dual.svg",
-        "mapping/mapping_stat_mock.svg"
-    group: "plot_statistics"
-    shell:
-        "R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus}"
 
 def virus2genome(wildcards):
 	for sample in config['entries'].keys():
-		print(wildcards.virus)
-		if wildcards.virus == "None":
-			return("None")
-		if wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
+		if 'Mock' in sample:
+			if wildcards.virus == "None":
+				print(wildcards.virus)
+				return("None")
+		elif wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
 			return(config['entries'][sample]['combined']['virus_genome'])
-		
 
 rule star_index:
     input:
-        genome_host="%%HOST_GENOME%%",
-        genome_virus=virus2genome
+        genome_host="%%HOST_GENOME%%"
     output:
         directory("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}")
+    params:
+        genome_virus=lambda wildcards: virus2genome(wildcards)
     group:
         "star_index"
     log:
@@ -87,11 +40,15 @@ rule star_index:
         4
     shell:
         """
-	if[ {input.genome_virus} = "None" ] 
+	virus=`basename {params.genome_virus}`
+        echo $virus
+        #test=`$virus == "None"`
+        #echo $test
+        if [ $virus == "None" ] 
 	then
 		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 | tee {log}
 	else
-		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {input.genome_virus} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 | tee {log}
+		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.genome_virus} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 | tee {log}
 	fi
 	"""
 
@@ -124,29 +81,136 @@ rule star_mapping:
     shell:
         #--outReadsUnmapped Fastx
         "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx %%ADDITIONAL_STAR_OPTIONS%% 2>&1 |"
-        "tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"
+        " tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"
 
-
-rule split_bam_virus:
+rule index_bam:
     input:
         "mapping/combined/{sample}.bam"
     output:
-        "mapping/combined/virus/{sample}.bam"
+        "mapping/combined/{sample}.bam.bai"
+    log:
+        "mapping/combined/logs/index.{sample}.log"
+    shell:
+        "samtools index {input} 2>&1 | tee {log}"
+
+rule Mock:
+    input:
+        bam = "mapping/combined/{sample}.bam",
+        bai = "mapping/combined/{sample}.bam.bai"
+    output:
+        bam = "mapping/combined/host/{sample}.bam",
+        stat = "mapping/combined/host/stats/{sample}_stats.txt"
+    wildcard_constraints:
+        sample="Mock.*"
     shell:
         """
-        id=`cut -sf 1 config['entries']["{input}"]['combined']['virus_genome_annotation'] | uniq`
-        samtools -b view {input} {id} > {output}
+        mapped_host=$(samtools view -c -F 1284 {input.bam})
+        uniquely_host=$(samtools view -c -F 1284 -q 255 {input.bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
+        echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output.stat}
+        echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_host}}'\t'${{uniquely_host}}'\t0\thost' >> {output.stat}
+        mv {input.bam} {output.bam}
+        """
+
+rule split_bam_virus:
+    input:
+        bam="mapping/combined/{sample}.bam",
+        idx="mapping/combined/{sample}.bam.bai"
+    output:
+        bam="mapping/combined/virus/{sample}.bam",
+	      header=temp("mapping/combined/virus/{sample}_header.sam"),
+	      raw=temp("mapping/combined/virus/{sample}_raw.bam")
+    params:
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+    wildcard_constraints:
+        sample="(?!Mock).*"
+    shell:
+        """
+        id=`cut -sf 1 {params.genome} | uniq`
+        samtools view -b {input.bam} $id > {output.raw}
+	      samtools view -H {output.raw} | awk -v id="${{id}}" 'split(id,a," ");{{if ($0 ~ /^@SQ/){{ if($0 in a){{print $0}}}}else{{print $0}}}}' > {output.header}
+	      samtools reheader {output.header} {output.raw} > {output.bam}
         """
 
 rule split_bam_host:
     input:
-        "mapping/combined/{sample}.bam"
+        bam="mapping/combined/{sample}.bam",
+        idx="mapping/combined/{sample}.bam.bai"
     output:
         "mapping/combined/host/{sample}.bam"
+    params:
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+    wildcard_constraints:
+        sample="(?!Mock).*"
     shell:
         """
-        id=`cut -sf 1 config['entries']["{input}"]['combined']['virus_genome_annotation'] | uniq`
-        samtools idxstats {input} | cut -f 1 | grep -v {id} | xargs samtools view -b {input} > {output}
+        id=`cut -sf 1 {params.genome} | uniq`
+        id=`echo $id | sed -e 's/ /\\\\\\|/g'`
+        echo $id
+        samtools idxstats {input.bam} | cut -f 1 | grep -v $id | xargs samtools view -b {input.bam} > {output}
         """
 
+rule virusNames:
+    input:
+        virus="mapping/combined/virus/{sample}.bam",
+        host="mapping/combined/host/{sample}.bam"
+    output:
+        names=temp("mapping/combined/virus/{sample}_name.txt"),
+        diff=temp("mapping/combined/virus/{sample}_common.txt")
+    wildcard_constraints:
+        sample="(?!Mock).*"
+    shell:
+        """
+        samtools view {input.virus} | cut -f1 | sort | uniq > {output.names}
+        sed -i 's/$/\t/' {output.names}
+        samtools view {input.host} | grep -F -f {output.names} | cut -f1 | sort -u > {output.diff} || true
+        """
 
+rule statistics_host:
+    input:
+        names="mapping/combined/virus/{sample}_common.txt",
+        host_bam="mapping/combined/host/{sample}.bam",
+    output:
+        "mapping/combined/host/stats/{sample}_stats.txt"
+    wildcard_constraints:
+        sample="(?!Mock).*"
+    shell:
+        """
+        mapped_host=$(samtools view -c -F 1284 {input.host_bam})
+        uniquely_host=$(samtools view -c -F 1284 -q 255 {input.host_bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
+        both_host=$(samtools view -F 1284 {input.host_bam} | grep -F -f {input.names} | wc -l) || true
+        echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output}
+        echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_host}}'\t'${{uniquely_host}}'\t'${{both_host}}'\thost' >> {output}
+        """
+
+rule statistics_virus:
+    input:
+        names="mapping/combined/virus/{sample}_common.txt",
+        virus_bam="mapping/combined/virus/{sample}.bam",
+    output:
+        "mapping/combined/virus/stats/{sample}_stats.txt"
+    shell:
+        """
+        mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})
+        uniquely_virus=$(samtools view -c -F 1284 -q 255 {input.virus_bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
+        both_virus=$(samtools view -F 1284 {input.virus_bam} | grep -F -f {input.names} | wc -l) || true
+        echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output}
+        echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_virus}}'\t'${{uniquely_virus}}'\t'${{both_virus}}'\tvirus' >> {output}
+        """
+
+rule plot_statistics:
+    input:
+        stat_host="mapping/combined/host/stats/",
+        stat_virus="mapping/combined/virus/stats/"
+    output:
+        "mapping/combined/stats/mapping_statistic.tsv",
+        "mapping/combined/stats/mapping_statistic.svg",
+        "mapping/combined/stats/mapping_statistic_mock.svg"
+    params:
+        "mapping/combined/"
+    shell:
+        """
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus} --output {params}
+        """
