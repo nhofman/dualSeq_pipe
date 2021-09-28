@@ -43,16 +43,20 @@ create_feature_counts_statistics <- function(featureCountsLog) {
   dpctm <- melt(t(dpct))
   
   colnames(dm) <- c("Sample", "Group", "Reads")
+  dm <- separate(dm, "Sample", c("Virus","Time","Rep"), "_", F)
   dm$Group <- factor(dm$Group, levels = rev(levels(dm$Group)[order(levels(dm$Group))]))
   
-  assignment.absolute <- ggplot(dm[dm$Reads > 0,], aes(x = Sample, y = Reads)) +
+  assignment.absolute <- ggplot(dm[dm$Reads > 0,], aes(x = factor(Time, levels = mixedsort(unique(Time))), y = Reads)) +
     geom_bar(aes(fill = Group), stat = "identity", group = 1) +
+    facet_wrap(~ Virus, scales = "free_x") +
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
   
   colnames(dpctm) <- c("Sample", "Group", "Reads")
+  dpctm <- separate(dpctm, "Sample", c("Virus","Time","Rep"), "_", F)
   dpctm$Group = factor(dpctm$Group, levels = rev(levels(dpctm$Group)[order(levels(dpctm$Group))]))
-  assignment.relative <- ggplot(dpctm[dpctm$Reads > 0,], aes(x = Sample, y = Reads)) +
+  assignment.relative <- ggplot(dpctm[dpctm$Reads > 0,], aes(x = factor(Time, levels = mixedsort(unique(Time))), y = Reads)) +
     geom_bar(aes(fill = Group), stat = "identity", group = 1) +
+    facet_wrap(~ Virus, scales = "free_x") +
     theme(axis.text.x = element_text(angle = 90, hjust = 1)) #+
   #theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), legend.text = element_text(size=12, face="bold"))
   
@@ -84,7 +88,7 @@ deseqDataset <- estimateSizeFactors(deseqDataset)
 countdata.normalized <- counts(deseqDataset, normalized = TRUE)
 write.table(countdata.normalized, file = paste(output_folder, "counts_normalized.txt", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
 for(virus in unique(conditiontable$treatment)){
-  write.table(c(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2]), paste("/nfs/sfb1021/SFB1021_Virus/conditions_", virus, ".tsv", sep = ""), row.names = F, col.names = F)
+  write.table(c(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2]), paste(output_folder, "conditions_", virus, ".tsv", sep = ""), row.names = F, col.names = F)
   countdata.normalized.virus <- countdata.normalized[,grep(paste(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2], collapse = "|", sep = "|"), colnames(countdata.normalized))]
   countdata.normalized.virus <- as.data.frame(countdata.normalized.virus)
   countdata.normalized.virus <- cbind(Gene=rownames(countdata.normalized.virus), countdata.normalized.virus)
