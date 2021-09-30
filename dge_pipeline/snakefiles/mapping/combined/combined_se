@@ -98,7 +98,7 @@ rule Mock:
         bam = "mapping/combined/{sample}.bam",
         bai = "mapping/combined/{sample}.bam.bai"
     output:
-        bam = "mapping/combined/host/{sample}.bam",
+        #bam = "mapping/combined/host/{sample}.bam",
         stat = "mapping/combined/host/stats/{sample}_stats.txt"
     wildcard_constraints:
         sample="Mock.*"
@@ -109,7 +109,7 @@ rule Mock:
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
         echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output.stat}
         echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_host}}'\t'${{uniquely_host}}'\t0\thost' >> {output.stat}
-        mv {input.bam} {output.bam}
+        #cp {input.bam} {output.bam}
         """
 
 rule split_bam_virus:
@@ -117,9 +117,9 @@ rule split_bam_virus:
         bam="mapping/combined/{sample}.bam",
         idx="mapping/combined/{sample}.bam.bai"
     output:
-        bam="mapping/combined/virus/{sample}.bam",
-	      header=temp("mapping/combined/virus/{sample}_header.sam"),
-	      raw=temp("mapping/combined/virus/{sample}_raw.bam")
+        bam="mapping/combined/virus/{sample}.bam"
+	      #header=temp("mapping/combined/virus/{sample}_header.sam"),
+	      #raw=temp("mapping/combined/virus/{sample}_raw.bam")
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
@@ -127,9 +127,9 @@ rule split_bam_virus:
     shell:
         """
         id=`cut -sf 1 {params.genome} | uniq`
-        samtools view -b {input.bam} $id > {output.raw}
-	      samtools view -H {output.raw} | awk -v id="${{id}}" 'split(id,a," ");{{if ($0 ~ /^@SQ/){{ if($0 in a){{print $0}}}}else{{print $0}}}}' > {output.header}
-	      samtools reheader {output.header} {output.raw} > {output.bam}
+        samtools view -b {input.bam} $id > {output.bam}
+	      #samtools view -H {output.raw} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.header}
+	      #samtools reheader {output.header} {output.raw} > {output.bam}
         """
 
 rule split_bam_host:
@@ -146,7 +146,6 @@ rule split_bam_host:
         """
         id=`cut -sf 1 {params.genome} | uniq`
         id=`echo $id | sed -e 's/ /\\\\\\|/g'`
-        echo $id
         samtools idxstats {input.bam} | cut -f 1 | grep -v $id | xargs samtools view -b {input.bam} > {output}
         """
 
