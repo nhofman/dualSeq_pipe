@@ -109,7 +109,6 @@ rule Mock:
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
         echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output.stat}
         echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_host}}'\t'${{uniquely_host}}'\t0\thost' >> {output.stat}
-        #cp {input.bam} {output.bam}
         """
 
 rule split_bam_virus:
@@ -118,8 +117,6 @@ rule split_bam_virus:
         idx="mapping/combined/{sample}.bam.bai"
     output:
         bam="mapping/combined/virus/{sample}.bam"
-	      #header=temp("mapping/combined/virus/{sample}_header.sam"),
-	      #raw=temp("mapping/combined/virus/{sample}_raw.bam")
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
@@ -128,8 +125,6 @@ rule split_bam_virus:
         """
         id=`cut -sf 1 {params.genome} | uniq`
         samtools view -b {input.bam} $id > {output.bam}
-	      #samtools view -H {output.raw} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.header}
-	      #samtools reheader {output.header} {output.raw} > {output.bam}
         """
 
 rule split_bam_host:
@@ -201,8 +196,8 @@ rule statistics_virus:
 
 rule plot_statistics:
     input:
-        stat_host="mapping/combined/host/stats/",
-        stat_virus="mapping/combined/virus/stats/"
+        stat_host=expand("mapping/combined/host/stats/{sample}_stats.txt", sample=config['entries'].keys()),
+        stat_virus=expand("mapping/combined/virus/stats/{sample}_stats.txt", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
     output:
         "mapping/combined/stats/mapping_statistic.tsv",
         "mapping/combined/stats/mapping_statistic.svg",
@@ -211,5 +206,5 @@ rule plot_statistics:
         "mapping/combined/"
     shell:
         """
-        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host {input.stat_host} --stat-virus {input.stat_virus} --output {params}
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/combined/host/stats/ --stat-virus mapping/combined/virus/stats/ --output {params}
         """
