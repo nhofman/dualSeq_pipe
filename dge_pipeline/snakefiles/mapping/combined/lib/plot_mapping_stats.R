@@ -38,18 +38,25 @@ stats.t$Time_Rep <- paste(stats.t$Time, stats.t$Rep, sep=":")
 stats.t.mean <- stats.t %>% group_by(Virus,Time,Organism,Category) %>% summarise_at("Count_percent", "mean")
 stats.t.mean$Category_2 <- paste(stats.t.mean$Organism, stats.t.mean$Category, sep = ":")
 
+ncol.facet <- ceiling(sqrt(length(unique(stats.t.mean$Virus[!grepl("Mock",stats.t.mean$Virus)]))))
+nrow.facet <- ceiling(length(unique(stats.t.mean$Virus[!grepl("Mock",stats.t.mean$Virus)]))/ncol.facet)
+times <- length(unique(stats.t.mean$Time[stats.t.mean$Virus==stats.t.mean$Virus[1]]))
+
 # plot mapping statistic for host + virus samples
 p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
   geom_bar(stat = "identity") +
-  facet_wrap(~ Virus, scales = "free_x") +
+  facet_wrap(~ Virus, scales = "free_x", ncol = ncol.facet) +
   xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="Category") +
   scale_fill_manual(labels = c("Mapped to Both", "Host: Multimapped", "Host: Uniquely mapped", "Virus: Multimapped", "Virus: Uniquely mapped"), 
                     values = c("red", "peachpuff2", "darkorange", "lightblue", "darkblue")) + 
   theme(axis.title = element_text(size = 18), axis.text = element_text(size = 15), strip.text = element_text(size = 15, face = "bold", vjust = 0.3),
         legend.text = element_text(size = 15), legend.title = element_text(size = 18), strip.background = element_rect(fill = "white"),
         panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
-ggsave("mapping_statistic.svg", p, "svg", paste0(output_folder,"stats/"), width = 12, height = 8)
-ggsave("mapping_statistic.png", p, "png", paste0(output_folder,"stats/"), width = 14, height = 8)
+ggsave("mapping_statistic.svg", p, "svg", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+ggsave("mapping_statistic.png", p, "png", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+
+ncol.facet <- ceiling(sqrt(length(unique(stats.t.mean$Virus[grepl("Mock",stats.t.mean$Virus)]))))
+nrow.facet <- ceiling(length(unique(stats.t.mean$Virus[grepl("Mock",stats.t.mean$Virus)]))/ncol.facet)
 
 # plot mapping statistic for control samples
 p <- ggplot(stats.t.mean[!stats.t.mean$Category%in%c("mapped","both") & grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
@@ -61,5 +68,5 @@ p <- ggplot(stats.t.mean[!stats.t.mean$Category%in%c("mapped","both") & grepl("M
   theme(axis.title = element_text(size = 18), axis.text = element_text(size = 15), strip.text = element_text(size = 15, face = "bold", vjust = 0.3),
         legend.text = element_text(size = 15), legend.title = element_text(size = 18), strip.background = element_rect(fill = "white"),
         panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
-ggsave("mapping_statistic_mock.svg", p, "svg", paste0(output_folder,"stats/"), width = 12, height = 8)
-ggsave("mapping_statistic_mock.png", p, "png", paste0(output_folder,"stats/"), width = 14, height = 8)
+ggsave("mapping_statistic_mock.svg", p, "svg", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+ggsave("mapping_statistic_mock.png", p, "png", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
