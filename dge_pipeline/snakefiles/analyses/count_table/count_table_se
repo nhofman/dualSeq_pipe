@@ -4,14 +4,12 @@ from os.path import isfile
 
 rule all:
     input:
-        expand("analyses/virus/count_table/{A}_counts.txt", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        expand("analyses/virus/count_table/{A}_counts.txt.summary", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
         "analyses/host/count_table/counts.txt",
         "analyses/host/count_table/counts.txt.summary"
         
 rule count_reads_host:
     input:
-        expand("mapping/host/{host}.bam", host=config['entries'].keys())
+        expand("mapping/combined/host/{host}.bam", host=config['entries'].keys())
     output:
         counts = "analyses/host/count_table/counts.txt",
         summary = "analyses/host/count_table/counts.txt.summary"
@@ -23,21 +21,5 @@ rule count_reads_host:
         1
     shell:
         "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 | tee {log}"
+
             
-rule count_reads_virus:
-    input:
-        "mapping/virus/{A}.bam"
-    output:
-        counts = "analyses/virus/count_table/{A}_counts.txt",
-        summary = "analyses/virus/count_table/{A}_counts.txt.summary"
-    params:
-        gff = lambda wildcards: config['entries'][wildcards.A]['combined']['virus_genome_annotation']
-    group:
-        "count_reads_virus"
-    threads:
-        1
-    log:
-        log="analyses/virus/count_table/logs/{A}_featurecounts.log"
-    shell:
-       "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS_VIRUS%% -t '%%GFF_FEATURE_TYPE_VIRUS%%' -g '%%GFF_FEATURE_NAME_VIRUS%%' -a {params.gff} -o {output.counts} {input} 2>&1 |"
-       "tee {log}"

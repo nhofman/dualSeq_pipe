@@ -12,14 +12,14 @@ def getPath(sample_name):
 
 rule all:
     input:
-        expand("preprocessing/{A}.fastq.gz", A=sorted(config['entries'].keys()))
+        expand("preprocessing/{A}.fq.gz", A=sorted(config['entries'].keys()))
 
 rule trim_reads:
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
         #lambda wildcards: getPath(wildcards.sample)
     output:
-        "preprocessing/{sample}.fastq.gz",
+        "preprocessing/{sample}.fq.gz",
         "preprocessing/{sample}.fastp.json"
     group:
         "fastp"

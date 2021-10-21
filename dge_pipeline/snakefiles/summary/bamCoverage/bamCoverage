@@ -8,8 +8,8 @@ rule all:
 
 rule create_bigwig_host:
     input:
-        bam = "mapping/host/{sample}.bam",
-        bai = "mapping/host/{sample}.bam.bai"
+        bam = "mapping/combined/host/{sample}.bam",
+        bai = "mapping/combined/host/{sample}.bam.bai"
     output:
         "summary/bigwig/host/{sample}.bigWig"
     group: "bigwig_host"
@@ -20,8 +20,8 @@ rule create_bigwig_host:
 
 rule create_bigwig_virus:
     input:
-        bam = "mapping/virus/{sample}.bam",
-        bai = "mapping/virus/{sample}.bam.bai"
+        bam = "mapping/combined/virus/{sample}.bam",
+        bai = "mapping/combined/virus/{sample}.bam.bai"
     output:
         "summary/bigwig/virus/{sample}.bigWig"
     group: "bigwig_virus"

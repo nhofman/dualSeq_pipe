@@ -1,15 +1,15 @@
 
 rule all:
 	input:
-		expand("variant_analyses/variant_calling/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-                #expand("variant_analyses/variant_calling/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
+		expand("variant_analyses_combined/variant_calling/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+    #expand("variant_analyses/variant_calling/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
 
 rule call_variant:
 	input:
-		bam="variant_analyses/preprocessing/{sample}_indel.bam",
+		bam="variant_analyses_combined/preprocessing/{sample}_indel.bam",
 		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
 	output:
-		"variant_analyses/variant_calling/{sample}.vcf"
+		"variant_analyses_combined/variant_calling/{sample}.vcf"
 	threads: 1
 	group: "lofreq"
 	shell:
@@ -23,7 +23,6 @@ rule call_variant:
 #	shell:
 # 
 #
-
 
 def get_virus_vcf(wildcards):
     vcf = list()

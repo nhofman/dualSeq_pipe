@@ -2,13 +2,16 @@ from os import listdir
 from os.path import isfile, splitext
 import csv, glob
 
+localrules: plot_statistics
+
 wildcard_constraints:
   sample="[^/]+"
 
 rule all:
     input:
         #"mapping/virus/stats/mapping_stats.xlsx",
-        expand("mapping/combined/host/{A}.bam", A=config['entries'].keys()),
+        expand("mapping/combined/{A}.bam", A=config['entries'].keys()),
+        expand("mapping/combined/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
 	      expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/virus/stats/{sample}_stats.txt", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/host/stats/{sample}_stats.txt", sample=config['entries'].keys()),
@@ -38,6 +41,7 @@ rule star_index:
         "mapping/combined/logs/star_index_"+"{virus}"+".log"
     threads:
         4
+    #resources: cpus=4, mem_mb=2000
     shell:
         """
 	virus=`basename {params.genome_virus}`
@@ -78,6 +82,7 @@ rule star_mapping:
         "mapping/combined/logs/star_mapping.{sample}.log"
     threads:
         2
+    #resources: cpus=2, mem_mb=30000, time_min=40
     shell:
         #--outReadsUnmapped Fastx
         "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx %%ADDITIONAL_STAR_OPTIONS%% 2>&1 |"
@@ -90,6 +95,7 @@ rule index_bam:
         "mapping/combined/{sample}.bam.bai"
     log:
         "mapping/combined/logs/index.{sample}.log"
+    #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
 
@@ -98,10 +104,11 @@ rule Mock:
         bam = "mapping/combined/{sample}.bam",
         bai = "mapping/combined/{sample}.bam.bai"
     output:
-        #bam = "mapping/combined/host/{sample}.bam",
+        bam = "mapping/combined/host/{sample}.bam",
         stat = "mapping/combined/host/stats/{sample}_stats.txt"
     wildcard_constraints:
         sample="Mock.*"
+    #resources: cpus=1, mem_mb=4000
     shell:
         """
         mapped_host=$(samtools view -c -F 1284 {input.bam})
@@ -109,6 +116,7 @@ rule Mock:
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
         echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output.stat}
         echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_host}}'\t'${{uniquely_host}}'\t0\thost' >> {output.stat}
+        cp {input.bam} {output.bam}
         """
 
 rule split_bam_virus:
@@ -116,15 +124,18 @@ rule split_bam_virus:
         bam="mapping/combined/{sample}.bam",
         idx="mapping/combined/{sample}.bam.bai"
     output:
-        bam="mapping/combined/virus/{sample}.bam"
+        bam="mapping/combined/virus/{sample}.bam",
+        bai="mapping/combined/virus/{sample}.bam.bai"
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
         sample="(?!Mock).*"
+    #resources: cpus=1, mem_mb=4000
     shell:
         """
         id=`cut -sf 1 {params.genome} | uniq`
         samtools view -b {input.bam} $id > {output.bam}
+        samtools index {output.bam}
         """
 
 rule split_bam_host:
@@ -137,12 +148,24 @@ rule split_bam_host:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
         sample="(?!Mock).*"
+    #resources: cpus=1, mem_mb=4000
     shell:
         """
         id=`cut -sf 1 {params.genome} | uniq`
         id=`echo $id | sed -e 's/ /\\\\\\|/g'`
         samtools idxstats {input.bam} | cut -f 1 | grep -v $id | xargs samtools view -b {input.bam} > {output}
         """
+
+rule index_bam_host:
+    input:
+        "mapping/combined/host/{sample}.bam"
+    output:
+        "mapping/combined/host/{sample}.bam.bai"
+    log:
+        "mapping/combined/host/logs/index.{sample}.log"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        "samtools index {input} 2>&1 | tee {log}"
 
 rule virusNames:
     input:
@@ -153,6 +176,7 @@ rule virusNames:
         diff=temp("mapping/combined/virus/{sample}_common.txt")
     wildcard_constraints:
         sample="(?!Mock).*"
+    #resources: cpus=1, mem_mb=4000
     shell:
         """
         samtools view {input.virus} | cut -f1 | sort | uniq > {output.names}
@@ -168,6 +192,7 @@ rule statistics_host:
         "mapping/combined/host/stats/{sample}_stats.txt"
     wildcard_constraints:
         sample="(?!Mock).*"
+    #resources: cpus=1, mem_mb=4000
     shell:
         """
         mapped_host=$(samtools view -c -F 1284 {input.host_bam})
@@ -184,6 +209,7 @@ rule statistics_virus:
         virus_bam="mapping/combined/virus/{sample}.bam",
     output:
         "mapping/combined/virus/stats/{sample}_stats.txt"
+    #resources: cpus=1, mem_mb=2000
     shell:
         """
         mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})

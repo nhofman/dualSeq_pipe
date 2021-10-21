@@ -11,7 +11,7 @@ ont <- args[match('--ont', args) + 1]
 load(rdata)
 
 source(paste0(file.dir, "/enrichment.R"))
-source(paste0(file.dir, "/STRINGdb.R"))
+#source(paste0(file.dir, "/STRINGdb.R"))
 
 db <- strsplit(db, ",")[[1]]
 KEGG <- "KEGG" %in% db

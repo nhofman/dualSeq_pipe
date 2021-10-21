@@ -4,7 +4,7 @@ from os.path import isfile
 def getConditions():
     return set([seqRun['deseq2']['condition'] for seqRun in config['entries'].values()])
 
-localrules: deseq2__create_conditions_human, deseq2__create_conditions_virus
+localrules: deseq2__create_conditions_human
 
 
 rule all:
@@ -12,7 +12,7 @@ rule all:
         "analyses/host/deseq2/counts.txt",
         "analyses/host/deseq2/counts_normalized.txt",
         "analyses/host/deseq2/deseq2.RData",
-        "analyses/host/deseq2/GSEA",
+        #"analyses/host/deseq2/GSEA",
         #"analyses/host/deseq2/STRING/"
         #expand('analyses/{human_or_virus}/deseq2/summary/{COND}.xlsx', COND=getConditions())
 
@@ -31,7 +31,7 @@ rule all:
 
 rule count_reads_host:
     input:
-        expand("mapping/host/{host}.bam", host=config['entries'].keys())
+        expand("mapping/combined/host/{host}.bam", host=config['entries'].keys())
     output:
         counts = "analyses/host/deseq2/counts.txt",
         summary = "analyses/host/deseq2/counts.txt.summary"
@@ -73,11 +73,12 @@ rule deseq2_human:
     log:
         log="analyses/host/deseq2/logs/deseq2.log"
     threads:
-        16
+        1
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
-        
+
+"""       
 rule functional_analysis:
     input:
         rdata="analyses/host/deseq2/deseq2.RData"
@@ -91,6 +92,7 @@ rule functional_analysis:
     log:
         log="analyses/host/deseq2/logs/functional_analysis.log"
     threads:
-        16
+        1
     shell:
         "R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --rdata {input.rdata} --db %%DB%% --ont %%ONT%% 2>&1 | tee {log}"
+"""
