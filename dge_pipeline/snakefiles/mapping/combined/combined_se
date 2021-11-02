@@ -125,7 +125,8 @@ rule split_bam_virus:
         idx="mapping/combined/{sample}.bam.bai"
     output:
         bam="mapping/combined/virus/{sample}.bam",
-        bai="mapping/combined/virus/{sample}.bam.bai"
+        bai="mapping/combined/virus/{sample}.bam.bai",
+        sam=temp("mapping/combined/virus/{sample}.sam")
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
@@ -134,7 +135,9 @@ rule split_bam_virus:
     shell:
         """
         id=`cut -sf 1 {params.genome} | uniq`
-        samtools view -b {input.bam} $id > {output.bam}
+        samtools view -H {input.bam} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.sam}
+        samtools view {input.bam} $id >> {output.sam}
+        samtools view -hb {output.sam} > {output.bam}
         samtools index {output.bam}
         """
 
@@ -143,7 +146,8 @@ rule split_bam_host:
         bam="mapping/combined/{sample}.bam",
         idx="mapping/combined/{sample}.bam.bai"
     output:
-        "mapping/combined/host/{sample}.bam"
+        "mapping/combined/host/{sample}.bam",
+        #temp("mapping/combined/host/{sample}.sam")
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
