@@ -230,15 +230,17 @@ colnames(count.genes) <- c("Sample", "Count","Direction","LFC_cutoff")
 count.genes <- as.data.frame(count.genes)
 write.table(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.csv", sep = ""), sep = "\t", row.names = FALSE, col.names = TRUE)
 
-count.genes <- separate(count.genes, "Sample", c("Virus","Time"), "_", F)
+count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_]*_vs_", F), "Mock", c("Control","Time"),"_")
+count.genes <- separate(count.genes, "Sample", c("Virus","Control"), "_[^_]*_vs_", F)
 count.genes$Count <- as.numeric(count.genes$Count) 
+count.genes <- count.genes[mixedorder(count.genes$Time),]
 for(LFC.cut in unique(count.genes$LFC_cutoff)){
-  p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = c("3h","6h","12h","24h","48h","BPL")), group=Direction, fill=Direction)) + 
+  p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(paste(Control,Time,sep="_"), levels = unique(paste(Control,Time,sep="_"))), group=Direction, fill=Direction)) + 
     geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
     scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
     geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
-  ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
-  ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 10, height = 7)
+  #ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
+  ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 14, height = 7)
 }
 
 save.image(paste(output_folder, "/deseq2.RData", sep = ""))
