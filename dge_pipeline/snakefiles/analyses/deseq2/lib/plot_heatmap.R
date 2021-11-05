@@ -45,14 +45,16 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   }
   
   color <- vector()
+  legend.limit <- max(legend.limit.up, abs(legend.limit.down))
   if(-1%in%sign(unlist(xx))){
-    color_down <- colorRampPalette(c("blue", "white"))(length(seq(legend.limit.down, 0, break_step))) #blue(n=length(breakSeq)-1) #, low="blue", mid = "white", high="red")
+    color_down <- colorRampPalette(c("blue", "white"))(length(seq(-legend.limit, 0, break_step))) #blue(n=length(breakSeq)-1) #, low="blue", mid = "white", high="red")
     color <- c(color,color_down)
   }
   if(1%in%sign(unlist(xx))){
-    color_up <- colorRampPalette(c("white", "red"))(length(seq(0, legend.limit.up, break_step)))
-    color <- c(color,color_up)
+    color_up <- colorRampPalette(c("white", "red"))(length(seq(0, legend.limit, break_step)))
+    color <- c(color,color_up[-1])
   }
+  col_fun = circlize::colorRamp2(c(-legend.limit, 0, legend.limit), c("blue", "white", "red"))
   
   if(!is.null(cellwidth) & !is.null(cellheight)){
     cellwidth <- ncol(xx)*unit(cellwidth, "pt")
@@ -65,7 +67,7 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   if((nrow(xx)>1 | ncol(xx)>1) & plot.fig == T){
     pdf(filename)
     draw(Heatmap(as.matrix(xx), show_row_names = rowNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), 
-                 top_annotation = ca, show_column_names = colNames, col = color, width = cellwidth, height = cellheight, column_names_rot = 0,
+                 top_annotation = ca, show_column_names = colNames, col = col_fun, width = cellwidth, height = cellheight, column_names_rot = 0,
                  cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
                  heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), column_names_gp = gpar(fontsize = fontsize_col), row_names_gp = gpar(fontsize = fontsize_row), ...))
     for(i in 1:length(unique(col_split))){

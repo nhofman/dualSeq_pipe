@@ -21,7 +21,7 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
       ora_go <- try(enrichGO(gene_bitr$ENTREZID, keyType = "ENTREZID", OrgDb = "org.Hs.eg.db", ont = o, readable = T, pvalueCutoff = p.cut))
       if(class(ora_go)!="try-error"){
         if(nrow(data.frame(ora_go)) > 0){
-          plot_go <- enrichplot::dotplot(ora_go, showCategory = 20, font.size = label.size) + ggtitle(main) +
+          plot_go <- dotplot(ora_go, showCategory = 20, font.size = label.size, orderBy = "GeneRatio") + ggtitle(main) +
             theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
                   axis.title = element_text(size = legend.title.size, face = "bold", family = "sans")) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
           ggsave(paste(filename,"_",o,"_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
@@ -36,7 +36,7 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
     if(class(ora_kegg)!="try-error"){
       if(nrow(data.frame(ora_kegg)) > 0){
         ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
-        plot_kegg <- enrichplot::dotplot(ora_kegg, showCategory = 20, font.size = label.size) + ggtitle(main) +
+        plot_kegg <- dotplot(ora_kegg, showCategory = 20, font.size = label.size,  orderBy = "GeneRatio") + ggtitle(main) +
           theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
                 axis.title = element_text(size = label.size, face = "bold", family = "sans")) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_KEGG_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
@@ -49,7 +49,7 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
     ora_reactome <- try(enrichPathway(gene_bitr$ENTREZID, organism = "human", readable = T, pvalueCutoff = p.cut))
     if(class(ora_reactome)!="try-error"){
       if(nrow(data.frame(ora_reactome)) > 0){
-        plot_reactome <- enrichplot::dotplot(ora_reactome, showCategory = 20, font.size = label.size) + ggtitle(main) +
+        plot_reactome <- dotplot(ora_reactome, showCategory = 20, font.size = label.size,  orderBy = "GeneRatio") + ggtitle(main) +
           theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
                 axis.title = element_text(size = legend.title.size, face = "bold", family = "sans")) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_REACTOME_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)
