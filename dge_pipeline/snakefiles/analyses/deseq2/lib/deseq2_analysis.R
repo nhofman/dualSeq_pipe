@@ -31,7 +31,7 @@ annotate <- function(genes, keytype){
   return(genes.ann)
 }
 
-# Bar charts showing the assignment of allignments to genes (featureCounts statistics)
+# Bar charts showing the assignment of alignments to genes (featureCounts statistics)
 create_feature_counts_statistics <- function(featureCountsLog) {
   d <- read.table(featureCountsLog, header = T, row.names = 1)
   colnames(d) <- gsub("mapping\\..*\\.(.*)\\.bam", "\\1", colnames(d))
@@ -43,22 +43,30 @@ create_feature_counts_statistics <- function(featureCountsLog) {
   dpctm <- melt(t(dpct))
   
   colnames(dm) <- c("Sample", "Group", "Reads")
-  dm <- separate(dm, "Sample", c("Virus","Time","Rep"), "_", F)
   dm$Group <- factor(dm$Group, levels = rev(levels(dm$Group)[order(levels(dm$Group))]))
+  dm <- separate(dm, "Sample", c("Virus","Time"), "_", F, extra = "merge")
   
   assignment.absolute <- ggplot(dm[dm$Reads > 0,], aes(x = factor(Time, levels = mixedsort(unique(Time))), y = Reads)) +
     geom_bar(aes(fill = Group), stat = "identity", group = 1) +
-    facet_wrap(~ Virus, scales = "free_x") +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    facet_wrap(~ Virus, scales = "free_x") + xlab("Time_Replicate") +
+    theme(axis.title.x = element_text(size = 20, face = "bold", margin= margin(t=10,r=0,b=0,l=0)), 
+          axis.title.y = element_text(size = 20, face = "bold", margin = margin(t=0,r=10,b=0,l=0)),
+          axis.text = element_text(size = 16), axis.text.x = element_text(angle = 90, hjust = 1),
+          strip.text = element_text(size = 20, face = "bold"),
+          legend.text = element_text(size = 16), legend.title = element_text(size = 20))
+  #theme(axis.text.x = element_text(angle = 90, hjust = 1))
   
   colnames(dpctm) <- c("Sample", "Group", "Reads")
-  dpctm <- separate(dpctm, "Sample", c("Virus","Time","Rep"), "_", F)
   dpctm$Group = factor(dpctm$Group, levels = rev(levels(dpctm$Group)[order(levels(dpctm$Group))]))
+  dpctm <- separate(dpctm, "Sample", c("Virus","Time"), "_", F, extra = "merge")
   assignment.relative <- ggplot(dpctm[dpctm$Reads > 0,], aes(x = factor(Time, levels = mixedsort(unique(Time))), y = Reads)) +
     geom_bar(aes(fill = Group), stat = "identity", group = 1) +
-    facet_wrap(~ Virus, scales = "free_x") +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) #+
-  #theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), legend.text = element_text(size=12, face="bold"))
+    facet_wrap(~ Virus, scales = "free_x") + xlab("Time_Replicate") +
+    theme(axis.title.x = element_text(size = 20, face = "bold", margin= margin(t=10,r=0,b=0,l=0)), 
+          axis.title.y = element_text(size = 20, face = "bold", margin = margin(t=0,r=10,b=0,l=0)),
+          axis.text = element_text(size = 16), axis.text.x = element_text(angle = 90, hjust = 1),
+          strip.text = element_text(size = 20, face = "bold"),
+          legend.text = element_text(size = 16), legend.title = element_text(size = 20))
   
   return(list(assignment.absolute, assignment.relative))
 }
@@ -87,13 +95,13 @@ deseqDataset <- DESeqDataSetFromMatrix(countData = countdata, colData = conditio
 deseqDataset <- estimateSizeFactors(deseqDataset)
 countdata.normalized <- counts(deseqDataset, normalized = TRUE)
 write.table(countdata.normalized, file = paste(output_folder, "counts_normalized.txt", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
-for(virus in unique(conditiontable$treatment)){
-  write.table(c(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2]), paste(output_folder, "conditions_", virus, ".tsv", sep = ""), row.names = F, col.names = F)
-  countdata.normalized.virus <- countdata.normalized[,grep(paste(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2], collapse = "|", sep = "|"), colnames(countdata.normalized))]
-  countdata.normalized.virus <- as.data.frame(countdata.normalized.virus)
-  countdata.normalized.virus <- cbind(Gene=rownames(countdata.normalized.virus), countdata.normalized.virus)
-  write.table(countdata.normalized.virus, file = paste(output_folder, "counts_normalized_", virus, ".tsv", sep = ""), sep = "\t", row.names = F)
-}
+#for(virus in unique(conditiontable$treatment)){
+#  write.table(c(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2]), paste(output_folder, "conditions_", virus, ".tsv", sep = ""), row.names = F, col.names = F)
+#  countdata.normalized.virus <- countdata.normalized[,grep(paste(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2], collapse = "|", sep = "|"), colnames(countdata.normalized))]
+#  countdata.normalized.virus <- as.data.frame(countdata.normalized.virus)
+#  countdata.normalized.virus <- cbind(Gene=rownames(countdata.normalized.virus), countdata.normalized.virus)
+#  write.table(countdata.normalized.virus, file = paste(output_folder, "counts_normalized_", virus, ".tsv", sep = ""), sep = "\t", row.names = F)
+#}
 
 # Plot raw countdata and normalized countdata 
 pdf(paste(output_folder, "/counts.pdf", sep = ""), width = 25, height=15)
@@ -231,7 +239,7 @@ count.genes <- as.data.frame(count.genes)
 write.table(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.csv", sep = ""), sep = "\t", row.names = FALSE, col.names = TRUE)
 
 count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_]*_vs_", F), "Mock", c("Control","Time"),"_")
-count.genes <- separate(count.genes, "Sample", c("Virus","Control"), "_[^_]*_vs_", F)
+#count.genes <- separate(count.genes, "Sample", c("Virus","Control"), "_[^_]*_vs_", F)
 count.genes$Count <- as.numeric(count.genes$Count) 
 count.genes <- count.genes[mixedorder(count.genes$Time),]
 for(LFC.cut in unique(count.genes$LFC_cutoff)){
