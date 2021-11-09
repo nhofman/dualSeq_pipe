@@ -76,6 +76,7 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
          })
     }
     dev.off()
+    system(paste0("inkscape -l ", filename, ".svg ", filename))
     # heatmap.plot <- pheatmap(xx, cluster_cols=colClust, cluster_rows=rowClust, clustering_distance_rows = distMethod, clustering_distance_cols = distMethod,
     #                          clustering_method = clusterMethod, annotation_col=annCol, annotation_row = annRow, 
     #                          breaks = breakSeq, color = color, annotation_colors = annotation_colors,
