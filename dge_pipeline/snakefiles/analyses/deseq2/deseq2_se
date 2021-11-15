@@ -76,7 +76,7 @@ rule deseq2_human:
         1
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
-        "--featcounts-log {input.feature_counts_log} 2>&1 | tee {log}"
+        "--featcounts-log {input.feature_counts_log} --color %%COLOR%% --rRNA %%RRNA%% 2>&1 | tee {log}"
 
 """       
 rule functional_analysis:

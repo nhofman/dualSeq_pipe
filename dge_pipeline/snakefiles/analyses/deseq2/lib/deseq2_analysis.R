@@ -8,6 +8,8 @@ comparisons_file <- args[match('--comparisons', args) + 1]
 feature_counts_log_file <- args[match('--featcounts-log', args) + 1]
 output_folder <- args[match('--output', args) + 1]
 threads <- args[match('--threads', args) + 1]
+color_file <- args[match('--color', args) + 1]
+rRNA_file <- args[match('--rRNA', args) + 1]
 
 # required packages
 for (package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr", "openxlsx", "org.Hs.eg.db")) {
@@ -71,11 +73,18 @@ create_feature_counts_statistics <- function(featureCountsLog) {
   return(list(assignment.absolute, assignment.relative))
 }
 
+
 # Import count table (featureCounts)
 countdata.raw <- read.csv(counttable_file, header = TRUE, row.names = 1, sep = "\t", comment.char = "#")
 countdata <- as.matrix(countdata.raw[, c(6 : length(countdata.raw))])
 colnames(countdata) <- as.vector(sapply(colnames(countdata), function(x) gsub("mapping\\..*\\.(.*)\\.bam", "\\1", x)))
 countdata <- countdata[,mixedorder(colnames(countdata))]
+# Import rRNA genes and filter them from countdata
+if(rRNA_file != "NULL"){
+  rRNA <- read.table(rRNA_file, header = FALSE, stringsAsFactors = FALSE)
+  rRNA <- rRNA$V1
+  countdata <- countdata[!rownames(countdata) %in% rRNA,] #countdata[-grep("RNA[0-9-]+S", rownames(countdata)),]
+}
 
 # Import condition file
 conditiontable <- read.csv(condition_file, header = FALSE, row.names = 1, sep = "\t", comment.char = "#", stringsAsFactors = FALSE)
@@ -118,18 +127,38 @@ deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
 
 #deseq.results[ rowSums(counts(deseq.results)) == 0, ] <- 1 # replace rows that have no reads with pseudocount
 
+# Import color
+if(color_file != "NULL"){
+  color.df <- read.table(color_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+  color <- color.df[,2]
+  names(color) <- color.df[,1]
+}
+
 # Plot PCA
-pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE) 
-#shape <- c(1:length(unique(pca$time)))
-plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = time)) + geom_point(size=3)
-ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder)
+shape <- if(length(unique(conditiontable$time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$time))) }else{ c(1:length(unique(conditiontable$time)))}
+names(shape) <- unique(conditiontable$time)
+pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE)
+plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = factor(time, levels = mixedsort(as.character(unique(conditiontable$time)))))) + 
+  geom_point(size=3) + labs(color = "Treatment", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
+  theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"),  
+        legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank())
+if(exists("color")){
+  plot_PCA <- plot_PCA + scale_colour_manual(values=color)
+}
+ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder, width = 10, height = 6)
 
 for (time in unique(conditiontable$time)) {
-    pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
-    plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = treatment)) + geom_point(size=3)
-    ggsave(paste0("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
-    print(time)
+  pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
+  plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = treatment, shape = time)) + geom_point(size=3) + labs(color = "Treatment", shape = "Time") +
+    theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"),  
+          legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank())
+  scale_shape_manual(values=shape)
+  if(exists("color")){
+    plot_PCA <- plot_PCA + scale_colour_manual(values=color)
+  }
+  ggsave(paste0("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
 }
+
 
 # Heatmap showing correlations between samples
 if ("pheatmap" %in% rownames(installed.packages())) {

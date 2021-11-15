@@ -36,6 +36,16 @@ optional_settings:
     type: "string"
     default: ""
 
+  color:
+    description: "File path to table assigning a color to each virus"
+    type: "file"
+    default: "NULL"
+
+  rRNA:
+    description: "Path to list of rRNA genes"
+    type: "file"
+    default: "NULL"
+
   db:
     description: "Database(s) used for functional analysis, has to be one or more of KEGG, GO and Reactome. Default: KEGG"
     type: "string"
