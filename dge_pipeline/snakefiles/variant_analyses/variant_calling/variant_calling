@@ -1,57 +1,20 @@
 
 rule all:
 	input:
-		expand("variant_analyses_combined/variant_calling/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+		expand("variant_analyses/variant_calling/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
     #expand("variant_analyses/variant_calling/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
 
 rule call_variant:
 	input:
-		bam="variant_analyses_combined/preprocessing/{sample}_indel.bam",
+		bam="variant_analyses/preprocessing/{sample}_indel.bam",
 		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
 	output:
-		"variant_analyses_combined/variant_calling/{sample}.vcf"
+		"variant_analyses/variant_calling/{sample}.vcf"
 	threads: 1
 	group: "lofreq"
 	shell:
 		"lofreq call %%ADDITIONAL_LOFREQ_OPTIONS%% -f {input.genome} -o {output} {input.bam}"
 
-#rule annotate_variant:
-#	input:
-#		vcf="variant_analyses/variant_calling/{sample}.vcf"
-#	output:
-#
-#	shell:
-# 
-#
 
-def get_virus_vcf(wildcards):
-    vcf = list()
-    for entry in config['entries'].keys():
-        if wildcards.virus in entry:
-            vcf.append("variant_analyses/variant_calling/"+entry+".vcf")
-            gff = config['entries'][entry]['combined']['virus_genome_annotation']
-    vcf.insert(0,gff)
-    return vcf
-
-def get_virus_bw(wildcards):
-    bw = list()
-    for entry in config['entries'].keys():
-        if wildcards.virus in entry:
-            bw.append("summary/bigwig/virus/"+entry+".bigWig")
-    return bw
-
-
-
-rule visualize:
-        input:
-                vcf=get_virus_vcf,
-                bw=get_virus_bw
-        output:
-                "variant_analyses/variant_calling/{virus}_SNP.svg",
-                "variant_analyses/variant_calling/{virus}_Coverage.svg"
-        run:
-                gff=input.vcf[0]
-                vcf=','.join(input.vcf[1:])
-                shell("R --vanilla --file=lib/plot_snp.R --args --gff {gff} --vcf {vcf}")
 
 		 

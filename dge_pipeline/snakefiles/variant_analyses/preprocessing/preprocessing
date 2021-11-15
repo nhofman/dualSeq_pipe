@@ -1,8 +1,8 @@
 rule all:
   input:
-    expand("variant_analyses_combined/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-    expand("variant_analyses_combined/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-    expand("variant_analyses_combined/preprocessing/{sample}_dedup.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+    expand("variant_analyses/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+    expand("variant_analyses/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+    expand("variant_analyses/preprocessing/{sample}_dedup.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
 
 rule remove_spliced:
   input:
@@ -20,8 +20,8 @@ rule markDuplicates:
   input:
     "mapping/combined/virus/{sample}_noSplice.bam"
   output:
-    bam="variant_analyses_combined/preprocessing/{sample}_dedup.bam",
-    metric="variant_analyses_combined/preprocessing/Duplicate_Metric/{sample}"
+    bam="variant_analyses/preprocessing/{sample}_dedup.bam",
+    metric="variant_analyses/preprocessing/Duplicate_Metric/{sample}"
   threads: 1
   group: "dedup"
   shell:
@@ -31,10 +31,10 @@ rule markDuplicates:
 # correct for mapping errors
 rule realign:
   input:
-    bam="variant_analyses_combined/preprocessing/{sample}_dedup.bam",
+    bam="variant_analyses/preprocessing/{sample}_dedup.bam",
     genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
   output:
-    "variant_analyses_combined/preprocessing/{sample}_realign.bam"
+    "variant_analyses/preprocessing/{sample}_realign.bam"
   threads: 1
   group: "realign"
   shell:
@@ -43,10 +43,10 @@ rule realign:
 # Insert indel qualities
 rule indel_qual:
   input:
-    bam="variant_analyses_combined/preprocessing/{sample}_realign.bam",
+    bam="variant_analyses/preprocessing/{sample}_realign.bam",
     genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
   output:
-    "variant_analyses_combined/preprocessing/{sample}_indel.bam"
+    "variant_analyses/preprocessing/{sample}_indel.bam"
   threads: 1
   group: "indel_qual"
   shell:
