@@ -5,7 +5,7 @@ library(ggplot2)
 #library(stringr)
 
 # Over-representation analysis for a set of genes
-calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05, label.size = 12, 
+calc_ora <- function(geneset, main = "", filename, out.dir = "ORA/", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05, label.size = 12, 
                      legend.size = 8, legend.title.size = 8, keytype = "SYMBOL", width = 18, height = 15, imagetype = "svg"){
   if(!dir.exists(out.dir)){
     dir.create(out.dir)
@@ -25,7 +25,7 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
             theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
                   axis.title = element_text(size = legend.title.size, face = "bold", family = "sans"), axis.text.y = element_text(hjust = 1)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
           ggsave(paste(filename,"_",o,"_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
-	  system(paste0("inkscape -l ", out.dir, filename, "_", o, "_dotplot.svg ", out.dir, filename, "_", o, "_dotplot.pdf"))
+	  system(paste0("inkscape -l ", out.dir, "/", filename, "_", o, "_dotplot.svg ", out.dir, "/", filename, "_", o, "_dotplot.pdf"))
           write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
         }
         ora.list[[o]] <- ora_go
@@ -41,7 +41,7 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
           theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
                 axis.title = element_text(size = label.size, face = "bold", family = "sans")) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_KEGG_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
-	system(paste0("inkscape -l ", out.dir, filename, "_KEGG_dotplot.svg ", out.dir, filename, "_KEGG_dotplot.pdf"))
+	system(paste0("inkscape -l ", out.dir, "/", filename, "_KEGG_dotplot.svg ", out.dir, "/", filename, "_KEGG_dotplot.pdf"))
         write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["KEGG"]] <- ora_kegg
@@ -55,7 +55,7 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
           theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
                 axis.title = element_text(size = legend.title.size, face = "bold", family = "sans")) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_REACTOME_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)
-	system(paste0("inkscape -l ", out.dir, filename, "_REACTOME_dotplot.svg ", out.dir, filename, "_REACTOME_dotplot.pdf"))
+	system(paste0("inkscape -l ", out.dir, "/", filename, "_REACTOME_dotplot.svg ", out.dir, "/", filename, "_REACTOME_dotplot.pdf"))
         write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["REACTOME"]] <- ora_reactome
