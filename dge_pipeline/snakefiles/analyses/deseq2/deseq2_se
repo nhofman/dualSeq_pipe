@@ -9,7 +9,7 @@ localrules: deseq2__create_conditions_human
 
 rule all:
     input:
-        "analyses/host/deseq2/counts.txt",
+        #"analyses/host/deseq2/counts.txt",
         "analyses/host/deseq2/counts_normalized.txt",
         "analyses/host/deseq2/deseq2.RData",
         #"analyses/host/deseq2/GSEA",
@@ -56,9 +56,9 @@ rule create_conditions_human:
                          
 rule deseq2_human:
     input:
-        counttable = "analyses/host/deseq2/counts.txt",
+        counttable = "analyses/host/count_table/counts.txt",
         conditions = "analyses/host/deseq2/conditions.txt",
-        feature_counts_log = "analyses/host/deseq2/counts.txt.summary"
+        feature_counts_log = "analyses/host/count_table/counts.txt.summary"
     output:
         rdata="analyses/host/deseq2/deseq2.RData",
         counts_normalized="analyses/host/deseq2/counts_normalized.txt",

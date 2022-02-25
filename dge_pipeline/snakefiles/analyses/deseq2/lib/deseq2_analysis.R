@@ -96,14 +96,13 @@ condition <- as.factor(conditiontable[, 1])
 
 # Import group comparison file
 comparisons.df <- read.csv(comparisons_file, header = FALSE, sep = "\t", comment.char = "#", colClasses = c("character"))
-
 # Create DESeqDataSet
 deseqDataset <- DESeqDataSetFromMatrix(countData = countdata, colData = conditiontable, design = ~ condition)
 
 # Write normalized count table
 deseqDataset <- estimateSizeFactors(deseqDataset)
 countdata.normalized <- counts(deseqDataset, normalized = TRUE)
-write.table(countdata.normalized, file = paste(output_folder, "counts_normalized.txt", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
+write.table(countdata.normalized, file = paste(output_folder, "/counts_normalized.txt", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
 #for(virus in unique(conditiontable$treatment)){
 #  write.table(c(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2]), paste(output_folder, "conditions_", virus, ".tsv", sep = ""), row.names = F, col.names = F)
 #  countdata.normalized.virus <- countdata.normalized[,grep(paste(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2], collapse = "|", sep = "|"), colnames(countdata.normalized))]
@@ -199,12 +198,12 @@ for (n in 1:nrow(comparisons.df)) {
       print(comparisons.df[n,])
       res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
       res.list.raw[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
-      write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
+      write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
       
       resLFC <- lfcShrink(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), type = "ashr", res = res)
     
-      pdf(paste(output_folder, "plots/MAplot_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""))
-      plotMA(resLFC, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_Vs_"))
+      pdf(paste(output_folder, "plots/MAplot_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""))
+      plotMA(resLFC, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_vs_"))
       dev.off()
       
       res <- as.data.frame(resLFC)
@@ -213,7 +212,7 @@ for (n in 1:nrow(comparisons.df)) {
       plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
         theme(axis.title = element_text(size=18, face = "bold")) +
         geom_hline(yintercept = -log10(0.05), color = "red")
-      ggsave(paste("Volcano_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
+      ggsave(paste("Volcano_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
       
       
       #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
@@ -223,11 +222,8 @@ for (n in 1:nrow(comparisons.df)) {
       colnames(res)[11:(ncol(res))] <- paste0("normalized_", colnames(res)[11:(ncol(res))])
       res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
       res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
-      write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".csv", sep = ""), row.names = TRUE, col.names = NA)
-      write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_Vs_", comparisons.df[n,1], ".xlsx", sep = ""))
-      
-      #res[is.na(res$`-log10(padj)`),"-log10(padj)"] <- 0
-      #res[is.na(res$padj),"padj"] <- 1
+      write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], ".csv", sep = ""), row.names = TRUE, col.names = NA)
+      write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], ".xlsx", sep = ""), overwrite = T)
      
      res.list[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
      #return(res)
@@ -244,7 +240,7 @@ padj.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), fu
 rownames(padj.df) <- padj.df$SYMBOL
 padj.df <- padj.df[,-1, drop = FALSE]
 padj.df <- padj.df[,mixedorder(colnames(padj.df))]
-write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), row.names = T)
+write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), row.names = T, overwrite = T)
 
 lfc.df[is.na(lfc.df)] <- 0
 
