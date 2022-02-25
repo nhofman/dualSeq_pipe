@@ -34,7 +34,8 @@ rule star_index:
     output:
         directory("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}")
     params:
-        genome_virus=lambda wildcards: virus2genome(wildcards)
+        genome_virus=lambda wildcards: virus2genome(wildcards),
+        tmp=temp("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}"+"_tmp")
     group:
         "star_index"
     log:
@@ -50,9 +51,9 @@ rule star_index:
         #echo $test
         if [ $virus == "None" ] 
 	then
-		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 | tee {log}
+		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
 	else
-		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.genome_virus} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% 2>&1 | tee {log}
+		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.genome_virus} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
 	fi
 	"""
 
