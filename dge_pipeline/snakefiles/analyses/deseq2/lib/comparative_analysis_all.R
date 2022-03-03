@@ -3,6 +3,7 @@ library(tidyr)
 library(gtools)
 library(openxlsx)
 library(DESeq2)
+library(reshape2)
 source("plot_heatmap.R")
 source("enrichment.R")
 source("STRINGdb.R")
@@ -63,7 +64,6 @@ p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor
 ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 20, height = 10)
 
 # Plot PCA
-
 shape <- if(length(unique(conditiontable$time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$time))) }else{ c(1:length(unique(conditiontable$time)))}
 names(shape) <- unique(conditiontable$time)
 pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE)
@@ -104,6 +104,30 @@ if(exists("color")){
   plot_PCA <- plot_PCA + scale_colour_manual(values=color)
 }
 ggsave(paste0("PCA_HCV_LASV.pdf"), plot = plot_PCA, device = "pdf", path = output_folder)
+
+# Violin plot
+#normalized.stack <- stack(countdata.normalized[, grep("NiV", colnames(countdata.normalized))])
+normalized.stack <- melt(countdata.normalized) 
+normalized.stack$Var2 <- as.character(normalized.stack$Var2)
+normalized.stack <- separate(normalized.stack, "Var2", c("Virus", "Time"), "_", remove=F, extra="merge")
+plot.violin <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_violin() + 
+  facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR"))) + #geom_boxplot(width=0.1) #stat_summary(fun=mean, geom="point", size=1) +
+  labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
+  theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"), axis.text.x=element_text(angle=-30, hjust = 0.2, vjust=0.4), 
+        strip.text = element_text(size = 30, face = "bold"),
+        legend.position = "None", plot.margin = margin(t = 0.5, r = 1.1, b = 0.5, l = 0.5, "cm"))
+ggsave("Violin_plot_counts.svg", plot.violin, "svg", output_folder, width = 16, height = 8)
+ggsave("Violin_plot_counts.pdf", plot.violin, "pdf", output_folder, width = 18, height = 9)
+
+plot.box <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_boxplot() + 
+  facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR"))) +
+  labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
+  theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"), axis.text.x=element_text(angle=-30, hjust = 0.2, vjust=0.4), 
+        strip.text = element_text(size = 30, face = "bold"),
+        legend.position = "None", plot.margin = margin(t = 0.5, r = 0.8, b = 0.5, l = 0.5, "cm"))
+ggsave("Boxplot_counts.svg", plot.box, "svg", output_folder, width = 18, height = 9)
+ggsave("Boxplot_counts.pdf", plot.box, "pdf", output_folder, width = 18, height = 9)
+ggsave("Boxplot_counts.png", plot.box, "png", output_folder, width = 16, height = 8)
  
 LFC.cut <- 1
 res.list.filter <- sapply(names(res.list)[-grep(".*BPL", names(res.list))], function(n){
@@ -125,28 +149,6 @@ for(virus in virus.levels){
               sets = colnames(virus.sub[,colSums(virus.sub)>0])[mixedorder(colnames(virus.sub[,colSums(virus.sub)>0]), decreasing = T)], keep.order = TRUE), newpage=F)
   dev.off()
 }
-
-# Violin plot
-#normalized.stack <- stack(countdata.normalized[, grep("NiV", colnames(countdata.normalized))])
-normalized.stack <- melt(countdata.normalized) 
-normalized.stack$Var2 <- as.character(normalized.stack$Var2)
-normalized.stack <- separate(normalized.stack, "Var2", c("Virus", "Time"), "_", remove=F, extra="merge")
-plot.violin <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_violin() + 
-  facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR"))) + #geom_boxplot(width=0.1) #stat_summary(fun=mean, geom="point", size=1) +
-  labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
-  theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"), axis.text.x=element_text(angle=-30, hjust = 0.2, vjust=0.4), 
-        strip.text = element_text(size = 30, face = "bold"),
-        legend.position = "None", plot.margin = margin(t = 0.5, r = 1.1, b = 0.5, l = 0.5, "cm"))
-ggsave("Violin_plot_counts.svg", plot.violin, "svg", out.dir, width = 16, height = 8)
-
-plot.box <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_boxplot() + 
-  facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR"))) +
-  labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
-  theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"), axis.text.x=element_text(angle=-30, hjust = 0.2, vjust=0.4), 
-        strip.text = element_text(size = 30, face = "bold"),
-        legend.position = "None", plot.margin = margin(t = 0.5, r = 1.1, b = 0.5, l = 0.5, "cm"))
-ggsave("Boxplot_counts.svg", plot.box, "svg", out.dir, width = 16, height = 8)
-ggsave("Boxplot_counts.png", plot.box, "png", out.dir, width = 16, height = 8)
 
 # Common genes between viruses at any time point 
 out.dir <- paste0(output_folder,"/common_pattern")
@@ -233,6 +235,22 @@ writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.f
 meme.res <- meme(path2meme, outdir = out.dir, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), nmotif = 10, alph = "dna", objfun = "de")
 tomtom(path2meme, motifDB, motif_file = meme.res, outdir = out.dir)
 ame(path2meme, motifDB, paste0(output_folder,"/common_pattern/TFBS/",promotor_prim), paste0(output_folder,"/common_pattern/TFBS/",promotor_back), out.dir)
+
+# Compare Mock and BPL
+LFC.cut <- 1
+res.list.filter.24h <- sapply(names(res.list)[grep("24h", names(res.list))], function(n){
+  x <- res.list[[n]]
+  return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
+})
+names(res.list.filter.24h) <- sub("_BPL",":BPL_24h",sub("24h_vs_", "vs_", names(res.list.filter.24h)))
+sapply(virus.levels, function(v){
+  venn.plot <- venn.diagram(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"), filename = NULL, fontfamily = "sans", cat.fontfamily = "sans",
+                            cex = 2, cat.cex = 1.5, margin = 0.1, cat.dist = c(0.125,0.125), ext.text = T, disable.logging = T, euler.d = T, scaled = F)
+  ggsave(paste0("Venn_24h_",v,".svg"), venn.plot, "svg", output_folder)
+  svg(paste0(output_folder, v, ".svg"))
+  venn(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"))
+  dev.off()
+})
 
 ### Compare 2 groups of viruses ###
 

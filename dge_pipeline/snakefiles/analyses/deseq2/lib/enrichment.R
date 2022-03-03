@@ -1,5 +1,5 @@
 library(clusterProfiler)
-#library(ReactomePA)
+library(ReactomePA)
 library(org.Hs.eg.db)
 library(ggplot2)
 #library(stringr)
