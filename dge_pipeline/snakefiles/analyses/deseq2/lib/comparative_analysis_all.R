@@ -19,13 +19,8 @@ source("tfbs.R")
 # Transcriptionfactor analyses
 # “How many genes are regulated (up or down) during how may time points?”
 
-virus.levels <- c("H1N1","H5N1","MERS-CoV","HCoV-229E","RVFV","SFSV","RSV","NiV","EBOV","MARV","HCV","LASV")
+virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
 virus.levels <- c("H1N1"="H1N1","H5N1"="H5N1","MERS"="MERS-CoV","CoV229E"="HCoV-229E","RVFV"="RVFV","SFSV"="SFSV","RSV"="RSV","NIV"="NiV","EBOV"="EBOV","MARV"="MARV","LASV"="LASV","HCV"="HCV")
-#lfc.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list)[grep(".*h.*Mock", names(res.list))], function(x){x.df <- data.frame(res.list[[x]]$SYMBOL,res.list[[x]]$log2FoldChange); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
-
-names(res.list) <- gsub("MERS", "MERS-CoV", names(res.list))
-names(res.list) <- gsub("CoV229E", "HCoV-229E", names(res.list))
-names(res.list) <- gsub("NIV", "NiV", names(res.list))
 
 lfc.df.all <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list)[grep(".*h", names(res.list))], function(x){x.df <- data.frame(res.list[[x]]$SYMBOL,res.list[[x]]$log2FoldChange); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df.all) <- lfc.df.all$SYMBOL
@@ -131,10 +126,32 @@ for(virus in virus.levels){
   dev.off()
 }
 
-    # Common genes between viruses at any time point 
+# Violin plot
+#normalized.stack <- stack(countdata.normalized[, grep("NiV", colnames(countdata.normalized))])
+normalized.stack <- melt(countdata.normalized) 
+normalized.stack$Var2 <- as.character(normalized.stack$Var2)
+normalized.stack <- separate(normalized.stack, "Var2", c("Virus", "Time"), "_", remove=F, extra="merge")
+plot.violin <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_violin() + 
+  facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR"))) + #geom_boxplot(width=0.1) #stat_summary(fun=mean, geom="point", size=1) +
+  labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
+  theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"), axis.text.x=element_text(angle=-30, hjust = 0.2, vjust=0.4), 
+        strip.text = element_text(size = 30, face = "bold"),
+        legend.position = "None", plot.margin = margin(t = 0.5, r = 1.1, b = 0.5, l = 0.5, "cm"))
+ggsave("Violin_plot_counts.svg", plot.violin, "svg", out.dir, width = 16, height = 8)
+
+plot.box <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_boxplot() + 
+  facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR"))) +
+  labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
+  theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"), axis.text.x=element_text(angle=-30, hjust = 0.2, vjust=0.4), 
+        strip.text = element_text(size = 30, face = "bold"),
+        legend.position = "None", plot.margin = margin(t = 0.5, r = 1.1, b = 0.5, l = 0.5, "cm"))
+ggsave("Boxplot_counts.svg", plot.box, "svg", out.dir, width = 16, height = 8)
+ggsave("Boxplot_counts.png", plot.box, "png", out.dir, width = 16, height = 8)
+
+# Common genes between viruses at any time point 
 out.dir <- paste0(output_folder,"/common_pattern")
 dir.create(out.dir)
-virus.levels <- c("H1N1"="H1N1","H5N1"="H5N1","MERS"="MERS-CoV","CoV229E"="HCoV-229E","RVFV"="RVFV","SFSV"="SFSV","RSV"="RSV","NIV"="NiV","EBOV"="EBOV")
+virus.levels <- c("H1N1"="H1N1","H5N1"="H5N1","RVFV"="RVFV","SFSV"="SFSV","RSV"="RSV","NIV"="NiV","EBOV"="EBOV")
 virus.dge <- sapply(unname(virus.levels),function(virus){unique(unlist(sapply(res.list.filter[grep(virus, names(res.list.filter))], function(x){return(as.character(x$SYMBOL))})))}, USE.NAMES = T)
 genes.common <- Reduce(intersect, virus.dge)
 # Venn diagram or better UpSet plot of gene sets
@@ -206,7 +223,7 @@ human.GRanges <- keepStandardChromosomes(human.GRanges, pruning.mode = "coarse")
 
 # TFBS analysis with MEME
 path2meme <- "/home/nina/meme/bin/"
-motifDB <- "/home/nina/Documents/Virus_project/motif_databases/JASPAR/JASPAR2020_CORE_vertebrates_redundant.meme"
+motifDB <- "/home/nina/Documents/Virus_project/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant.meme"
 motifDB <- "/home/nina/Documents/Virus_project/motif_databases/HUMAN/HOCOMOCOv11_full_HUMAN_mono_meme_format.meme"
 fasta.file <- "/vol/sfb1021/SFB1021_Virus/genomes/hg38/genome.fa"
 out.dir <- paste0(out.dir, "/TFBS/")
