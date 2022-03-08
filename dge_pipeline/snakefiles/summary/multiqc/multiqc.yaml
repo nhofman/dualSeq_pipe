@@ -1,5 +1,11 @@
 name: "multiqc"
 
+optional_settings:
+
+  additional_multiqc_options:
+    description: Additional options to use in shell command
+    type: string
+
 single_end:
   snakefile: "multiqc_se"
 

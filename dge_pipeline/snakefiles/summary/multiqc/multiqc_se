@@ -39,4 +39,4 @@ rule multiqc:
     threads:
         1
     shell:
-        "multiqc -o summary/multiqc {params}"
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% -o summary/multiqc {params}"
