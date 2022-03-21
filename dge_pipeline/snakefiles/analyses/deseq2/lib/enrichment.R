@@ -25,7 +25,8 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
             theme(legend.text = element_text(size = legend.size, family = family), legend.title = element_text(size = legend.title.size, face = "bold", family = family),
                   axis.title = element_text(size = legend.title.size, face = "bold", family = family), axis.text.y = element_text(hjust = 1)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
           ggsave(paste(filename,"_",o,"_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
-          system(paste0("inkscape -l ", out.dir, filename, "_", o, "_dotplot.svg ", out.dir, filename, "_", o, "_dotplot.pdf"))
+      	  system(paste0("inkscape -l ", out.dir, "/", filename, "_", o, "_dotplot.svg ", out.dir, "/", filename, "_", o, "_dotplot.pdf"))
+
           write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
         }
         ora.list[[o]] <- ora_go
@@ -41,7 +42,8 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
           theme(legend.text = element_text(size = legend.size, family = family), legend.title = element_text(size = legend.title.size, face = "bold", family = family),
                 axis.title = element_text(size = label.size, face = "bold", family = family)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_KEGG_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
-        system(paste0("inkscape -l ", out.dir, filename, "_KEGG_dotplot.svg ", out.dir, filename, "_KEGG_dotplot.pdf"))
+      	system(paste0("inkscape -l ", out.dir, "/", filename, "_KEGG_dotplot.svg ", out.dir, "/", filename, "_KEGG_dotplot.pdf"))
+
         write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["KEGG"]] <- ora_kegg
@@ -55,7 +57,8 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
           theme(legend.text = element_text(size = legend.size, family = family), legend.title = element_text(size = legend.title.size, face = "bold", family = family),
                 axis.title = element_text(size = legend.title.size, face = "bold", family = family)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_REACTOME_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)
-        system(paste0("inkscape -l ", out.dir, filename, "_REACTOME_dotplot.svg ", out.dir, filename, "_REACTOME_dotplot.pdf"))
+      	system(paste0("inkscape -l ", out.dir, "/", filename, "_REACTOME_dotplot.svg ", out.dir, "/", filename, "_REACTOME_dotplot.pdf"))
+
         write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["REACTOME"]] <- ora_reactome

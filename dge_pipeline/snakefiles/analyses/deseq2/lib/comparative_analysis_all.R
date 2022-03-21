@@ -6,8 +6,10 @@ library(DESeq2)
 library(reshape2)
 library(VennDiagram)
 
-source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/plot_heatmap.R")
-source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/enrichment.R")
+#source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/plot_heatmap.R")
+#source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/enrichment.R")
+source("plot_heatmap.R")
+source("enrichment.R")
 source("STRINGdb.R")
 source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/venn.R")
 source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/upset.R")
@@ -114,6 +116,7 @@ plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = factor(treatment, levels = vi
 if(exists("color")){
   plot_PCA <- plot_PCA + scale_colour_manual(values=color)
 }
+
 ggsave(paste0("PCA_LASV.pdf"), plot = plot_PCA, device = "pdf", path = output_folder)
 system(paste0("inkscape -l ", output_folder, "PCA_LASV.svg ", output_folder, "PCA_LASV.pdf"))
 svg(paste0(output_folder,"PCA_LASV.svg"), family = "Helvetica", width = 15, height = 10)
@@ -153,6 +156,7 @@ system(paste0("inkscape -l ", output_folder, "Boxplot_counts_alt.svg ", output_f
 svg(paste0(output_folder,"Boxplot_counts.svg"), family = "Helvetica", width = 15, height = 10)
 plot(plot.box)
 dev.off()
+
 
 LFC.cut <- 1
 res.list.filter <- sapply(names(res.list)[-grep(".*BPL", names(res.list))], function(n){
@@ -276,6 +280,22 @@ sapply(virus.levels, function(v){
   #svg(paste0(output_folder,"Venn_24h_",v,".svg"), family = "Helvetica", width = 15, height = 10)
   #plot(venn.plot)
   #dev.off()
+})
+
+# Compare Mock and BPL
+LFC.cut <- 1
+res.list.filter.24h <- sapply(names(res.list)[grep("24h", names(res.list))], function(n){
+  x <- res.list[[n]]
+  return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
+})
+names(res.list.filter.24h) <- sub("_BPL",":BPL_24h",sub("24h_vs_", "vs_", names(res.list.filter.24h)))
+sapply(virus.levels, function(v){
+  venn.plot <- venn.diagram(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"), filename = NULL, fontfamily = "sans", cat.fontfamily = "sans",
+                            cex = 2, cat.cex = 1.5, margin = 0.1, cat.dist = c(0.125,0.125), ext.text = T, disable.logging = T, euler.d = T, scaled = F)
+  ggsave(paste0("Venn_24h_",v,".svg"), venn.plot, "svg", output_folder)
+  svg(paste0(output_folder, v, ".svg"))
+  venn(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"))
+  dev.off()
 })
 
 ### Compare 2 groups of viruses ###
