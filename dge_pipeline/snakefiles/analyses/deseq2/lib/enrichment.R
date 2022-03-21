@@ -1,12 +1,12 @@
 library(clusterProfiler)
-#library(ReactomePA)
+library(ReactomePA)
 library(org.Hs.eg.db)
 library(ggplot2)
 #library(stringr)
 
 # Over-representation analysis for a set of genes
 calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05, label.size = 12, 
-                     legend.size = 8, legend.title.size = 8, keytype = "SYMBOL", width = 18, height = 15, imagetype = "svg"){
+                     legend.size = 8, legend.title.size = 8, keytype = "SYMBOL", width = 18, height = 15, imagetype = "svg", family = family){
   if(!dir.exists(out.dir)){
     dir.create(out.dir)
   }
@@ -22,10 +22,10 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
       if(class(ora_go)!="try-error"){
         if(nrow(data.frame(ora_go)) > 0){
           plot_go <- dotplot(ora_go, showCategory = 20, font.size = label.size, orderBy = "GeneRatio") + ggtitle(main) +
-            theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
-                  axis.title = element_text(size = legend.title.size, face = "bold", family = "sans"), axis.text.y = element_text(hjust = 1)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+            theme(legend.text = element_text(size = legend.size, family = family), legend.title = element_text(size = legend.title.size, face = "bold", family = family),
+                  axis.title = element_text(size = legend.title.size, face = "bold", family = family), axis.text.y = element_text(hjust = 1)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
           ggsave(paste(filename,"_",o,"_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
-	  system(paste0("inkscape -l ", out.dir, filename, "_", o, "_dotplot.svg ", out.dir, filename, "_", o, "_dotplot.pdf"))
+          system(paste0("inkscape -l ", out.dir, filename, "_", o, "_dotplot.svg ", out.dir, filename, "_", o, "_dotplot.pdf"))
           write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
         }
         ora.list[[o]] <- ora_go
@@ -38,10 +38,10 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
       if(nrow(data.frame(ora_kegg)) > 0){
         ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
         plot_kegg <- dotplot(ora_kegg, showCategory = 20, font.size = label.size,  orderBy = "GeneRatio") + ggtitle(main) +
-          theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
-                axis.title = element_text(size = label.size, face = "bold", family = "sans")) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+          theme(legend.text = element_text(size = legend.size, family = family), legend.title = element_text(size = legend.title.size, face = "bold", family = family),
+                axis.title = element_text(size = label.size, face = "bold", family = family)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_KEGG_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
-	system(paste0("inkscape -l ", out.dir, filename, "_KEGG_dotplot.svg ", out.dir, filename, "_KEGG_dotplot.pdf"))
+        system(paste0("inkscape -l ", out.dir, filename, "_KEGG_dotplot.svg ", out.dir, filename, "_KEGG_dotplot.pdf"))
         write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["KEGG"]] <- ora_kegg
@@ -52,10 +52,10 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
     if(class(ora_reactome)!="try-error"){
       if(nrow(data.frame(ora_reactome)) > 0){
         plot_reactome <- dotplot(ora_reactome, showCategory = 20, font.size = label.size,  orderBy = "GeneRatio") + ggtitle(main) +
-          theme(legend.text = element_text(size = legend.size, family = "sans"), legend.title = element_text(size = legend.title.size, face = "bold", family = "sans"),
-                axis.title = element_text(size = legend.title.size, face = "bold", family = "sans")) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+          theme(legend.text = element_text(size = legend.size, family = family), legend.title = element_text(size = legend.title.size, face = "bold", family = family),
+                axis.title = element_text(size = legend.title.size, face = "bold", family = family)) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
         ggsave(paste(filename,"_REACTOME_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)
-	system(paste0("inkscape -l ", out.dir, filename, "_REACTOME_dotplot.svg ", out.dir, filename, "_REACTOME_dotplot.pdf"))
+        system(paste0("inkscape -l ", out.dir, filename, "_REACTOME_dotplot.svg ", out.dir, filename, "_REACTOME_dotplot.pdf"))
         write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["REACTOME"]] <- ora_reactome
@@ -86,8 +86,8 @@ calc_gsea <- function(geneset.df, filename, ont = "BP", sort.by = "stat", KEGG =
     if(class(gsea_kegg)!="try-error"){
       if(nrow(data.frame(gsea_kegg)) > 0){
         plot_kegg <- enrichplot::dotplot(gsea_kegg, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + 
-          theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), 
-                strip.text.x = element_text(size = 18, face = "bold"))
+          theme(axis.title = element_text(size=18, face = "bold", family = family), axis.text = element_text(size=15, face = "bold", family = family), 
+                strip.text.x = element_text(size = 18, face = "bold", family = family))
         ggsave(paste(filename,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
         gsea_kegg.df <- data.frame(gsea_kegg)
         gsea_kegg.df$core_enrichment_SYMBOL <- sapply(gsea_kegg.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
@@ -102,8 +102,8 @@ calc_gsea <- function(geneset.df, filename, ont = "BP", sort.by = "stat", KEGG =
       if(class(gsea_go)!="try-error"){
         if(nrow(data.frame(gsea_go)) > 0){
           plot_go <- enrichplot::dotplot(gsea_go, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + 
-            theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), 
-                  strip.text.x = element_text(size = 18, face = "bold"))
+            theme(axis.title = element_text(size=18, face = "bold", family = family), axis.text = element_text(size=15, face = "bold", family = family), 
+                  strip.text.x = element_text(size = 18, face = "bold", family = family))
           ggsave(paste(filename, "_GO_", o, "_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
           gsea_go.df <- data.frame(gsea_go)
           gsea_go.df$core_enrichment_SYMBOL <- sapply(gsea_go.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
@@ -121,8 +121,8 @@ calc_gsea <- function(geneset.df, filename, ont = "BP", sort.by = "stat", KEGG =
     if(class(gsea_reactome)!="try-error"){
       if(nrow(data.frame(gsea_reactome)) > 0){
         plot_reactome <- enrichplot::dotplot(gsea_reactome, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + 
-          theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), 
-                strip.text.x = element_text(size = 18, face = "bold"))
+          theme(axis.title = element_text(size=18, face = "bold", family = family), axis.text = element_text(size=15, face = "bold", family = family), 
+                strip.text.x = element_text(size = 18, face = "bold", family = family))
         ggsave(paste(filename,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
         gsea_reactome.df <- data.frame(gsea_reactome)
         gsea_reactome.df$core_enrichment_SYMBOL <- sapply(gsea_reactome.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
