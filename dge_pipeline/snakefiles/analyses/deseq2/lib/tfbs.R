@@ -25,13 +25,13 @@ getTranscriptsfromGFF <- function(gffFilePath){
 }
 
 # Get promotor regions of genes in geneset and write them to fasta-file
-writeGRanges2Fasta <- function(GRanges, outdir, promotor_prim, promotor_back, fasta.file, geneset, upstream = 1000, downstream = 100){
+writeGRanges2Fasta <- function(GRanges, outdir, promotor_prim, promotor_back, fasta.file, geneset, geneset_bg, upstream = 1000, downstream = 100){
   if(!dir.exists(outdir)){
     dir.create(outdir)
   }
   human.promoter <- promoters(human.GRanges, upstream = upstream, downstream = downstream)
   human.promoter.select <- subset(human.promoter, gene_id %in% geneset)
-  human.promoter.bg <- subset(human.promoter, !(gene_id %in% geneset))
+  human.promoter.bg <- subset(human.promoter, gene_id %in% geneset_bg)
   
   #fa <- open.FaFile(FaFile(fasta.file))
   
@@ -52,7 +52,7 @@ meme <- function(path2meme, outdir, promotor_prim, promotor_back = NA, nmotif = 
   if(!dir.exists(outdir)){
     dir.create(outdir)
   }
-  outdir <- paste0(outdir, "/meme")
+  outdir <- paste0(outdir, "/meme_", objfun)
   bash_file <- "meme_command.sh"
   #if(file.exists(bash_file)) file.remove(bash_file)
   f <- file(bash_file, open = "w")

@@ -251,6 +251,8 @@ string_ppi(string_db, gene.df = data.frame("SYMBOL"=genes.common), filename = "c
 gtf.human <- "Documents/Virus_project/genome/genes.gtf" #"/vol/sfb1021/SFB1021_Virus/genomes/hg38/genes.gtf"
 human.GRanges <- getTranscriptsfromGFF(gtf.human)
 human.GRanges <- keepStandardChromosomes(human.GRanges, pruning.mode = "coarse")
+genes.bg <- rownames(countdata[rowSums(countdata)>0,])
+genes.bg <- genes.bg[!genes.bg %in% genes.common]
 
 # TFBS analysis with MEME
 path2meme <- "/home/nina/meme/meme-5.4.1/bin/"
@@ -260,7 +262,7 @@ fasta.file <- "Documents/Virus_project/genome/genome.fa" #"/vol/sfb1021/SFB1021_
 out.dir <- paste0(out.dir, "/TFBS/")
 promotor_prim <- "promotor.common.fa"
 promotor_back <- "promotor.bg.fa"
-writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, genes.common, upstream = 1000, downstream = 100)
+writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, genes.common, genes.bg, upstream = 1000, downstream = 0)
 meme.res <- meme(path2meme, outdir = out.dir, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), nmotif = 10, alph = "dna", objfun = "de")
 tomtom(path2meme, motifDB, motif_file = meme.res, outdir = out.dir)
 ame(path2meme, motifDB, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), out.dir)
@@ -280,22 +282,6 @@ sapply(virus.levels, function(v){
   #svg(paste0(output_folder,"Venn_24h_",v,".svg"), family = "Helvetica", width = 15, height = 10)
   #plot(venn.plot)
   #dev.off()
-})
-
-# Compare Mock and BPL
-LFC.cut <- 1
-res.list.filter.24h <- sapply(names(res.list)[grep("24h", names(res.list))], function(n){
-  x <- res.list[[n]]
-  return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
-})
-names(res.list.filter.24h) <- sub("_BPL",":BPL_24h",sub("24h_vs_", "vs_", names(res.list.filter.24h)))
-sapply(virus.levels, function(v){
-  venn.plot <- venn.diagram(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"), filename = NULL, fontfamily = "sans", cat.fontfamily = "sans",
-                            cex = 2, cat.cex = 1.5, margin = 0.1, cat.dist = c(0.125,0.125), ext.text = T, disable.logging = T, euler.d = T, scaled = F)
-  ggsave(paste0("Venn_24h_",v,".svg"), venn.plot, "svg", output_folder)
-  svg(paste0(output_folder, v, ".svg"))
-  venn(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"))
-  dev.off()
 })
 
 ### Compare 2 groups of viruses ###
