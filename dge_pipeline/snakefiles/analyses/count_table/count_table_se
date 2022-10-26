@@ -17,8 +17,11 @@ rule count_reads_host:
         log="analyses/host/count_table/logs/featurecounts.log"
     group:
         "count_reads_host"
+    conda: "conda_envs/counts_env.yaml"
     threads:
         8
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
         "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 | tee {log}"
 

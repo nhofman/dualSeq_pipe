@@ -12,7 +12,7 @@ rule all:
         #"analyses/host/deseq2/counts.txt",
         "analyses/host/deseq2/counts_normalized.txt",
         "analyses/host/deseq2/deseq2.RData",
-        #"analyses/host/deseq2/GSEA",
+        "analyses/host/deseq2/GSEA",
         #"analyses/host/deseq2/STRING/"
         #expand('analyses/{human_or_virus}/deseq2/summary/{COND}.xlsx', COND=getConditions())
 
@@ -29,21 +29,6 @@ rule all:
 #        "python3 lib/deseq2_summary_tsv_to_xlsx.py --tsv {input} --conditions {params.number_conditions} --gff '%%GFF_PATH%%' --identifier '%%GFF_FEATURE_NAME%%' "
 #        "--feature '%%GFF_FEATURE_TYPE%%' --attributes %%ATTRIBUTE_COLUMNS%% --output {output}"
 
-rule count_reads_host:
-    input:
-        expand("mapping/combined/host/{host}.bam", host=config['entries'].keys())
-    output:
-        counts = "analyses/host/deseq2/counts.txt",
-        summary = "analyses/host/deseq2/counts.txt.summary"
-    threads:
-        8
-    log:
-        log="analyses/host/deseq2/logs/featurecounts.log"
-    group:
-        "count_reads"
-    shell:
-        "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 |"
-        "tee {log}"
         
 rule create_conditions_human:
     output:
@@ -72,13 +57,16 @@ rule deseq2_human:
         output_folder="analyses/host/deseq2/"
     log:
         log="analyses/host/deseq2/logs/deseq2.log"
+    conda: "conda_envs/R_env.yaml"
     threads:
         1
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--featcounts-log {input.feature_counts_log} --color %%COLOR%% --rRNA %%RRNA%% 2>&1 | tee {log}"
 
-"""       
+  
 rule functional_analysis:
     input:
         rdata="analyses/host/deseq2/deseq2.RData"
@@ -91,8 +79,9 @@ rule functional_analysis:
         output_folder="analyses/host/deseq2/"
     log:
         log="analyses/host/deseq2/logs/functional_analysis.log"
+    conda: "conda_envs/R_env.yaml"
     threads:
         1
     shell:
         "R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --rdata {input.rdata} --db %%DB%% --ont %%ONT%% 2>&1 | tee {log}"
-"""
+

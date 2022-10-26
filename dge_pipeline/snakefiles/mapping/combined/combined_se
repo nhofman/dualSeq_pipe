@@ -40,9 +40,11 @@ rule star_index:
         "star_index"
     log:
         "mapping/combined/logs/star_index_"+"{virus}"+".log"
+    conda: "conda_envs/star_env.yaml"
     threads:
         4
-    #resources: cpus=4, mem_mb=2000
+    resources:
+        mem_mb=%%MEM_MB_STAR%%
     shell:
         """
 	virus=`basename {params.genome_virus}`
@@ -75,15 +77,17 @@ rule star_mapping:
         bam="mapping/combined/{sample}.bam",
         summary="mapping/combined/{sample}Log.final.out",
         fasta="mapping/combined/{sample}Unmapped.out.mate1"
-    group:
-        "star_mapping"
     params:
         prefix="mapping/combined/{sample}"
+    group:
+        "star_mapping"
     log:
         "mapping/combined/logs/star_mapping.{sample}.log"
+    conda: "conda_envs/star_env.yaml"
     threads:
         2
-    #resources: cpus=2, mem_mb=30000, time_min=40
+    resources:
+        mem_mb=%%MEM_MB_STAR%%
     shell:
         #--outReadsUnmapped Fastx
         "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx %%ADDITIONAL_STAR_OPTIONS%% 2>&1 |"
@@ -96,6 +100,9 @@ rule index_bam:
         "mapping/combined/{sample}.bam.bai"
     log:
         "mapping/combined/logs/index.{sample}.log"
+    group:
+        "star_mapping"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
@@ -109,6 +116,9 @@ rule Mock:
         stat = "mapping/combined/host/stats/{sample}_stats.txt"
     wildcard_constraints:
         sample="Mock.*"
+    group:
+        "bam_process"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -132,6 +142,9 @@ rule split_bam_virus:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
         sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -153,6 +166,9 @@ rule split_bam_host:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     wildcard_constraints:
         sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -168,6 +184,7 @@ rule index_bam_host:
         "mapping/combined/host/{sample}.bam.bai"
     log:
         "mapping/combined/host/logs/index.{sample}.log"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
@@ -181,6 +198,9 @@ rule virusNames:
         diff=temp("mapping/combined/virus/{sample}_common.txt")
     wildcard_constraints:
         sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -197,6 +217,9 @@ rule statistics_host:
         "mapping/combined/host/stats/{sample}_stats.txt"
     wildcard_constraints:
         sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -214,6 +237,9 @@ rule statistics_virus:
         virus_bam="mapping/combined/virus/{sample}.bam",
     output:
         "mapping/combined/virus/stats/{sample}_stats.txt"
+    group:
+        "bam_process"
+    conda: "conda_envs/star_env.yaml"
     #resources: cpus=1, mem_mb=2000
     shell:
         """
@@ -235,6 +261,7 @@ rule plot_statistics:
         "mapping/combined/stats/mapping_statistic_mock.svg"
     params:
         "mapping/combined/"
+    conda: "conda_envs/R_env.yaml"
     shell:
         """
         R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/combined/host/stats/ --stat-virus mapping/combined/virus/stats/ --output {params}

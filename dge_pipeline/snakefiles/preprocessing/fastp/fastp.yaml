@@ -6,6 +6,11 @@ optional_settings:
     type: "string"
     default: ""
 
+  mem_mb:
+    description: "Memory requirement"
+    type: "integer"
+    default: "3000"
+
 single_end:
   snakefile: "fastp_se"
 

@@ -56,6 +56,11 @@ optional_settings:
     type: "string"
     default: "BP"
 
+  mem_mb:
+    description: "Memory requirement"
+    type: "int"
+    default: "2000"
+
 
 columns:
   condition:

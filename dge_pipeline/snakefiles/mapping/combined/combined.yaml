@@ -50,6 +50,11 @@ optional_settings:
     description: 'Additional options to use in shell command'
     type: 'string'
     default: ''
+
+  mem_mb_star:
+    description: "Memory requirement"
+    type: "string"
+    default: "35000" 
     
 single_end:
   snakefile: 'combined_se'

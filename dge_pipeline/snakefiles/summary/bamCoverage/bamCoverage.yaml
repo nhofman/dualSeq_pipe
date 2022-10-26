@@ -2,19 +2,29 @@ name: bamCoverage
 
 required_settings:
   effectiveGenomeSize:
-    description: Length of the mappable genome
-    type: integer
+    description: "Length of the mappable genome"
+    type: "integer"
 
 optional_settings:
   additional_bamcoverage_options_host:
-    description: Additional options to use in shell command
-    type: string
+    description: "Additional options to use in shell command"
+    type: "string"
     default: ""
     
   additional_bamcoverage_options_virus:
-    description: Additional options to use in shell command
-    type: string
+    description: "Additional options to use in shell command"
+    type: "string"
     default: ""
+
+  mem_mb_host:
+    description: "Memory requirement for host"
+    type: "integer"
+    default: "2000"
+
+  mem_mb_virus:
+    description: "Memory requirement for virus"
+    type: "integer"
+    default: "2000"
 
 single_end:
   snakefile: "bamCoverage"

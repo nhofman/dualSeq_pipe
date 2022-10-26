@@ -6,6 +6,11 @@ optional_settings:
     type: "string"
     default: ""
 
+  mem_mb:
+    description: "Memory requirement"
+    type: "integer"
+    default: "500"
+
 single_end:
   snakefile: "variant_calling"
 

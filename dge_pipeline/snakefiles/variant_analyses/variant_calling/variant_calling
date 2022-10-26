@@ -5,15 +5,18 @@ rule all:
     #expand("variant_analyses/variant_calling/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry])))
 
 rule call_variant:
-	input:
-		bam="variant_analyses/preprocessing/{sample}_indel.bam",
-		genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
-	output:
-		"variant_analyses/variant_calling/{sample}.vcf"
-	threads: 1
-	group: "lofreq"
-	shell:
-		"lofreq call %%ADDITIONAL_LOFREQ_OPTIONS%% -f {input.genome} -o {output} {input.bam}"
+    input:
+        bam="variant_analyses/preprocessing/{sample}_indel.bam",
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+    output:
+        "variant_analyses/variant_calling/{sample}.vcf"
+    group: "lofreq"
+    conda: "conda_envs/variant_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "lofreq call %%ADDITIONAL_LOFREQ_OPTIONS%% -f {input.genome} -o {output} {input.bam}"
 
 
 

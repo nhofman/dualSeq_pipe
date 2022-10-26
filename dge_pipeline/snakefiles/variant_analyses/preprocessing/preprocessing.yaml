@@ -1,5 +1,11 @@
 name: "preprocessing"
 
+optional_settings:
+  mem_mb:
+    description: "Memory requirement"
+    type: "integer"
+    default: "2000"
+
 single_end:
   snakefile: "preprocessing"
 

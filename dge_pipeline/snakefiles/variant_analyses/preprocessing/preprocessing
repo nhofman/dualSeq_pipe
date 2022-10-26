@@ -9,6 +9,7 @@ rule remove_spliced:
     "mapping/combined/virus/{sample}.bam"
   output:
     "mapping/combined/virus/{sample}_noSplice.bam"
+  conda: "conda_envs/variant_env.yaml"
   shell:
     """
     samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
@@ -17,38 +18,47 @@ rule remove_spliced:
     """
 
 rule markDuplicates:
-  input:
-    "mapping/combined/virus/{sample}_noSplice.bam"
-  output:
-    bam="variant_analyses/preprocessing/{sample}_dedup.bam",
-    metric="variant_analyses/preprocessing/Duplicate_Metric/{sample}"
-  threads: 1
-  group: "dedup"
-  shell:
-    "picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}"
+    input:
+        "mapping/combined/virus/{sample}_noSplice.bam"
+    output:
+        bam="variant_analyses/preprocessing/{sample}_dedup.bam",
+        metric="variant_analyses/preprocessing/Duplicate_Metric/{sample}"
+    group: "dedup"
+    conda: "conda_envs/variant_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}"
 
 # (Probabilistic) realignment
 # correct for mapping errors
 rule realign:
-  input:
-    bam="variant_analyses/preprocessing/{sample}_dedup.bam",
-    genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
-  output:
-    "variant_analyses/preprocessing/{sample}_realign.bam"
-  threads: 1
-  group: "realign"
-  shell:
-    "lofreq viterbi -f {input.genome} {input.bam} | samtools sort - > {output}"
+    input:
+        bam="variant_analyses/preprocessing/{sample}_dedup.bam",
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+    output:
+        "variant_analyses/preprocessing/{sample}_realign.bam"
+    group: "realign"
+    conda: "conda_envs/variant_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "lofreq viterbi -f {input.genome} {input.bam} | samtools sort - > {output}"
 		
 # Insert indel qualities
 rule indel_qual:
-  input:
-    bam="variant_analyses/preprocessing/{sample}_realign.bam",
-    genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
-  output:
-    "variant_analyses/preprocessing/{sample}_indel.bam"
-  threads: 1
-  group: "indel_qual"
-  shell:
-    "lofreq indelqual --dindel -f {input.genome} -o {output} {input.bam}"
-		 
+    input:
+        bam="variant_analyses/preprocessing/{sample}_realign.bam",
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+    output:
+        "variant_analyses/preprocessing/{sample}_indel.bam"
+    group: "indel_qual"
+    conda: "conda_envs/variant_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "lofreq indelqual --dindel -f {input.genome} -o {output} {input.bam}"
+			 
