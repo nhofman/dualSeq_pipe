@@ -1,6 +1,7 @@
 import argparse
 import errno
 import os
+import subprocess
 import shutil
 import filecmp
 import re
@@ -12,7 +13,9 @@ from snakemake import snakemake
 
 import metadata
 
-SNAKEFILES_LIBRARY = Path(__file__).resolve().parent / "snakefiles"  # type: Path
+CURRENT_DIRECTORY = Path(__file__).resolve().parent
+
+SNAKEFILES_LIBRARY = CURRENT_DIRECTORY / "snakefiles"  # type: Path
 
 SNAKEFILES_TARGET_DIRECTORY = 'snakemake_lib'  # type: str
 
@@ -24,11 +27,17 @@ def main():
     groups = parse_groups_file(args.groups_file, used_modules, paired_end)
     create_output_directory(args.output_folder)
     snakefile = create_snakefile(args.output_folder, groups, used_modules)
-    if not snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, nodes=args.cluster_nodes, workdir=str(args.output_folder),
-                     verbose=args.verbose, printshellcmds=True, cluster=args.cluster_command,
-                     profile=str(args.cluster_profile) if args.cluster_profile is not None else None,
-                     latency_wait=args.latency):
-        exit(1)
+    if(args.use_conda):
+        create_conda_lib(args.output_folder)
+    if(args.conda_create_envs_only):
+        subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--conda-create-envs-only', '--dry-run'])
+        #snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, workdir=str(args.output_folder),
+        #             verbose=args.verbose, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only)
+    else:
+        if not snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, nodes=args.cluster_nodes, workdir=str(args.output_folder),
+                     verbose=args.verbose, cluster=args.cluster_command, cluster_config=str(args.cluster_config_file) if args.cluster_config_file is not None else None, 
+                     latency_wait=args.latency, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only):
+            exit(1)
 
 
 def check_columns(col_names: List[str], modules: Dict[str, List['Module']], paired_end: bool) -> List[Tuple[str, str]]:
@@ -384,6 +393,17 @@ def create_snakemake_config_file(output_folder: Path, groups: Dict[str, Dict[str
     return config_path
 
 
+def create_conda_lib(output_folder: Path):
+    lib_src = CURRENT_DIRECTORY / 'conda_envs'
+    lib_dest = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'conda_envs'
+    if lib_dest.is_dir():
+        dir_comp = filecmp.dircmp(str(lib_src), str(lib_dest))
+        if dir_comp.left_only or dir_comp.diff_files:
+            copy_lib(lib_src, lib_dest)
+    else:
+        copy_lib(lib_src, lib_dest)
+
+
 def copy_lib(src_folder: Path, dest_folder: Path):
     try:
         if dest_folder.is_dir():
@@ -409,14 +429,20 @@ def parse_arguments() -> argparse.Namespace:
                        help="Path to cluster config file. "
                             "See also: https://snakemake.readthedocs.io/en/stable/snakefiles/configuration.html#cluster-configuration")
     other.add_argument('--cluster-profile', dest='cluster_profile', default=None, type=str, 
-                       help="Path to folder containing cluster profile 'config.yaml'" 
-                            "https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles")
+                       help="Path to folder containing cluster profile 'config.yaml'. " 
+                       "See also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles")
     other.add_argument('-t', '--cores', dest='cores', default=1, type=int,
-                       help="Number of threads/cores [Default: 1]. Defines locales cores in cluster mode")
+                       help="Number of threads/cores (Default: %(default)s). Defines locale cores in cluster mode")
     other.add_argument('--cluster-nodes', dest='cluster_nodes', default=1, type=int,
-                       help="Maximal number of parallel jobs send to the cluster [Default: 1]. Only used in cluster mode is used.")
+                       help="Maximal number of parallel jobs send to the cluster (Default: %(default)s). Only used in cluster mode.")
+    other.add_argument('--use-conda', dest='use_conda', action='store_true',
+                       help="Run job in conda environment, if defined in rule.")
+    other.add_argument('--conda_frontend', dest='conda_frontend', default='mamba', type=str, choices=['mamba','conda'],
+                       help="Choose frontend for installing environmnents ['conda', 'mamba']. (Default: %(default)s)")
+    other.add_argument('--conda-create-envs-only', dest='conda_create_envs_only', action='store_true',
+                       help="Only create job-specific environments and exit. --use-conda has to be set.")
     other.add_argument('--latency-wait', dest='latency', default=3, type=int,
-                       help="Seconds to wait before checking if all files of a rule were created [Default: 3]. Should be increased if using cluster mode.")
+                       help="Seconds to wait before checking if all files of a rule were created (Default: %(default)s). Should be increased if using cluster mode.")
     other.add_argument('-v', '--version', action='version', version='%(prog)s \nVersion: {}'.format(metadata.__version__),
                        help="Show program's version number and exit")
     other.add_argument('--verbose', dest='verbose', action="store_true", help="Print debugging output")
