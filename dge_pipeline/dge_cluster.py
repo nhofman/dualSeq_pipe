@@ -34,6 +34,7 @@ def main():
         #snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, workdir=str(args.output_folder),
         #             verbose=args.verbose, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only)
     else:
+        subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--profile', str(args.profile),'--latency-wait', str(args.latency), '--dry-run'])
         if not snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, nodes=args.cluster_nodes, workdir=str(args.output_folder),
                      verbose=args.verbose, cluster=args.cluster_command, cluster_config=str(args.cluster_config_file) if args.cluster_config_file is not None else None, 
                      latency_wait=args.latency, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only):
