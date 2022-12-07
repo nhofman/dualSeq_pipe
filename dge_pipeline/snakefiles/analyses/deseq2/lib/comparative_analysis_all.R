@@ -44,7 +44,7 @@ lfc.df.mod <- lfc.df.mod[, -1]
 
 res.list <- res.list[mixedorder(names(res.list))]
 
-# plot number of diffeerentially expressed genes - sorted by customized order
+# plot number of differentially expressed genes - sorted by customized order
 LFC.cut <- 1
 count.genes <- separate(count.genes, "Sample", c("Virus","Time","Vs"), "_", F, extra = "merge")
 count.genes$Vs <- sub("vs_","",count.genes$Vs)
@@ -52,16 +52,17 @@ count.genes$x <- ifelse(grepl("Mock", count.genes$Vs), count.genes$Time, "active
 count.genes <- count.genes[-grep("BPL",count.genes$Vs),]
 count.genes.mod$Time <- ifelse(count.genes.mod$Control=="inactive", "BPL", count.genes.mod$Time)
 p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(x, levels = c("3h","6h","12h","24h","48h")), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
-  geom_bar(stat = "identity", position = "stack") + facet_wrap(~factor(Virus, levels = names(virus.levels), labels = virus.levels), scales = "free_x") + 
+  geom_bar(stat = "identity", position = "stack") + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + 
   scale_x_discrete(labels=c("3h"="3","6h"="6","12h"="12","24h"="24","48h"="48")) + 
   scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5))) + 
-  geom_hline(yintercept = 0) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) + 
+  geom_hline(yintercept = 0) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=F)) + 
   xlab("Time after infection") + ylab("Number of genes") +
   theme(axis.title.x = element_text(size = 28, face = "bold", margin = margin(t=10,r=0,b=0,l=0)), axis.title.y = element_text(size = 28, face = "bold", margin = margin(t=0,r=10,b=0,l=0)),
         axis.text = element_text(size = 30), axis.text.x = element_text(angle = 0), 
         strip.text = element_text(size = 30, face = "bold"),
-        legend.text = element_text(size = 28), legend.title = element_blank())#element_text(size = 30, face = "bold")) + labs(fill="Diff. expression")
-ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 20, height = 10)
+        legend.text = element_text(size = 28), legend.title = element_blank(), 
+        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+ggsave(paste0("DEG_count_LFC",LFC.cut,"_wobg.pdf"), p, "pdf", output_folder, width = 12, height = 10)
 
 # Plot PCA
 shape <- if(length(unique(conditiontable$time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$time))) }else{ c(1:length(unique(conditiontable$time)))}
@@ -153,7 +154,7 @@ for(virus in virus.levels){
 # Common genes between viruses at any time point 
 out.dir <- paste0(output_folder,"/common_pattern")
 dir.create(out.dir)
-virus.levels <- c("H1N1"="H1N1","H5N1"="H5N1","RVFV"="RVFV","SFSV"="SFSV","RSV"="RSV","NIV"="NiV","EBOV"="EBOV")
+virus.levels <- c("H1N1","H5N1","RVFV","RSV","NiV","SFSV","EBOV")
 virus.dge <- sapply(unname(virus.levels),function(virus){unique(unlist(sapply(res.list.filter[grep(virus, names(res.list.filter))], function(x){return(as.character(x$SYMBOL))})))}, USE.NAMES = T)
 genes.common <- Reduce(intersect, virus.dge)
 # Venn diagram or better UpSet plot of gene sets
