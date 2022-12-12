@@ -5,9 +5,18 @@ rule all:
     input:
         expand("premapping/fastqc/{A}_fastqc.html", A=[splitext(basename(seqRun['main']['reads']))[0] for seqRun in config['entries'].values()]) #A=sorted(config['entries'].keys()))
 
+def getPath(file_name):
+    #print(file_name)
+    for seqRun in config['entries'].values():
+            if os.path.basename(seqRun['main']['reads']) == file_name:
+                return seqRun['main']['reads']
+    print('Cannot find {} in groups file'.format(file_name), file=sys.stderr)
+
+
 rule fastqc:
     input:
-        "preprocessing/{A}.fastq"
+        lambda wildcards: getPath(wildcards.name)
+        #"preprocessing/{A}.fastq"
     output:
         "premapping/fastqc/{A}_fastqc.html",
         "premapping/fastqc/{A}_fastqc.zip"

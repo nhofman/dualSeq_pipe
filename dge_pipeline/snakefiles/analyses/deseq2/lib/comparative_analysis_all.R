@@ -205,7 +205,7 @@ virus.heat <- plotHeatmap(lfc.df.all[, -grep("MARV|LASV", colnames(lfc.df.all))]
                           row_subset = genes.common, 
                           colClust = F, clusterMethod = "ward.D2", legend.limit = 1, clrn = 1,
                           fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA)
-virus.heat <- plotHeatmap(lfc.df[, -grep("MARV|LASV", colnames(lfc.df))], filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,".pdf"), 
+virus.heat <- plotHeatmap(lfc.df[, -grep("MARV|LASV", colnames(lfc.df))], filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,"_test.pdf"), 
                           row_subset = genes.common, 
                           colClust = F, clusterMethod = "ward.D2", legend.cut = 1, clrn = 1,
                           fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA, family = "Helvetica")

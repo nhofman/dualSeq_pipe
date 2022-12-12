@@ -66,7 +66,7 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   class(as.matrix(xx)[1,1])
   if((nrow(xx)>1 | ncol(xx)>1) & plot.fig == T){
     pdf(filename, family = family)
-    draw(Heatmap(as.matrix(xx), show_row_names = rowNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), 
+    heat <- draw(Heatmap(as.matrix(xx), show_row_names = rowNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), 
                  top_annotation = ca, show_column_names = colNames, col = col_fun, width = cellwidth, height = cellheight, column_names_rot = 0,
                  cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
                  heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), ...))
@@ -83,7 +83,7 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
     #                          fontsize_row = fontsize_row, fontsize_col = fontsize_col, cutree_rows = clrn, filename = filename,
     #                          height = height, width = width, border_color = border_col, display_numbers = display_numbers, ...)
     # system(paste("inkscape -l ", filename, ".svg ", filename, sep = ""))
-    return(list(row_cluster=gr.row, col_cluster=gr.col))
+    return(list(row_cluster=gr.row, col_cluster=gr.col, heat=heat))
   }else{
     return(list(row_cluster=gr.row, col_cluster=gr.col))
   }
