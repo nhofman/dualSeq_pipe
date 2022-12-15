@@ -29,16 +29,21 @@ def main():
     snakefile = create_snakefile(args.output_folder, groups, used_modules)
     if(args.use_conda):
         create_conda_lib(args.output_folder)
-    if(args.conda_create_envs_only):
-        subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--conda-create-envs-only', '--dry-run'])
-        #snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, workdir=str(args.output_folder),
-        #             verbose=args.verbose, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only)
+        if(args.conda_create_envs_only):
+            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--conda-create-envs-only', '--dry-run'])
+		      #snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, workdir=str(args.output_folder),
+		      #             verbose=args.verbose, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only)
+        else:
+            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--jobs', str(args.cluster_nodes), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--profile', str(args.cluster_profile),'--latency-wait', str(args.latency), '--dry-run'])
+        #if not snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, nodes=args.cluster_nodes, workdir=str(args.output_folder),
+        #             verbose=args.verbose, cluster=args.cluster_command, cluster_config=str(args.cluster_config_file) if args.cluster_config_file is not None else None, 
+        #             latency_wait=args.latency, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only):
     else:
-        subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--profile', str(args.profile),'--latency-wait', str(args.latency), '--dry-run'])
-        if not snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, nodes=args.cluster_nodes, workdir=str(args.output_folder),
-                     verbose=args.verbose, cluster=args.cluster_command, cluster_config=str(args.cluster_config_file) if args.cluster_config_file is not None else None, 
-                     latency_wait=args.latency, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only):
-            exit(1)
+        if(args.cluster_profile is not None):
+            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--jobs', str(args.cluster_nodes), '--directory', str(args.output_folder), '--verbose', '--profile', str(args.cluster_profile),'--latency-wait', str(args.latency), '--dry-run']) #'--rerun-triggers', 'mtime',
+        else:
+            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--latency-wait', str(args.latency), '--dry-run']) #'--rerun-triggers', 'mtime',
+    exit(1)
 
 
 def check_columns(col_names: List[str], modules: Dict[str, List['Module']], paired_end: bool) -> List[Tuple[str, str]]:
