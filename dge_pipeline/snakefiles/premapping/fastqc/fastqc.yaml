@@ -1,5 +1,16 @@
 name: "fastqc"
 
+optional_settings:
+  additional_fastqc_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+    default: ""
+
+  mem_mb:
+    description: "Memory requirement"
+    type: "string"
+    default: "500"
+
 single_end:
   snakefile: "fastqc_se"
 

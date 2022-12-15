@@ -7,13 +7,16 @@ rule all:
 
 rule fastqc:
     input:
-        "preprocessing/{A}.fq.gz"
+        #"preprocessing/{A}.fq.gz"
+        lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
-        "premapping/fastqc/{A}_fastqc.html",
-        "premapping/fastqc/{A}_fastqc.zip"
+        "premapping/fastqc/{sample}_fastqc.html",
+        "premapping/fastqc/{sample}_fastqc.zip"
     group:
         "fastqc"
     threads:
         1
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
-        "fastqc -o premapping/fastqc {input}"
+        "fastqc -o premapping/fastqc/{wildcards.sample} {input}"
