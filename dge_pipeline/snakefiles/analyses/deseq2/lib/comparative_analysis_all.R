@@ -205,7 +205,7 @@ virus.heat <- plotHeatmap(lfc.df.all[, -grep("MARV|LASV", colnames(lfc.df.all))]
                           row_subset = genes.common, 
                           colClust = F, clusterMethod = "ward.D2", legend.limit = 1, clrn = 1,
                           fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA)
-virus.heat <- plotHeatmap(lfc.df[, -grep("MARV|LASV", colnames(lfc.df))], filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,".pdf"), 
+virus.heat <- plotHeatmap(lfc.df[, -grep("MARV|LASV", colnames(lfc.df))], filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,"_test.pdf"), 
                           row_subset = genes.common, 
                           colClust = F, clusterMethod = "ward.D2", legend.cut = 1, clrn = 1,
                           fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA, family = "Helvetica")
@@ -252,20 +252,32 @@ gtf.human <- "Documents/Virus_project/genome/genes.gtf" #"/vol/sfb1021/SFB1021_V
 human.GRanges <- getTranscriptsfromGFF(gtf.human)
 human.GRanges <- keepStandardChromosomes(human.GRanges, pruning.mode = "coarse")
 genes.bg <- rownames(countdata[rowSums(countdata)>0,])
+genes.bg <- genes.bg[!genes.bg %in% virus.dge$EBOV]
 genes.bg <- genes.bg[!genes.bg %in% genes.common]
 
 # TFBS analysis with MEME
 path2meme <- "/home/nina/meme/meme-5.4.1/bin/"
 motifDB <- "/home/nina/Documents/Virus_project/motif_databases/JASPAR/JASPAR2022_CORE_vertebrates_non-redundant.meme"
+motifDB_selected <- "/home/nina/Documents/Virus_project/motif_databases/JASPAR/Lino_TF/motifs.meme"
 motifDB <- "/home/nina/Documents/Virus_project/motif_databases/HUMAN/HOCOMOCOv11_full_HUMAN_mono_meme_format.meme"
 fasta.file <- "Documents/Virus_project/genome/genome.fa" #"/vol/sfb1021/SFB1021_Virus/genomes/hg38/genome.fa"
 out.dir <- paste0(out.dir, "/TFBS/")
-promotor_prim <- "promotor.common.fa"
-promotor_back <- "promotor.bg.fa"
-writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, genes.common, genes.bg, upstream = 1000, downstream = 0)
-meme.res <- meme(path2meme, outdir = out.dir, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), nmotif = 10, alph = "dna", objfun = "de")
+up <- 2000
+down <- 500
+promotor_prim <- paste0("promotor",up,"_",down,".common.fa")
+promotor_back <- paste0("promotor",up,"_",down,".bg.fa")
+writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, genes.common, genes.bg, upstream = up, downstream = down)
+  for(i in 1:10){
+  genes.bg.sample <- sample(genes.bg, 500)
+  promotor_prim <- paste0("promotor",up,"_",down,"_",i,".common.fa")
+  promotor_back <- paste0("promotor",up,"_",down,"_",i,".bg.fa")
+  writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, virus.dge$EBOV, genes.bg, upstream = up, downstream = down)
+  writeGRanges2Fasta(human.GRanges, out.dir, promotor_prim, promotor_back, fasta.file, genes.common, genes.bg.sample, upstream = up, downstream = down)
+  sea(path2meme, motifDB_selected, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), paste0(out.dir,"sea_", i))
+}
+  meme.res <- meme(path2meme, outdir = out.dir, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), nmotif = 10, alph = "dna", objfun = "de")
 tomtom(path2meme, motifDB, motif_file = meme.res, outdir = out.dir)
-ame(path2meme, motifDB, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), out.dir)
+ame(path2meme, motifDB_selected, paste0(out.dir,promotor_prim), paste0(out.dir,promotor_back), out.dir)
 
 # Compare Mock and BPL
 LFC.cut <- 1
