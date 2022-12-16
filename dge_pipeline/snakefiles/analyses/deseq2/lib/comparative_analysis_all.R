@@ -184,7 +184,7 @@ for(virus in virus.levels){
 }
 
 # Common genes between viruses at any time point 
-virus.levels <- c("H1N1","H5N1","RVFV","RSV","NiV","SFSV","EBOV")
+virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV")
 virus.dge <- sapply(virus.levels,function(virus){unique(unlist(sapply(res.list.filter[grep(virus, names(res.list.filter))], function(x){return(as.character(x$SYMBOL))})))}, USE.NAMES = T)
 out.dir <- paste0(output_folder,"/common_pattern/")
 if(!dir.exists(out.dir)){
