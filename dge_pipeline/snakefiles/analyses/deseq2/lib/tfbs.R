@@ -123,3 +123,23 @@ ame <- function(path2meme, motifDB, promotor_prim, promotor_back = NA, outdir, m
   cat(paste(ame_cmd_out, collapse = "\n"))
   cat(paste("mv", bash_file, outdir)) 
 }
+
+# call sea
+sea <- function(path2meme, motifDB, promotor_prim, promotor_back = NA, outdir, align = "right", add_arg = ""){
+  bash_file <- paste0(out.dir,"sea_command.sh")
+  #if(file.exists(bash_file)) file.remove(bash_file)
+  f <- file(bash_file, open = "w")
+  sea_command <- paste(paste0(path2meme, "sea"),
+                       paste0(add_arg, collapse = " "),
+                       paste0("--align ", align),
+                       paste0("--oc ", outdir),
+                       paste0("--n ", promotor_back),
+                       paste0("--p ", promotor_prim),
+                       paste0("--m ", motifDB), sep = " ")
+  cat(paste("echo \"", sea_command, "\"\n"), file=f)
+  cat(sea_command, file=f) 
+  close(f)
+  sea_cmd_out <- system2("bash", args = bash_file, stderr = TRUE, stdout = TRUE)
+  cat(paste(sea_cmd_out, collapse = "\n"))
+  cat(paste("mv", bash_file, outdir)) 
+}
