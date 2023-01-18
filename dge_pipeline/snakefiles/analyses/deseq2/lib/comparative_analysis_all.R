@@ -4,6 +4,8 @@ library(gtools)
 library(openxlsx)
 library(DESeq2)
 library(reshape2)
+library(gplots)
+library(ggplot2)
 source("plot_heatmap.R")
 source("enrichment.R")
 source("STRINGdb.R")
@@ -244,14 +246,41 @@ res.list.filter.24h <- sapply(names(res.list)[grep("24h", names(res.list))], fun
   return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
 })
 names(res.list.filter.24h) <- sub("_BPL",":BPL_24h",sub("24h_vs_", "vs_", names(res.list.filter.24h)))
-sapply(virus.levels, function(v){
-  venn.plot <- venn.diagram(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"), filename = NULL, fontfamily = "Arial", cat.fontfamily = "Arial",
-                            cex = 2, cat.cex = 1.5, margin = 0.1, cat.dist = c(0.125,0.125), ext.text = T, ext.percent = c(0.2,0.2,0.2), disable.logging = T, euler.d = T, scaled = T)
-  ggsave(paste0("Venn_24h_",v,".svg"), venn.plot, "svg", output_folder)
-  svg(paste0(output_folder, v, ".svg"))
-  venn(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"))
-  dev.off()
-})
+intersect.24h <- Reduce(rbind, sapply(virus.levels, function(v){
+  virus.list <- sapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],function(x){
+    if(nrow(x)>0){
+      x <- x[, "SYMBOL"]
+    }
+  })
+  if(sum(sapply(virus.list, length)>0)){
+    data <- attr(venn(virus.list, show.plot = F),"intersections")
+  }else{
+    data <- list(character(), character(), character())
+    names(data) <- c(names(virus.list)[1], names(virus.list)[2], paste0(names(virus.list)[1], ":",names(virus.list)[2]))
+  }
+  names(data) <- gsub("_vs_:*","",gsub(v,"",names(data)))
+  data.df <- data.frame("Virus"=v,"Group"=names(data), "Count"=sapply(data, length), row.names = NULL)
+  data.df$Sum <- sum(data.df$Count)
+  data.df$Percentage <- data.df$Count/data.df$Sum
+  return(data.df)
+}, simplify = F))
+intersect.24h$Group <- factor(intersect.24h$Group, levels = c("BPL_24h", "Mock_24h:BPL_24h", "Mock_24h"))
+intersect.24h$Virus <- factor(intersect.24h$Virus, levels = virus.levels)
+plot_count <- ggplot(intersect.24h, aes(x=Count, y=Virus, group=Group, fill=Group)) + geom_col() + xlab("# Genes") +
+  scale_fill_manual(values = c("BPL_24h"="grey40", "Mock_24h"="steelblue", "Mock_24h:BPL_24h"="lightsalmon")) +
+  scale_y_discrete(limits = rev) +
+  theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
+        axis.title.y = element_blank(), axis.title.x = element_text(size = 28, face = "bold"), 
+        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+ggsave("24h_Mock_vs_BPL_counts.pdf", plot_count, "pdf", output_folder, width = 12, height = 8)
+
+plot_percent <- ggplot(intersect.24h, aes(x=Percentage, y=Virus, group=Group, fill=Group)) + geom_col() + 
+  scale_fill_manual(values = c("BPL_24h"="grey40", "Mock_24h"="steelblue", "Mock_24h:BPL_24h"="lightsalmon")) +
+  scale_x_continuous(labels = scales::percent) + scale_y_discrete(limits = rev) +
+  theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
+        axis.title.y = element_blank(), axis.title.x = element_blank(), 
+        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+ggsave("24h_Mock_vs_BPL_percentage.pdf", plot_percent, "pdf", output_folder, width = 12, height = 8)
 
 ### Compare 2 groups of viruses ###
 
