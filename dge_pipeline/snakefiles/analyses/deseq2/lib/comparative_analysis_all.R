@@ -25,7 +25,8 @@ source("tfbs.R")
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
 virus.levels <- c("H1N1"="H1N1","H5N1"="H5N1","MERS"="MERS-CoV","CoV229E"="HCoV-229E","RVFV"="RVFV","SFSV"="SFSV","RSV"="RSV","NIV"="NiV","EBOV"="EBOV","MARV"="MARV","LASV"="LASV","HCV"="HCV")
 
-lfc.df.all <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list)[grep(".*h", names(res.list))], function(x){x.df <- data.frame(res.list[[x]]$SYMBOL,res.list[[x]]$log2FoldChange); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
+lfc.df.all <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){
+  x.df <- res.list[[x]][,c("SYMBOL","log2FoldChange")]; colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df.all) <- lfc.df.all$SYMBOL
 lfc.df.all <- lfc.df.all[,-1]
 lfc.df.all <- lfc.df.all[,mixedorder(colnames(lfc.df.all))]
@@ -252,13 +253,15 @@ intersect.24h <- Reduce(rbind, sapply(virus.levels, function(v){
       x <- x[, "SYMBOL"]
     }
   })
+  names(virus.list) <- gsub(v,"Virus",names(virus.list))
+  virus.list <- virus.list[order(names(virus.list))]
   if(sum(sapply(virus.list, length)>0)){
     data <- attr(venn(virus.list, show.plot = F),"intersections")
   }else{
     data <- list(character(), character(), character())
     names(data) <- c(names(virus.list)[1], names(virus.list)[2], paste0(names(virus.list)[1], ":",names(virus.list)[2]))
   }
-  names(data) <- gsub("_vs_:*","",gsub(v,"",names(data)))
+  #names(data) <- gsub("_vs_:*","",gsub(v,"",names(data)))
   data.df <- data.frame("Virus"=v,"Group"=names(data), "Count"=sapply(data, length), row.names = NULL)
   data.df$Sum <- sum(data.df$Count)
   data.df$Percentage <- data.df$Count/data.df$Sum
@@ -267,15 +270,15 @@ intersect.24h <- Reduce(rbind, sapply(virus.levels, function(v){
 intersect.24h$Group <- factor(intersect.24h$Group, levels = c("BPL_24h", "Mock_24h:BPL_24h", "Mock_24h"))
 intersect.24h$Virus <- factor(intersect.24h$Virus, levels = virus.levels)
 plot_count <- ggplot(intersect.24h, aes(x=Count, y=Virus, group=Group, fill=Group)) + geom_col() + xlab("# Genes") +
-  scale_fill_manual(values = c("BPL_24h"="grey40", "Mock_24h"="steelblue", "Mock_24h:BPL_24h"="lightsalmon")) +
+  scale_fill_manual(values = c("Virus_vs_Virus:BPL_24h"="grey40", "Virus_vs_Mock_24h"="steelblue", "Virus_vs_Mock_24h:Virus_vs_Virus:BPL_24h"="lightsalmon")) +
   scale_y_discrete(limits = rev) +
   theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
         axis.title.y = element_blank(), axis.title.x = element_text(size = 28, face = "bold"), 
         panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
-ggsave("24h_Mock_vs_BPL_counts.pdf", plot_count, "pdf", output_folder, width = 12, height = 8)
+ggsave("24h_Mock_vs_BPL_counts.pdf", plot_count, "pdf", output_folder, width = 14, height = 8)
 
 plot_percent <- ggplot(intersect.24h, aes(x=Percentage, y=Virus, group=Group, fill=Group)) + geom_col() + 
-  scale_fill_manual(values = c("BPL_24h"="grey40", "Mock_24h"="steelblue", "Mock_24h:BPL_24h"="lightsalmon")) +
+  scale_fill_manual(values = c("Virus_vs_Virus:BPL_24h"="grey40", "Virus_vs_Mock_24h"="steelblue", "Virus_vs_Mock_24h:Virus_vs_Virus:BPL_24h"="lightsalmon")) +
   scale_x_continuous(labels = scales::percent) + scale_y_discrete(limits = rev) +
   theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
         axis.title.y = element_blank(), axis.title.x = element_blank(), 
