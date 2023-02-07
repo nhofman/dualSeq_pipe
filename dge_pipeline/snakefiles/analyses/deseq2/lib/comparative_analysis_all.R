@@ -157,7 +157,7 @@ for(virus in virus.levels){
 # Common genes between viruses at any time point 
 out.dir <- paste0(output_folder,"/common_pattern")
 dir.create(out.dir)
-virus.levels <- c("H1N1","H5N1","RVFV","RSV","NiV","SFSV","EBOV")
+virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV")
 virus.dge <- sapply(unname(virus.levels),function(virus){unique(unlist(sapply(res.list.filter[grep(virus, names(res.list.filter))], function(x){return(as.character(x$SYMBOL))})))}, USE.NAMES = T)
 genes.common <- Reduce(intersect, virus.dge)
 # Venn diagram or better UpSet plot of gene sets
