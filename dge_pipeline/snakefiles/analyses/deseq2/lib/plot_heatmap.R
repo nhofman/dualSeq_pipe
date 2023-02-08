@@ -64,10 +64,11 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   col_split <- sub("_.*","",colnames(xx))
   ca <- columnAnnotation(foo = anno_empty(border = FALSE, width = max_text_width(unlist(col_split)) + unit(2, "mm"), height = unit(1, "mm")))
   class(as.matrix(xx)[1,1])
-  if((nrow(xx)>1 | ncol(xx)>1) & plot.fig == T){
-    pdf(filename, family = family)
+
+  if((nrow(xx)>1 | ncol(xx)>1)){
     heat <- draw(Heatmap(as.matrix(xx), show_row_names = rowNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), 
-                 top_annotation = ca, show_column_names = colNames, col = col_fun, width = cellwidth, height = cellheight, column_names_rot = 0,
+                 top_annotation = ca, show_column_names = colNames, cluster_rows = rowClust, col = col_fun, width = cellwidth, height = cellheight, column_names_rot = 0,
+
                  cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
                  heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), ...))
     for(i in 1:length(unique(col_split))){
@@ -75,8 +76,12 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
              grid.rect(x = 0, width = 1, height = unit(0.1, "mm"), gp = gpar(fill = 1, col = NA), just = "left")
          })
     }
-    dev.off()
-    system(paste0("inkscape -l ", filename, ".svg ", filename))
+    if( plot.fig == T){
+      pdf(filename, family = family)
+      draw(heat)
+      dev.off()
+      system(paste0("inkscape -l ", filename, ".svg ", filename))
+    }
     # heatmap.plot <- pheatmap(xx, cluster_cols=colClust, cluster_rows=rowClust, clustering_distance_rows = distMethod, clustering_distance_cols = distMethod,
     #                          clustering_method = clusterMethod, annotation_col=annCol, annotation_row = annRow, 
     #                          breaks = breakSeq, color = color, annotation_colors = annotation_colors,
