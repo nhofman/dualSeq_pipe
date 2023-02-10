@@ -23,7 +23,6 @@ source("tfbs.R")
 # “How many genes are regulated (up or down) during how may time points?”
 
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
-virus.levels <- c("H1N1"="H1N1","H5N1"="H5N1","MERS"="MERS-CoV","CoV229E"="HCoV-229E","RVFV"="RVFV","SFSV"="SFSV","RSV"="RSV","NIV"="NiV","EBOV"="EBOV","MARV"="MARV","LASV"="LASV","HCV"="HCV")
 
 lfc.df.all <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){
   x.df <- res.list[[x]][,c("SYMBOL","log2FoldChange")]; colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
