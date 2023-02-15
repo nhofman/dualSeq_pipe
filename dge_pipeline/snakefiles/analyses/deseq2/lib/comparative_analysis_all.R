@@ -1,10 +1,13 @@
 set.seed(123)
 library(tidyr)
 library(gtools)
+library(gplots)
 library(openxlsx)
 library(DESeq2)
 library(reshape2)
 library(VennDiagram)
+library(ggplot2)
+library(ggpattern)
 
 #source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/plot_heatmap.R")
 #source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/analyses/deseq2/lib/enrichment.R")
@@ -29,6 +32,10 @@ if(!dir.exists(output_folder)){
 }
 
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
+color_file <- "Documents/Virus_project/analyses/host/deseq2/colors.txt"
+color.df <- read.table(color_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+color <- color.df[,2]
+names(color) <- color.df[,1]
 
 lfc.df.all <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list)[grep(".*h", names(res.list))], function(x){x.df <- data.frame(res.list[[x]]$SYMBOL,res.list[[x]]$log2FoldChange); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df.all) <- lfc.df.all$SYMBOL
@@ -55,17 +62,18 @@ res.list <- res.list[mixedorder(names(res.list))]
 LFC.cut <- 1
 count.genes <- count.genes[-grep("BPL",count.genes$Time),]
 p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = c("3h","6h","12h","24h")), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
-  geom_bar(stat = "identity", position = "stack", width = 0.8) + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + 
-  scale_x_discrete(labels=c("3h"="3","6h"="6","12h"="12","24h"="24")) + 
+  geom_bar(stat = "identity", position = "stack", width = 0.8, color = "black") + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + 
+  scale_x_discrete(labels=c("3h"="3 h","6h"="6 h","12h"="12 h","24h"="24 h")) + 
   scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5))) + 
   geom_hline(yintercept = 0) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) + 
   xlab("Time after infection") + ylab("Number of genes") +
-  theme(axis.title.x = element_text(family = "Helvetica", size = 28, face = "bold", margin = margin(t=10,r=0,b=0,l=0)), 
-        axis.title.y = element_text(family = "Helvetica", size = 28, face = "bold", margin = margin(t=0,r=10,b=0,l=0)),
-        axis.text = element_text(family = "Helvetica", size = 30), axis.text.x = element_text(family = "Helvetica", angle = 0), 
-        strip.text = element_text(family = "Helvetica", size = 30, face = "bold"),
-        legend.text = element_text(family = "Helvetica", size = 28), legend.title = element_blank())
-ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 15, height = 10)
+  theme(text = element_text(family = "Helvetica", face = "bold"),
+        axis.title.x = element_text(size = 35, margin = margin(t=7,r=0,b=0,l=0)), 
+        axis.title.y = element_text(size = 35, margin = margin(t=0,r=7,b=0,l=0)),
+        axis.text = element_text(size = 28), axis.text.x = element_text(angle = 0), 
+        strip.text = element_text(size = 35),
+        legend.text = element_text(size = 28), legend.title = element_blank())
+ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 23, height = 12)
 system(paste0("inkscape -l ", output_folder, "DEG_count_LFC", LFC.cut,".svg ", output_folder, "DEG_count_LFC", LFC.cut, ".pdf"))
 
 # Plot PCA
@@ -131,6 +139,7 @@ normalized.stack$Virus <- sub("Mock.*","Mock",normalized.stack$Virus)
 normalized.stack$Time[grep("MockMR",normalized.stack$Var2)] <- sub("_1","_3",normalized.stack$Time[grep("MockMR",normalized.stack$Var2)])
 normalized.stack$Time[grep("MockMR",normalized.stack$Var2)] <- sub("_2","_4",normalized.stack$Time[grep("MockMR",normalized.stack$Var2)])
 normalized.stack <- separate(normalized.stack, Time, c("hours","rep"), "_", remove = F)
+normalized.stack$log2value <- log2(normalized.stack$value+1)
 plot.violin <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_violin() + 
   facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR")), scales = "free_x") + #geom_boxplot(width=0.1) #stat_summary(fun=mean, geom="point", size=1) +
   labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
@@ -144,20 +153,25 @@ svg(paste0(output_folder,"Violin_plot_counts.svg"), family = "Helvetica", width 
 plot(plot.violin)
 dev.off()
 
-plot.box <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_boxplot() + 
+plot.box <- ggplot(normalized.stack[normalized.stack$Virus!="Mock",], aes(factor(Time, levels = mixedsort(unique(Time))), log2value, fill=Virus)) + geom_boxplot() + 
   facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR")), scales = "free_x") +
-  labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) +
-  theme(axis.title = element_text(family = "Helvetica", size = 20, face = "bold"), axis.text = element_text(family = "Helvetica", size = 16, face = "bold"), 
-        axis.text.x=element_text(family = "Helvetica", angle=90, hjust = 1.25, vjust=0.5), 
-        strip.text = element_text(family = "Helvetica", size = 30, face = "bold"),
+  scale_x_discrete(breaks = c("3h_1", "6h_1", "12h_1", "24h_1", "BPL_1"), labels = c("3 h", "6 h", "12 h", "24 h", "BPL")) +
+  labs(x="Time", y="log2(normalized counts + 1)") + scale_fill_manual(values = color) +
+  theme(text = element_text(family = "Helvetica", face = "bold"),
+        axis.title = element_text(size = 35), 
+        axis.text = element_text(size = 28), 
+        axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")), 
+        axis.title.y = element_text(margin = margin(0, 7, 0, 0, "mm")),
+        strip.text = element_text(size = 35),
         legend.position = "None", plot.margin = margin(t = 0.5, r = 0.8, b = 0.5, l = 0.5, "cm"))
-ggsave("Boxplot_counts_alt.pdf", plot.box, "pdf", output_folder, width = 18, height = 9)
-system(paste0("inkscape -l ", output_folder, "Boxplot_counts_alt.svg ", output_folder, "Boxplot_counts_alt.pdf"))
+ggsave("Boxplot_counts.pdf", plot.box, "pdf", output_folder, width = 23, height = 12)
+ggsave("Boxplot_counts.svg", plot.box, "svg", output_folder, width = 23, height = 12)
+system(paste0("inkscape -l ", output_folder, "Boxplot_counts_inkscape.svg ", output_folder, "Boxplot_counts.pdf"))
 svg(paste0(output_folder,"Boxplot_counts.svg"), family = "Helvetica", width = 15, height = 10)
 plot(plot.box)
 dev.off()
 
-
+# Get significantly differentially expressed genes
 LFC.cut <- 1
 res.list.filter <- sapply(names(res.list)[-grep(".*BPL", names(res.list))], function(n){
   x <- res.list[[n]]
@@ -238,8 +252,9 @@ virus.dge.BPL <- virus.dge.BPL[,-1]
 pheatmap::pheatmap(virus.dge.BPL)
 
 # over-representation analysis
-ora <- calc_ora(genes.common, filename = "ORA_common", out.dir = paste0(out.dir, "/ORA/"), GO = T, REACTOME = T, ont = c("CC","BP","MF"), 
-                p.cut = 0.05, label.size = 30, legend.size = 25, legend.title.size = 20, imagetype = "pdf", width = 22, height = 17, family = "Helvetica")
+ora <- calc_ora(genes.common, filename = "ORA_common", GO = T, REACTOME = T, ont = c("CC","BP","MF"), 
+                p.cut = 0.05, label.size = 23, legend.size = 20, title.size = 25, imagetype = "svg", 
+                width = 18, height = 17, family = "Helvetica", out.dir = output_folder) #out.dir = paste0(out.dir, "/ORA/"))
 
 # network analysis using STRING
 string_ppi(string_db, gene.df = data.frame("SYMBOL"=genes.common), filename = "common_genes", out.dir = paste0(out.dir, "/STRING"), link = F, 
@@ -285,17 +300,64 @@ res.list.filter.24h <- sapply(names(res.list)[grep("24h", names(res.list))], fun
   x <- res.list[[n]]
   return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
 })
-names(res.list.filter.24h) <- sub("_BPL",":BPL_24h",sub("24h_vs_", "vs_", names(res.list.filter.24h)))
-sapply(virus.levels, function(v){
-  venn.plot <- venn.diagram(lapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],"[[", "SYMBOL"), filename = NULL, fontfamily = "Helvetica", cat.fontfamily = "Helvetica",
-                            cex = 2, cat.cex = 1.5, margin = 0.1, cat.dist = c(0.125,0.125), ext.text = T, ext.percent = c(0.2,0.2,0.2), disable.logging = T, euler.d = T, scaled = T)
-  ggsave(paste0("Venn_24h_",v,".pdf"), venn.plot, "pdf", output_folder)
-  system(paste0("inkscape -l ", output_folder, "Venn_24h_",v,".svg ", output_folder, "Venn_24h_",v,".pdf"))
-  #svg(paste0(output_folder,"Venn_24h_",v,".svg"), family = "Helvetica", width = 15, height = 10)
-  #plot(venn.plot)
-  #dev.off()
-})
+#names(res.list.filter.24h) <- sub("_BPL",":BPL_24h",sub("24h_vs_", "vs_", names(res.list.filter.24h)))
+intersect.24h <- Reduce(rbind, sapply(virus.levels, function(v){
+  virus.list <- sapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],function(x){
+    if(nrow(x)>0){
+      x <- x[, "SYMBOL"]
+    }
+  })
+  names(virus.list) <- gsub(v,"Virus",names(virus.list))
+  virus.list <- virus.list[order(names(virus.list))]
+  if(sum(sapply(virus.list, length)>0)){
+    data <- attr(venn(virus.list, show.plot = F),"intersections")
+  }else{
+    data <- list(character(), character(), character())
+    names(data) <- c(names(virus.list)[1], names(virus.list)[2], paste0(names(virus.list)[1], ":",names(virus.list)[2]))
+  }
+  names(data) <- gsub("_24h","",names(data))
+  data.df <- data.frame("Virus"=v,"Group"=names(data), "Count"=sapply(data, length), row.names = NULL)
+  data.df$Sum <- sum(data.df$Count)
+  data.df$Percentage <- data.df$Count/data.df$Sum
+  return(data.df)
+}, simplify = F))
+intersect.24h[is.nan(intersect.24h$Percentage), "Percentage"] <- 0
+intersect.24h$Group2 <- gsub("_", " ", sub(".*:.*","intersect",intersect.24h$Group))
+intersect.24h$Group2 <- sub("Virus BPL","BPL-Virus",intersect.24h$Group2)
+intersect.24h$Group2 <- factor(intersect.24h$Group2, levels = c("Virus vs BPL-Virus", "intersect", "Virus vs Mock"))
+#intersect.24h$Group <- factor(intersect.24h$Group, levels = c("BPL_24h", "Mock_24h:BPL_24h", "Mock_24h"))
+intersect.24h$Virus <- factor(intersect.24h$Virus, levels = virus.levels)
+plot_24h <- ggplot(intersect.24h, aes(x=Count, y=Virus, group=Group2, fill=Group2)) 
+plot_24h <- ggplot(intersect.24h[intersect.24h$Virus!="LASV",], aes(x=Percentage, y=Virus, group=Group2, fill=Group2)) 
+plot_24h <- plot_24h + 
+  geom_col_pattern(aes(pattern=Group2), pattern_fill = "grey40", pattern_color = "grey40", pattern_density = 0.5, pattern_spacing = 0.025) + 
+  xlab("Ratio of DEG") + scale_pattern_manual(values = c("none", "stripe", "none")) + 
+  scale_fill_manual(values = c("Virus vs BPL-Virus"="grey40", "Virus vs Mock"="grey80", "intersect"="grey80"),
+                    breaks = c("Virus vs Mock", "Virus vs BPL-Virus"), #labels = c("Virus vs Mock", "Virus vs BPL-Virus"),
+                    guide = guide_legend(override.aes = list(pattern = "none"))) +
+  guides(pattern = "none") + scale_y_discrete(limits = rev) + scale_x_continuous(labels = scales::percent) +
+  theme(text = element_text(family = "Helvetica", face = "bold"),
+        legend.title = element_blank(), legend.text = element_text(size = 28), axis.text = element_text(size = 28), 
+        axis.title.x = element_text(size = 35, margin = margin(7, 0, 0, 0, "mm")), 
+        axis.title.y = element_text(size = 35, margin = margin(0, 7, 0, 0, "mm")), 
+        axis.line = element_line(colour = "black", linewidth = 0.5),
+        panel.background = element_rect(fill = NA)) #, panel.grid = element_blank())
+ggsave("24h_Mock_vs_BPL_percentage_new.pdf", plot_24h, "pdf", output_folder, width = 14, height = 8)
 
+#plot_count <- ggplot(intersect.24h, aes(x=Count, y=Virus, group=Group, fill=Group)) + geom_col() + xlab("# Genes") +
+  scale_fill_manual(values = c("Virus_vs_Virus:BPL_24h"="grey40", "Virus_vs_Mock_24h"="steelblue", "Virus_vs_Mock_24h:Virus_vs_Virus:BPL_24h"="lightsalmon")) +
+  scale_y_discrete(limits = rev) +
+  theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
+        axis.title.y = element_blank(), axis.title.x = element_text(size = 28, face = "bold"), 
+        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+
+plot_percent <- ggplot(intersect.24h, aes(x=Percentage, y=Virus, group=Group, fill=Group)) + geom_col() + 
+  scale_fill_manual(values = c("Virus_vs_Virus:BPL_24h"="grey40", "Virus_vs_Mock_24h"="steelblue", "Virus_vs_Mock_24h:Virus_vs_Virus:BPL_24h"="lightsalmon")) +
+  scale_x_continuous(labels = scales::percent) + scale_y_discrete(limits = rev) +
+  theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
+        axis.title.y = element_blank(), axis.title.x = element_blank(), 
+        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+ggsave("24h_Mock_vs_BPL_percentage.pdf", plot_percent, "pdf", output_folder, width = 12, height = 8)
 ### Compare 2 groups of viruses ###
 
 # Compare two sets and find set specific and common values
