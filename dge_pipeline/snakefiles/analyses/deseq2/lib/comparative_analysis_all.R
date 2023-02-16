@@ -153,8 +153,10 @@ svg(paste0(output_folder,"Violin_plot_counts.svg"), family = "Helvetica", width 
 plot(plot.violin)
 dev.off()
 
-plot.box <- ggplot(normalized.stack[normalized.stack$Virus!="Mock",], aes(factor(Time, levels = mixedsort(unique(Time))), log2value, fill=Virus)) + geom_boxplot() + 
-  facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR")), scales = "free_x") +
+plot.box <- ggplot(normalized.stack[normalized.stack$Virus!="Mock",], aes(factor(Time, levels = mixedsort(unique(Time))), log2value, fill=Virus)) 
+plot.box <- ggplot(normalized.stack[normalized.stack$Virus=="Mock",], aes(factor(Time, levels = mixedsort(unique(Time))), log2value, fill=Virus)) 
+plot.box <- plot.box +
+  geom_boxplot() + facet_wrap(~factor(Virus, levels = c(virus.levels, "Mock")), scales = "free_x") +
   scale_x_discrete(breaks = c("3h_1", "6h_1", "12h_1", "24h_1", "BPL_1"), labels = c("3 h", "6 h", "12 h", "24 h", "BPL")) +
   labs(x="Time", y="log2(normalized counts + 1)") + scale_fill_manual(values = color) +
   theme(text = element_text(family = "Helvetica", face = "bold"),
@@ -165,11 +167,9 @@ plot.box <- ggplot(normalized.stack[normalized.stack$Virus!="Mock",], aes(factor
         strip.text = element_text(size = 35),
         legend.position = "None", plot.margin = margin(t = 0.5, r = 0.8, b = 0.5, l = 0.5, "cm"))
 ggsave("Boxplot_counts.pdf", plot.box, "pdf", output_folder, width = 23, height = 12)
-ggsave("Boxplot_counts.svg", plot.box, "svg", output_folder, width = 23, height = 12)
-system(paste0("inkscape -l ", output_folder, "Boxplot_counts_inkscape.svg ", output_folder, "Boxplot_counts.pdf"))
-svg(paste0(output_folder,"Boxplot_counts.svg"), family = "Helvetica", width = 15, height = 10)
-plot(plot.box)
-dev.off()
+system(paste0("inkscape -l ", output_folder, "Boxplot_counts.svg ", output_folder, "Boxplot_counts.pdf"))
+ggsave("Boxplot_counts_Mock.pdf", plot.box, "pdf", output_folder, width = 23*0.7, height = 12*0.7)
+system(paste0("inkscape -l ", output_folder, "Boxplot_counts_Mock.svg ", output_folder, "Boxplot_counts_Mock.pdf"))
 
 # Get significantly differentially expressed genes
 LFC.cut <- 1
@@ -253,7 +253,7 @@ pheatmap::pheatmap(virus.dge.BPL)
 
 # over-representation analysis
 ora <- calc_ora(genes.common, filename = "ORA_common", GO = T, REACTOME = T, ont = c("CC","BP","MF"), 
-                p.cut = 0.05, label.size = 23, legend.size = 20, title.size = 25, imagetype = "svg", 
+                p.cut = 0.05, label.size = 23, legend.size = 20, title.size = 25, imagetype = "pdf", 
                 width = 18, height = 17, family = "Helvetica", out.dir = output_folder) #out.dir = paste0(out.dir, "/ORA/"))
 
 # network analysis using STRING
@@ -343,21 +343,8 @@ plot_24h <- plot_24h +
         axis.line = element_line(colour = "black", linewidth = 0.5),
         panel.background = element_rect(fill = NA)) #, panel.grid = element_blank())
 ggsave("24h_Mock_vs_BPL_percentage_new.pdf", plot_24h, "pdf", output_folder, width = 14, height = 8)
+system(paste0("inkscape -l ", output_folder, "24h_Mock_vs_BPL_percentage_new.svg ", output_folder, "24h_Mock_vs_BPL_percentage_new.pdf"))
 
-#plot_count <- ggplot(intersect.24h, aes(x=Count, y=Virus, group=Group, fill=Group)) + geom_col() + xlab("# Genes") +
-  scale_fill_manual(values = c("Virus_vs_Virus:BPL_24h"="grey40", "Virus_vs_Mock_24h"="steelblue", "Virus_vs_Mock_24h:Virus_vs_Virus:BPL_24h"="lightsalmon")) +
-  scale_y_discrete(limits = rev) +
-  theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
-        axis.title.y = element_blank(), axis.title.x = element_text(size = 28, face = "bold"), 
-        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
-
-plot_percent <- ggplot(intersect.24h, aes(x=Percentage, y=Virus, group=Group, fill=Group)) + geom_col() + 
-  scale_fill_manual(values = c("Virus_vs_Virus:BPL_24h"="grey40", "Virus_vs_Mock_24h"="steelblue", "Virus_vs_Mock_24h:Virus_vs_Virus:BPL_24h"="lightsalmon")) +
-  scale_x_continuous(labels = scales::percent) + scale_y_discrete(limits = rev) +
-  theme(legend.title = element_blank(), legend.text = element_text(size = 20), axis.text = element_text(size = 30), 
-        axis.title.y = element_blank(), axis.title.x = element_blank(), 
-        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
-ggsave("24h_Mock_vs_BPL_percentage.pdf", plot_percent, "pdf", output_folder, width = 12, height = 8)
 ### Compare 2 groups of viruses ###
 
 # Compare two sets and find set specific and common values

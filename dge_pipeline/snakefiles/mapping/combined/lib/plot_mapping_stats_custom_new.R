@@ -82,6 +82,6 @@ p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !stats.t.mean$Categor
         strip.text = element_text(size = 35, face = "bold", vjust = 0.3),
         legend.text = element_text(size = 28), legend.title = element_text(size = 35), #strip.background = element_rect(fill = "white"),
         panel.background = element_rect(fill = "white"), panel.grid = element_blank(), axis.ticks.x = element_blank())
-ggsave("mapping_statistic_modified.svg", p, "svg", output_folder, width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+#ggsave("mapping_statistic_modified.svg", p, "svg", output_folder, width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 ggsave("mapping_statistic_modified.pdf", p, "pdf", output_folder, width = 23, height = 12) #width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 system(paste0("inkscape -l ", output_folder, "mapping_statistic_modified.svg ", output_folder, "mapping_statistic_modified.pdf"))
