@@ -29,7 +29,9 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
             theme(text = element_text(family = family, face = "bold"),
                   legend.text = element_text(size = legend.size), legend.title = element_text(size = title.size),
                   axis.title = element_text(size = title.size), axis.text.y = element_text(hjust = 1),
-                  axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm"))) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+                  axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")),
+                  axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
+                  axis.line.y.left = element_line(color = "black"), panel.border = element_blank())
           ggsave(paste(filename,"_",o,"_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                  plot = egg::set_panel_size(plot_go, width = unit(10, "cm"), height = unit(height*2, "cm")), width = width, height = height)
           #ggsave(paste(filename,"_",o,"_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
@@ -53,7 +55,9 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
           theme(text = element_text(family = family, face = "bold"),
                 legend.text = element_text(size = legend.size), legend.title = element_text(size = title.size),
                 axis.title = element_text(size = title.size), axis.text.y = element_text(hjust = 1),
-                axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm"))) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+                axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")),
+                axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
+                axis.line.y.left = element_line(color = "black"), panel.border = element_blank()) 
         ggsave(paste(filename,"_KEGG_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                plot = egg::set_panel_size(plot_kegg, width = unit(10, "cm"), height = unit(height*2, "cm")), width = width, height = height)
         #ggsave(paste(filename,"_KEGG_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
@@ -75,7 +79,9 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", GO = T, KEGG
           theme(text = element_text(family = family, face = "bold"),
                 legend.text = element_text(size = legend.size), legend.title = element_text(size = title.size),
                 axis.title = element_text(size = title.size), axis.text.y = element_text(hjust = 1),
-                axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm"))) #+ scale_y_discrete(labels=function(x)str_wrap(x, width = 20))
+                axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")),
+                axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
+                axis.line.y.left = element_line(color = "black"), panel.border = element_blank())
         ggsave(paste(filename,"_REACTOME_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                plot = egg::set_panel_size(plot_reactome, width = unit(10, "cm"), height = unit(height*2, "cm")), width = width, height = height)
         #ggsave(paste(filename,"_REACTOME_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)

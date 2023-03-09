@@ -26,13 +26,14 @@ source("/homes/nhofmann/Virus_project/virus_pipeline/dge_pipeline/snakefiles/ana
 # STRING network
 # “How many genes are regulated (up or down) during how may time points?”
 
-output_folder <- "/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new/analyses/host/deseq2/customized/"
+output_folder <- "/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new/analyses/host/deseq2/customized/theme_bw/"
 if(!dir.exists(output_folder)){
   dir.create(output_folder)
 }
 
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
 color_file <- "Documents/Virus_project/analyses/host/deseq2/colors.txt"
+color_file <- "/vol/sfb1021/SFB1021_Virus/colors.txt"
 color.df <- read.table(color_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
 color <- color.df[,2]
 names(color) <- color.df[,1]
@@ -61,17 +62,22 @@ res.list <- res.list[mixedorder(names(res.list))]
 # plot number of differentially expressed genes - sorted by customized order
 LFC.cut <- 1
 count.genes <- count.genes[-grep("BPL",count.genes$Time),]
-p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(Time, levels = c("3h","6h","12h","24h")), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
+count.genes.cut <- count.genes[count.genes$LFC_cutoff==LFC.cut,]
+p <- ggplot(count.genes.cut, aes(y=Count, x=factor(Time, levels = c("3h","6h","12h","24h")), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
   geom_bar(stat = "identity", position = "stack", width = 0.8, color = "black") + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + 
+  #ylim(c(round(min(count.genes.cut$Count), -3),round(max(count.genes.cut$Count), -3))) +
   scale_x_discrete(labels=c("3h"="3 h","6h"="6 h","12h"="12 h","24h"="24 h")) + 
-  scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5))) + 
+  scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5)), 
+                     limits = c(round(min(count.genes.cut$Count), -3),round(max(count.genes.cut$Count), -3))) + 
   geom_hline(yintercept = 0) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) + 
-  xlab("Time after infection") + ylab("Number of genes") + theme_bw() +
+  xlab("Time after infection") + ylab("Number of genes") + #theme_bw() +
   theme(text = element_text(family = "Helvetica", face = "bold"),
+        axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), axis.line.y.left = element_line(color = "black"),
+        panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray58"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
         axis.title.x = element_text(size = 35, margin = margin(t=7,r=0,b=0,l=0)), 
         axis.title.y = element_text(size = 35, margin = margin(t=0,r=7,b=0,l=0)),
         axis.text = element_text(size = 28), axis.text.x = element_text(angle = 0), 
-        strip.text = element_text(size = 35), strip.background = element_rect(fill = NA, color = NA),
+        strip.text = element_text(size = 35), strip.background = element_rect(fill = NA, color = NA), panel.spacing = unit(2, "lines"),
         legend.text = element_text(size = 28), legend.title = element_blank())
 ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 23, height = 12)
 system(paste0("inkscape -l ", output_folder, "DEG_count_LFC", LFC.cut,".svg ", output_folder, "DEG_count_LFC", LFC.cut, ".pdf"))
@@ -87,7 +93,7 @@ pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData 
 plot_PCA <- ggplot(pca, aes(PC1, PC2, color = factor(treatment, levels = c(virus.levels, "Mock")), shape = factor(time, levels = mixedsort(as.character(unique(conditiontable$time)))))) + 
   geom_point(size = 3) + labs(color = "Infection", shape = "Time") + scale_shape_manual(values = shape, labels = sub("h"," h", names(shape))) + 
   guides(color=guide_legend(override.aes=list(fill=NA))) + theme_bw() +
-  theme(axis.title = element_text(family = "Helvetica", size = 20, face = "bold"), axis.text = element_text(family = "Helvetica", size = 16),  
+  theme(axis.title = element_text(family = "Helvetica", size = 20, face = "bold"), axis.text = element_text(family = "Helvetica", size = 16),
         legend.text = element_text(family = "Helvetica", size = 16), legend.title = element_text(family = "Helvetica", size = 20, face = "bold"), legend.key=element_blank()) + 
   guides(color = guide_legend(order = 2), shape = guide_legend(order = 1))
 if(exists("color")){
@@ -160,18 +166,20 @@ plot.box <- ggplot(normalized.stack[normalized.stack$Virus=="Mock",], aes(factor
 plot.box <- plot.box +
   geom_boxplot() + facet_wrap(~factor(Virus, levels = c(virus.levels, "Mock")), scales = "free_x") +
   scale_x_discrete(breaks = c("3h_1", "6h_1", "12h_1", "24h_1", "BPL_1"), labels = c("3 h", "6 h", "12 h", "24 h", "BPL")) +
-  labs(x="Time", y="log2(normalized counts + 1)") + scale_fill_manual(values = color) + theme_bw() +
-  theme(text = element_text(family = "Helvetica", face = "bold"),
+  labs(x="Time", y="log2(normalized counts + 1)") + scale_fill_manual(values = color) +
+  theme(text = element_text(family = "Helvetica", face = "bold"), 
+        axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), axis.line.y.left = element_line(color = "black"),
+        panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
         axis.title = element_text(size = 35), 
-        axis.text = element_text(size = 28), 
+        axis.text = element_text(size = 28), axis.ticks.x = element_blank(),
         axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")), 
         axis.title.y = element_text(margin = margin(0, 7, 0, 0, "mm")),
-        strip.text = element_text(size = 35), #strip.background = element_rect(fill = NA, color = NA),
+        strip.text = element_text(size = 35), strip.background = element_rect(fill = NA, color = NA),  panel.spacing = unit(2, "lines"),
         legend.position = "None", plot.margin = margin(t = 0.5, r = 0.8, b = 0.5, l = 0.5, "cm"))
-ggsave("Boxplot_counts_grey.pdf", plot.box, "pdf", output_folder, width = 23, height = 12)
-system(paste0("inkscape -l ", output_folder, "Boxplot_counts_grey.svg ", output_folder, "Boxplot_counts_grey.pdf"))
-ggsave("Boxplot_counts_Mock_grey.pdf", plot.box, "pdf", output_folder, width = 23*0.7, height = 12*0.7)
-system(paste0("inkscape -l ", output_folder, "Boxplot_counts_Mock_grey.svg ", output_folder, "Boxplot_counts_Mock_grey.pdf"))
+ggsave("Boxplot_counts.pdf", plot.box, "pdf", output_folder, width = 23, height = 12)
+system(paste0("inkscape -l ", output_folder, "Boxplot_counts.svg ", output_folder, "Boxplot_counts.pdf"))
+ggsave("Boxplot_counts_Mock.pdf", plot.box, "pdf", output_folder, width = 23*0.7, height = 12*0.7)
+system(paste0("inkscape -l ", output_folder, "Boxplot_counts_Mock.svg ", output_folder, "Boxplot_counts_Mock.pdf"))
 
 
 # Get significantly differentially expressed genes
