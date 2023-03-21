@@ -16,22 +16,22 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   }
   #xx[xx==0] <- 0.000001
   xx <- na.omit(xx)
-  if (!is.na(clrn) & !is.na(clcn)) {
-    # set the custom distance and clustering functions
-    hclustfunc <- function(x) hclust(x, method = clusterMethod)
-    distfunc <- function(x) dist(x, method = distMethod)
-    # perform clustering on rows and columns
-    cl.row <- hclustfunc(distfunc(xx))
-    cl.col <- hclustfunc(distfunc(t(xx)))
-    
-    # extract cluster assignments; i.e. k=8 (rows) k=5 (columns)
-    gr.row <- cutree(cl.row, clrn)
-    gr.col <- cutree(cl.col, clcn)
-  }else{
-    # set default values
-    gr.row <- rep(1, nrow(xx))
-    gr.col <- rep(1, ncol(xx))
-  }
+  # if (!is.na(clrn) & !is.na(clcn)) {
+  #   # set the custom distance and clustering functions
+  #   hclustfunc <- function(x) hclust(x, method = clusterMethod)
+  #   distfunc <- function(x) dist(x, method = distMethod)
+  #   # perform clustering on rows and columns
+  #   cl.row <- hclustfunc(distfunc(xx))
+  #   cl.col <- hclustfunc(distfunc(t(xx)))
+  #   
+  #   # extract cluster assignments; i.e. k=8 (rows) k=5 (columns)
+  #   gr.row <- cutree(cl.row, clrn)
+  #   gr.col <- cutree(cl.col, clcn)
+  # }else{
+  #   # set default values
+  #   gr.row <- rep(1, nrow(xx))
+  #   gr.col <- rep(1, ncol(xx))
+  # }
   if(!is.na(filter_col)){
     xx <- xx[,which(colMaxs(as.matrix(abs(xx)))>filter_col)]
   }
@@ -67,8 +67,9 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
 
   if((nrow(xx)>1 | ncol(xx)>1)){
     heat <- draw(Heatmap(as.matrix(xx), top_annotation = ca, col = col_fun, width = cellwidth, height = cellheight,
-                 show_row_names = rowNames, cluster_rows = rowClust, show_row_dend = row.dend, split = split.dend, cluster_row_slices = F,
+                 show_row_names = rowNames, cluster_rows = rowClust, show_row_dend = row.dend, split = split.dend, cluster_row_slices = F, clustering_distance_rows = distMethod, clustering_method_rows = clusterMethod,
                  show_column_names = colNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), column_names_rot = 0,
+                 clustering_distance_columns = distMethod, clustering_method_columns = clusterMethod,
                  cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
                  column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), 
                  heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), ...))
@@ -89,7 +90,8 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
     #                          fontsize_row = fontsize_row, fontsize_col = fontsize_col, cutree_rows = clrn, filename = filename,
     #                          height = height, width = width, border_color = border_col, display_numbers = display_numbers, ...)
     # system(paste("inkscape -l ", filename, ".svg ", filename, sep = ""))
-    return(list(row_cluster=gr.row, col_cluster=gr.col, heat=heat))
+    #return(list(row_cluster=gr.row, col_cluster=gr.col, heat=heat))
+    return(heat)
   }else{
     return(list(row_cluster=gr.row, col_cluster=gr.col))
   }
