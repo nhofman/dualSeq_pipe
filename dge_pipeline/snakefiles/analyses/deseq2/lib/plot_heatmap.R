@@ -2,7 +2,7 @@ library(pheatmap)
 library(ComplexHeatmap)
 
 # Heatmap 
-plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMethod = "euclidean", clusterMethod = "complete", clrn = 1, clcn = 1,
+plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMethod = "euclidean", clusterMethod = "complete", clrn = 1, clcn = 1, split.dend = NULL, row.dend = T,
                         rowClust = T, colClust = T, rowNames = T, colNames = T, fontsize_row = 0.8, fontsize_col = 10, family = "sans", annCol = NA, annRow = NA, border_col = "grey60", plot.fig = T,
                         filter_col = NA, annotation_colors = NA, height = NA, width = NA, break_step = 0.1, display_numbers = F, cellwidth = NULL, cellheight = NULL, 
                         legend.cut = 1, legend.limit.up = NA, legend.limit.down = NA, ...){
@@ -66,11 +66,12 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   class(as.matrix(xx)[1,1])
 
   if((nrow(xx)>1 | ncol(xx)>1)){
-    heat <- draw(Heatmap(as.matrix(xx), show_row_names = rowNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), 
-                 top_annotation = ca, show_column_names = colNames, cluster_rows = rowClust, col = col_fun, width = cellwidth, height = cellheight, column_names_rot = 0,
-
+    heat <- draw(Heatmap(as.matrix(xx), top_annotation = ca, col = col_fun, width = cellwidth, height = cellheight,
+                 show_row_names = rowNames, cluster_rows = rowClust, show_row_dend = row.dend, split = split.dend, cluster_row_slices = F,
+                 show_column_names = colNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), column_names_rot = 0,
                  cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
-                 heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), ...))
+                 column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), 
+                 heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), ...))
     for(i in 1:length(unique(col_split))){
       decorate_annotation("foo", slice = i, {
              grid.rect(x = 0, width = 1, height = unit(0.1, "mm"), gp = gpar(fill = 1, col = NA), just = "left")

@@ -1,3 +1,5 @@
+stat_host <- "/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new/mapping/combined/host/stats/" 
+stat_virus <- "/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new/mapping/combined/virus/stats/" 
 stat_host <- "Documents/Virus_project/analyses/host/deseq2/mapping/host_stats/" 
 stat_virus <- "Documents/Virus_project/analyses/host/deseq2/mapping/virus_stats/" 
 
@@ -78,10 +80,12 @@ p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !stats.t.mean$Categor
   facet_wrap(~ factor(Virus, levels = virus.levels), scales = "free_x", ncol = ncol.facet) + scale_x_discrete(labels=c("3 h", "6 h", "12 h", "24 h", "BPL")) +
   xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="") + scale_fill_manual(values=color, breaks = c("host:uniquely mapped", "host:multimapped"), labels = c("Host: uniquely mapped", "Host: multimapped")) + 
   theme(text = element_text(family = "Helvetica", face = "bold"), axis.title = element_text(size = 35), axis.text = element_text(size = 28), 
+        axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), axis.line.y.left = element_line(color = "black"),
+        panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
         axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")), axis.title.y = element_text(margin = margin(0, 7, 0, 0, "mm")), 
-        strip.text = element_text(size = 35, face = "bold", vjust = 0.3),
-        legend.text = element_text(size = 28), legend.title = element_text(size = 35), #strip.background = element_rect(fill = "white"),
-        panel.background = element_rect(fill = "white"), panel.grid = element_blank(), axis.ticks.x = element_blank())
+        strip.text = element_text(size = 35, face = "bold", vjust = 0.3), strip.background = element_rect(fill = NA, colour = NA), panel.spacing = unit(2, "lines"),
+        legend.text = element_text(size = 28), legend.title = element_text(size = 35))
+        #panel.background = element_rect(fill = "white"), panel.grid = element_blank(), axis.ticks.x = element_blank())
 #ggsave("mapping_statistic_modified.svg", p, "svg", output_folder, width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 ggsave("mapping_statistic_modified.pdf", p, "pdf", output_folder, width = 23, height = 12) #width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 system(paste0("inkscape -l ", output_folder, "mapping_statistic_modified.svg ", output_folder, "mapping_statistic_modified.pdf"))
