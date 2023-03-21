@@ -43,20 +43,24 @@ rownames(lfc.df.all) <- lfc.df.all$SYMBOL
 lfc.df.all <- lfc.df.all[,-1]
 lfc.df.all <- lfc.df.all[,mixedorder(colnames(lfc.df.all))]
 lfc.df.all <- lfc.df.all[,unlist(sapply(virus.levels, function(v){grep(v,colnames(lfc.df.all))}, simplify = F, USE.NAMES = F))]
-#colnames(lfc.df.all) <- sub("3h","_3h",colnames(lfc.df.all))
-#colnames(lfc.df.all) <- sub("6h","_6h",colnames(lfc.df.all))
-#lfc.df <- lfc.df[,grep(".*h.*Mock", colnames(lfc.df))]
 lfc.df <- lfc.df.all[, -grep("vs_.*BPL$", colnames(lfc.df.all))]
-lfc.df.mod <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list)[-grep(".*BPL", names(res.list))], function(x){
-  y <- res.list[[x]]
-  y$log2FoldChange <- ifelse(y$padj<0.05 & apply(y[,grep("normalized", colnames(y))],1,max) >= 10, y$log2FoldChange, NA)
-  x.df <- data.frame(y[,c("SYMBOL","log2FoldChange")])
-  colnames(x.df) <- c("SYMBOL",x)
-  return(x.df)
-}))
-rownames(lfc.df.mod) <- lfc.df.mod$SYMBOL
-lfc.df.mod <- lfc.df.mod[, -1]
-
+lfc.df.sig <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list)[-grep("BPL", names(res.list))], function(x){
+  x.df <- data.frame(res.list[[x]]$SYMBOL,res.list[[x]]$log2FoldChange,res.list[[x]]$padj)
+  x.df[,2] <- ifelse(x.df[,3]<0.05, x.df[,2], NA)
+  colnames(x.df) <- c("SYMBOL",x,paste0(x,".padj")); 
+  return(x.df[,1:2])
+  }))
+rownames(lfc.df.sig) <- lfc.df.sig$SYMBOL
+lfc.df.sig <- lfc.df.sig[,-1]
+wb <- createWorkbook()
+addWorksheet(wb, "LFC")
+writeData(wb, 1, lfc.df.sig[genes.common,], rowNames = T, colNames = T)
+negStyle <- createStyle(fontColour = "#004C99", bgFill = "#66B2FF")
+posStyle <- createStyle(fontColour = "#CC0000", bgFill = "#FF9999")
+conditionalFormatting(wb, "LFC", cols = 2:37, rows = 2:179, rule = "> 1", style = posStyle)
+conditionalFormatting(wb, "LFC", cols = 2:37, rows = 2:179, rule = "< -1", style = negStyle)
+saveWorkbook(wb, paste0(output_folder, "LFC.common.xlsx"), overwrite = T)
+write.xlsx(x=lfc.df.sig[genes.common,], file = paste0(output_folder, "LFC.common.xlsx"), rowNames=T)
 res.list <- res.list[mixedorder(names(res.list))]
 
 # plot number of differentially expressed genes - sorted by customized order
@@ -216,6 +220,19 @@ if(!dir.exists(out.dir)){
   dir.create(out.dir)
 }
 genes.common <- Reduce(intersect, virus.dge)
+
+# check chromosomal position of common genes
+genes.common.chr <- sapply(genes.common, function(x){
+  tmp <- countdata.raw[x, "Chr"]
+  tmp.uniq <- unique(strsplit(tmp,";")[[1]])
+  tmp.uniq <- tmp.uniq[!grepl("alt", tmp.uniq, fixed = T)]
+  return(tmp.uniq)
+  })
+View(cbind(genes.common.chr, countdata.raw[genes.common,]))
+genes.common.chr.tbl <- table(genes.common.chr)
+genes.common.chr.tbl <- genes.common.chr.tbl[mixedsort(names(genes.common.chr.tbl))]
+barplot(genes.common.chr.tbl, horiz = T, las = 1)
+
 # UpSet plot of gene sets
 pdf(paste0(out.dir, "/UpSet_minus_LASV_MARV.pdf"), width = 20, height = 8, family = "Helvetica")
 #svg(paste0(out.dir, "/UpSet_minus_LASV_MARV_svg.svg"), width = 20, height = 8, family = "")
