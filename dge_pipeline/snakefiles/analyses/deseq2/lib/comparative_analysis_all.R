@@ -245,12 +245,16 @@ system(paste0("inkscape -l ", out.dir, "UpSet_minus_LASV_MARV.svg ", out.dir, "U
 # plot heatmap of common gene set
 lfc.df.common <- lfc.df[genes.common, -grep("MARV|LASV", colnames(lfc.df))]
 genes.clust <- hclust(dist(lfc.df.common, method = "euclidean"), method = "complete")
-distMethod <- "pearson"
+distMethod <- "euclidean"
 clusterMethod <- "ward.D2"
-virus.heat <- plotHeatmap(lfc.df.common, filename = paste0(out.dir,"/Heatmap_common_genes_",distMethod,"_",clusterMethod,".pdf"), 
-                          row.dend = T, distMethod = distMethod,
+virus.heat <- plotHeatmap(lfc.df.common, filename = paste0(out.dir,"/Heatmap_common_genes_",distMethod,"_",clusterMethod,"_split.pdf"), 
+                          row.dend = T, distMethod = distMethod, plot.fig = T, split.dend = 2,
                           colClust = F, clusterMethod = clusterMethod, legend.cut = 1, clrn = 1,
                           fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA, family = "Helvetica")
+dend.1 <- genes.common[row_order(virus.heat)[[1]]]
+dend.2 <- genes.common[row_order(virus.heat)[[2]]]
+length(dend.1) <- length(dend.2)
+write.csv(cbind(dend.1, dend.2), paste0(out.dir, "Heatmap_split.csv"), quote = F, na = "", row.names = F)
 genes.clust <- row_order(virus.heat$heat)
 virus.heat1 <- plotHeatmap(lfc.df.common, filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,"_part1.pdf"), 
                           row_subset = genes.clust[1:89], row.dend = F, rowClust = F, clrn = 1,
