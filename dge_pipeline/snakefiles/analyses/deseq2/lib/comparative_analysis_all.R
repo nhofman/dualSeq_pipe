@@ -296,7 +296,7 @@ pheatmap::pheatmap(virus.dge.BPL)
 # over-representation analysis
 ora <- calc_ora(genes.common, filename = "ORA_common", GO = T, REACTOME = T, ont = c("CC","BP","MF"), 
                 p.cut = 0.05, label.size = 16, legend.size = 16, title.size = 20, imagetype = "pdf", 
-                width = 18, height = 17, family = "Helvetica", out.dir = output_folder, label_format = function(x) stringr::str_wrap(x, width=30))
+                width = 18, height = 17, family = "Helvetica", out.dir = paste0(output_folder,"customized/common_pattern/ORA_new"), label_format = function(x) stringr::str_wrap(x, width=30))
 
 # network analysis using STRING
 string_ppi(string_db, gene.df = data.frame("SYMBOL"=genes.common), filename = "common_genes", out.dir = paste0(out.dir, "/STRING"), link = F, 
