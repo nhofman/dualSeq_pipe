@@ -23,10 +23,16 @@ def virus2genome(wildcards):
 	for sample in config['entries'].keys():
 		if 'Mock' in sample:
 			if wildcards.virus == "None":
-				print(wildcards.virus)
-				return("None")
+				return("None","None")
 		elif wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
-			return(config['entries'][sample]['combined']['virus_genome'])
+			files = [config['entries'][sample]['combined']['virus_genome'], config['entries'][sample]['combined']['virus_genome_annotation']]
+			print(files)
+			return files
+
+def annotation_name(wildcards):
+	filename, file_extension = os.path.splitext("%%HOST_GTF%%")
+	anno_file = filename+"_"+wildcards.virus+file_extension
+	return anno_file
 
 rule star_index:
     input:
@@ -34,8 +40,10 @@ rule star_index:
     output:
         directory("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}")
     params:
-        genome_virus=lambda wildcards: virus2genome(wildcards),
-        tmp=temp("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}"+"_tmp")
+        #genome_virus=lambda wildcards: virus2genome(wildcards),
+        filelist=virus2genome,
+        tmp=temp("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}"+"_tmp"),
+        ann_file=annotation_name
     group:
         "star_index"
     log:
@@ -47,15 +55,18 @@ rule star_index:
         mem_mb=%%MEM_MB_STAR%%
     shell:
         """
-	virus=`basename {params.genome_virus}`
-        echo $virus
-        #test=`$virus == "None"`
-        #echo $test
-        if [ $virus == "None" ] 
+        echo {wildcards.virus}
+	echo params
+        if [[ "{wildcards.virus}" == "None" ]]
 	then
 		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
 	else
-		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.genome_virus} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+		echo {params.filelist}
+		echo {params.filelist[0]}
+		touch {params.ann_file}    
+		cat %%HOST_GTF%% > {params.ann_file}
+		cat {params.filelist[1]} >> {params.ann_file}
+		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
 	fi
 	"""
 

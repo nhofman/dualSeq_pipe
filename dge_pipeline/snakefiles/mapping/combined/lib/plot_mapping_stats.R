@@ -39,8 +39,11 @@ stats.t.mean <- stats.t %>% group_by(Virus,Time,Organism,Category) %>% summarise
 stats.t.mean$Category_2 <- paste(stats.t.mean$Organism, stats.t.mean$Category, sep = ":")
 
 ncol.facet <- ceiling(sqrt(length(unique(stats.t.mean$Virus[!grepl("Mock",stats.t.mean$Virus)]))))
+ncol.facet <- ifelse(ncol.facet==1, 2, ncol.facet)
 nrow.facet <- ceiling(length(unique(stats.t.mean$Virus[!grepl("Mock",stats.t.mean$Virus)]))/ncol.facet)
+nrow.facet <- ifelse(nrow.facet==1, 2, nrow.facet)
 times <- length(unique(stats.t.mean$Time[stats.t.mean$Virus==stats.t.mean$Virus[1]]))
+times <- ifelse(times<3, 3, times)
 
 # plot mapping statistic for host + virus samples
 p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
@@ -54,9 +57,12 @@ p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !grepl("Mock",stats.t
         panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
 ggsave("mapping_statistic.svg", p, "svg", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 ggsave("mapping_statistic.png", p, "png", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+ggsave("mapping_statistic.pdf", p, "pdf", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 
 ncol.facet <- ceiling(sqrt(length(unique(stats.t.mean$Virus[grepl("Mock",stats.t.mean$Virus)]))))
+ncol.facet <- ifelse(ncol.facet==1, 2, ncol.facet)
 nrow.facet <- ceiling(length(unique(stats.t.mean$Virus[grepl("Mock",stats.t.mean$Virus)]))/ncol.facet)
+nrow.facet <- ifelse(nrow.facet==1, 2, nrow.facet)
 
 # plot mapping statistic for control samples
 p <- ggplot(stats.t.mean[!stats.t.mean$Category%in%c("mapped","both") & grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +

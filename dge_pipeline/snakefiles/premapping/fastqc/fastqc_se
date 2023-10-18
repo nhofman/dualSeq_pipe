@@ -19,4 +19,4 @@ rule fastqc:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "fastqc -o premapping/fastqc/{wildcards.sample} {input}"
+        "fastqc -o premapping/fastqc {input}"
