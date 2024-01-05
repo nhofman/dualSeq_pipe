@@ -198,18 +198,19 @@ names(res.list.filter) <- sub("_"," ",sub("_vs.*", "", names(res.list.filter)))
 # “How many genes are regulated (up or down) during how may time points?”
 # UpSet plot 
 virus.dge.binary <- list2binary(lapply(res.list.filter, "[[", "SYMBOL"))#, paste0(out.dir,"/all_genes_binary.csv"))
+par(mfrow=c(3,3))
 for(virus in virus.levels){
   print(virus)
   virus.sub <- virus.dge.binary[,grep(virus,colnames(virus.dge.binary))]
   virus.sub <- virus.sub[rowSums(virus.sub)>0,]
   #svglite::svglite(paste0(output_folder, "UpSet_",virus,"_Mock.svg"), width = 14, height = 8)
-  pdf(paste0(output_folder, "UpSet_",virus,"_Mock.pdf"), width = 15, height = 8, family = "Helvetica")
+  #pdf(paste0(output_folder, "UpSet_",virus,"_Mock.pdf"), width = 15, height = 8, family = "Helvetica")
   #svg(paste0(output_folder, "UpSet_", virus, "_Mock.svg"), width = 14, height = 8, family = "Helvetica")
   print(upset(virus.sub, order.by = "freq", nsets = 4, nintersects = NA, text.scale = c(3,3,2,2,3,3), line.size = 1, point.size = 4,
               set_size.scale_max = round(max(colSums(virus.sub))+1300, -3)+100, set_size.show = T,
               sets = colnames(virus.sub[,colSums(virus.sub)>0])[mixedorder(colnames(virus.sub[,colSums(virus.sub)>0]), decreasing = T)], keep.order = TRUE), newpage=F)
-  dev.off()
-  system(paste0("inkscape -l ", output_folder, "UpSet_", virus, "_Mock.svg ", output_folder, "UpSet_", virus, "_Mock.pdf"))
+  #dev.off()
+  #system(paste0("inkscape -l ", output_folder, "UpSet_", virus, "_Mock.svg ", output_folder, "UpSet_", virus, "_Mock.pdf"))
 }
 
 # Common genes between viruses at any time point 
@@ -294,9 +295,9 @@ virus.dge.BPL <- virus.dge.BPL[,-1]
 pheatmap::pheatmap(virus.dge.BPL)
 
 # over-representation analysis
-ora <- calc_ora(genes.common, filename = "ORA_common", GO = T, REACTOME = T, ont = c("CC","BP","MF"), 
-                p.cut = 0.05, label.size = 16, legend.size = 16, title.size = 20, imagetype = "pdf", 
-                width = 18, height = 17, family = "Helvetica", out.dir = paste0(output_folder,"customized/common_pattern/ORA_new"), label_format = function(x) stringr::str_wrap(x, width=30))
+ora <- calc_ora(genes.common, filename = "ORA_common", GO = T, REACTOME = F, ont = c("CC","BP","MF"), 
+                p.cut = 0.05, label.size = 10, legend.size = 10, title.size = 12, imagetype = "pdf", dpi = 600,
+                width = 8, height = 16, family = "Helvetica", out.dir = paste0(output_folder,"customized/common_pattern/ORA_new"), label_format = function(x) stringr::str_wrap(x, width=30))
 
 # network analysis using STRING
 string_ppi(string_db, gene.df = data.frame("SYMBOL"=genes.common), filename = "common_genes", out.dir = paste0(out.dir, "/STRING"), link = F, 

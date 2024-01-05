@@ -72,14 +72,14 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
                  clustering_distance_columns = distMethod, clustering_method_columns = clusterMethod,
                  cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
                  column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), 
-                 heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), ...))
+                 heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = fontsize_col)), ...))
     for(i in 1:length(unique(col_split))){
       decorate_annotation("foo", slice = i, {
              grid.rect(x = 0, width = 1, height = unit(0.1, "mm"), gp = gpar(fill = 1, col = NA), just = "left")
          })
     }
     if( plot.fig == T){
-      pdf(filename, family = family)
+      pdf(filename, family = family, )
       draw(heat)
       dev.off()
       system(paste0("inkscape -l ", filename, ".svg ", filename))
