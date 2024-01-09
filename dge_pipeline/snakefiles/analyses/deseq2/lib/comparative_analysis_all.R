@@ -61,6 +61,7 @@ conditionalFormatting(wb, "LFC", cols = 2:37, rows = 2:179, rule = "> 1", style 
 conditionalFormatting(wb, "LFC", cols = 2:37, rows = 2:179, rule = "< -1", style = negStyle)
 saveWorkbook(wb, paste0(output_folder, "LFC.common.xlsx"), overwrite = T)
 write.xlsx(x=lfc.df.sig[genes.common,], file = paste0(output_folder, "LFC.common.xlsx"), rowNames=T)
+
 res.list <- res.list[mixedorder(names(res.list))]
 
 # plot number of differentially expressed genes - sorted by customized order
@@ -68,23 +69,26 @@ LFC.cut <- 1
 count.genes <- count.genes[-grep("BPL",count.genes$Time),]
 count.genes.cut <- count.genes[count.genes$LFC_cutoff==LFC.cut,]
 p <- ggplot(count.genes.cut, aes(y=Count, x=factor(Time, levels = c("3h","6h","12h","24h")), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
-  geom_bar(stat = "identity", position = "stack", width = 0.8, color = "black") + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + 
+  geom_bar(stat = "identity", position = "stack", width = 0.8, color = "black", linewidth = 0.25) + facet_wrap(~factor(Virus, levels = virus.levels), scales = "free_x") + 
   #ylim(c(round(min(count.genes.cut$Count), -3),round(max(count.genes.cut$Count), -3))) +
   scale_x_discrete(labels=c("3h"="3 h","6h"="6 h","12h"="12 h","24h"="24 h")) + 
   scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5)), 
                      limits = c(round(min(count.genes.cut$Count), -3),round(max(count.genes.cut$Count), -3))) + 
-  geom_hline(yintercept = 0) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) + 
+  geom_hline(yintercept = 0, linewidth = 0.25) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) + 
   xlab("Time after infection") + ylab("Number of genes") + #theme_bw() +
-  theme(text = element_text(family = "Helvetica", face = "bold"),
-        axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), axis.line.y.left = element_line(color = "black"),
+  theme(text = element_text(family = "Arial", face = "bold"), line = element_line(linewidth = 0.25),
+        axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
+        axis.line.y.right = element_blank(), axis.line.y.left = element_line(color = "black", linewidth = 0.25),
         panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray58"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
-        axis.title.x = element_text(size = 35, margin = margin(t=7,r=0,b=0,l=0)), 
-        axis.title.y = element_text(size = 35, margin = margin(t=0,r=7,b=0,l=0)),
-        axis.text = element_text(size = 28), axis.text.x = element_text(angle = 0), 
-        strip.text = element_text(size = 35), strip.background = element_rect(fill = NA, color = NA), panel.spacing = unit(2, "lines"),
-        legend.text = element_text(size = 28), legend.title = element_blank())
-ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 23, height = 12)
+        axis.title.x = element_text(size = 12, margin = margin(t=1,r=0,b=0,l=0)), 
+        axis.title.y = element_text(size = 12, margin = margin(t=0,r=1,b=0,l=0)),
+        axis.text = element_text(size = 10), axis.text.x = element_text(angle = 0), 
+        strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
+        legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank(), legend.key.size = unit(3, "mm")) 
+  #guides(fill = guide_legend(override.aes = list(size = 0.2)))
+ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 160, height = 120, units = "mm", dpi = 500)
 system(paste0("inkscape -l ", output_folder, "DEG_count_LFC", LFC.cut,".svg ", output_folder, "DEG_count_LFC", LFC.cut, ".pdf"))
+system(paste0("inkscape --export-type=svg ", output_folder, "DEG_count_LFC", LFC.cut, ".pdf"))
 
 # Plot PCA
 shape <- if(length(unique(conditiontable$time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$time))) }else{ c(1:length(unique(conditiontable$time)))}
@@ -97,14 +101,15 @@ pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData 
 plot_PCA <- ggplot(pca, aes(PC1, PC2, color = factor(treatment, levels = c(virus.levels, "Mock")), shape = factor(time, levels = mixedsort(as.character(unique(conditiontable$time)))))) + 
   geom_point(size = 3) + labs(color = "Infection", shape = "Time") + scale_shape_manual(values = shape, labels = sub("h"," h", names(shape))) + 
   guides(color=guide_legend(override.aes=list(fill=NA))) + theme_bw() +
-  theme(axis.title = element_text(family = "Helvetica", size = 20, face = "bold"), axis.text = element_text(family = "Helvetica", size = 16),
-        legend.text = element_text(family = "Helvetica", size = 16), legend.title = element_text(family = "Helvetica", size = 20, face = "bold"), legend.key=element_blank()) + 
+  theme(axis.title = element_text(family = "Arial", size = 20, face = "bold"), axis.text = element_text(family = "Arial", size = 16),
+        legend.text = element_text(family = "Arial", size = 16), legend.title = element_text(family = "Arial", size = 20, face = "bold"), legend.key=element_blank()) + 
   guides(color = guide_legend(order = 2), shape = guide_legend(order = 1))
 if(exists("color")){
   plot_PCA <- plot_PCA + scale_colour_manual(values=color)
 }
 ggsave("PCA.pdf", plot = plot_PCA, device = "pdf", path = output_folder, width = 10, height = 8)
 system(paste0("inkscape -l ", output_folder, "PCA.svg ", output_folder, "PCA.pdf"))
+system(paste0("inkscape --export-type=svg ", output_folder, "PCA.pdf"))
 
 deseq.results.vst.mod <- deseq.results.vst[,!grepl("Mock", colnames(deseq.results.vst))]
 for (time in unique(conditiontable$time[!conditiontable$treatment%in%c("Mock")])) {
@@ -116,8 +121,8 @@ for (time in unique(conditiontable$time[!conditiontable$treatment%in%c("Mock")])
   }
   plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = factor(treatment, levels = virus.levels), shape = time)) + geom_point(size=5) + 
     labs(color = "Infection", shape = "Time") + ggtitle(main) + theme_bw() +
-    theme(plot.title = element_text(family = "Helvetica", size = 20, face = "bold", hjust = 0.5), axis.title = element_text(family = "Helvetica", size = 20, face = "bold"), axis.text = element_text(family = "Helvetica", size = 16),  
-          legend.text = element_text(family = "Helvetica", size = 16), legend.title = element_text(family = "Helvetica", size = 20, face = "bold"), legend.key=element_blank()) +
+    theme(plot.title = element_text(family = "Arial", size = 20, face = "bold", hjust = 0.5), axis.title = element_text(family = "Arial", size = 20, face = "bold"), axis.text = element_text(family = "Arial", size = 16),  
+          legend.text = element_text(family = "Arial", size = 16), legend.title = element_text(family = "Arial", size = 20, face = "bold"), legend.key=element_blank()) +
     scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = "none") 
   if(exists("color")){
     plot_PCA <- plot_PCA + scale_colour_manual(values=color[!grepl("LASV|Mock",names(color))])
@@ -130,8 +135,8 @@ for (time in unique(conditiontable$time[!conditiontable$treatment%in%c("Mock")])
 pca_time <- plotPCA(deseq.results.vst[,grep("LASV", colnames(deseq.results.vst))], intgroup = c("treatment","time"), returnData = TRUE)
 plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = factor(treatment, levels = virus.levels), shape = factor(time, levels = mixedsort(as.character(unique(conditiontable$time)))))) + 
   geom_point(size=3) + labs(color = "Infection", shape = "Time") + theme_bw() +
-  theme(axis.title = element_text(family = "Helvetica", size = 20, face = "bold"), axis.text = element_text(family = "Helvetica", size = 16),  
-        legend.text = element_text(family = "Helvetica", size = 16), legend.title = element_text(family = "Helvetica", size = 20, face = "bold"), legend.key=element_blank()) +
+  theme(axis.title = element_text(family = "Arial", size = 20, face = "bold"), axis.text = element_text(family = "Arial", size = 16),  
+        legend.text = element_text(family = "Arial", size = 16), legend.title = element_text(family = "Arial", size = 20, face = "bold"), legend.key=element_blank()) +
   scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = guide_legend(order = 1))
 if(exists("color")){
   plot_PCA <- plot_PCA + scale_colour_manual(values=color)
@@ -139,7 +144,7 @@ if(exists("color")){
 
 ggsave(paste0("PCA_LASV.pdf"), plot = plot_PCA, device = "pdf", path = output_folder)
 system(paste0("inkscape -l ", output_folder, "PCA_LASV.svg ", output_folder, "PCA_LASV.pdf"))
-svg(paste0(output_folder,"PCA_LASV.svg"), family = "Helvetica", width = 15, height = 10)
+svg(paste0(output_folder,"PCA_LASV.svg"), family = "Arial", width = 15, height = 10)
 plot(plot_PCA)
 dev.off()
 
@@ -155,13 +160,13 @@ normalized.stack$log2value <- log2(normalized.stack$value+1)
 plot.violin <- ggplot(normalized.stack, aes(factor(Time, levels = mixedsort(unique(Time))), log2(value), fill=Virus)) + geom_violin() + 
   facet_wrap(~factor(Virus, levels = c(virus.levels, "MockGI", "MockMR")), scales = "free_x") + #geom_boxplot(width=0.1) #stat_summary(fun=mean, geom="point", size=1) +
   labs(x="Time", y="log2(normalized counts)") + scale_fill_manual(values = color) + theme_bw() +
-  theme(axis.title = element_text(family = "Helvetica", size = 20, face = "bold"), axis.text = element_text(family = "Helvetica", size = 16, face = "bold"),
-        axis.text.x=element_text(family = "Helvetica", angle = 90, hjust = 1.25, vjust = 0.5), 
-        strip.text = element_text(family = "Helvetica", size = 30, face = "bold"), strip.background = element_rect(fill = NA, color = NA),
+  theme(axis.title = element_text(family = "Arial", size = 20, face = "bold"), axis.text = element_text(family = "Arial", size = 16, face = "bold"),
+        axis.text.x=element_text(family = "Arial", angle = 90, hjust = 1.25, vjust = 0.5), 
+        strip.text = element_text(family = "Arial", size = 30, face = "bold"), strip.background = element_rect(fill = NA, color = NA),
         legend.position = "None", plot.margin = margin(t = 0.5, r = 1.1, b = 0.5, l = 0.5, "cm"))
 ggsave("Violin_plot_counts.pdf", plot.violin, "pdf", output_folder, width = 20, height = 9)
 system(paste0("inkscape -l ", output_folder, "Violin_plot_counts.svg ", output_folder, "Violin_plot_counts.pdf"))
-svg(paste0(output_folder,"Violin_plot_counts.svg"), family = "Helvetica", width = 15, height = 10)
+svg(paste0(output_folder,"Violin_plot_counts.svg"), family = "Arial", width = 15, height = 10)
 plot(plot.violin)
 dev.off()
 
@@ -171,7 +176,7 @@ plot.box <- plot.box +
   geom_boxplot() + facet_wrap(~factor(Virus, levels = c(virus.levels, "Mock")), scales = "free_x") +
   scale_x_discrete(breaks = c("3h_1", "6h_1", "12h_1", "24h_1", "BPL_1"), labels = c("3 h", "6 h", "12 h", "24 h", "BPL")) +
   labs(x="Time", y="log2(normalized counts + 1)") + scale_fill_manual(values = color) +
-  theme(text = element_text(family = "Helvetica", face = "bold"), 
+  theme(text = element_text(family = "Arial", face = "bold"), 
         axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), axis.line.y.left = element_line(color = "black"),
         panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
         axis.title = element_text(size = 35), 
@@ -203,13 +208,14 @@ for(virus in virus.levels){
   virus.sub <- virus.dge.binary[,grep(virus,colnames(virus.dge.binary))]
   virus.sub <- virus.sub[rowSums(virus.sub)>0,]
   #svglite::svglite(paste0(output_folder, "UpSet_",virus,"_Mock.svg"), width = 14, height = 8)
-  pdf(paste0(output_folder, "UpSet_",virus,"_Mock.pdf"), width = 15, height = 8, family = "Helvetica")
-  #svg(paste0(output_folder, "UpSet_", virus, "_Mock.svg"), width = 14, height = 8, family = "Helvetica")
+  pdf(paste0(output_folder, "UpSet_",virus,"_Mock.pdf"), width = 15, height = 8, family = "Arial")
+  #svg(paste0(output_folder, "UpSet_", virus, "_Mock.svg"), width = 14, height = 8, family = "Arial")
   print(upset(virus.sub, order.by = "freq", nsets = 4, nintersects = NA, text.scale = c(3,3,2,2,3,3), line.size = 1, point.size = 4,
               set_size.scale_max = round(max(colSums(virus.sub))+1300, -3)+100, set_size.show = T,
               sets = colnames(virus.sub[,colSums(virus.sub)>0])[mixedorder(colnames(virus.sub[,colSums(virus.sub)>0]), decreasing = T)], keep.order = TRUE), newpage=F)
   dev.off()
-  system(paste0("inkscape -l ", output_folder, "UpSet_", virus, "_Mock.svg ", output_folder, "UpSet_", virus, "_Mock.pdf"))
+  #system(paste0("inkscape -l ", output_folder, "UpSet_", virus, "_Mock.svg ", output_folder, "UpSet_", virus, "_Mock.pdf"))
+  system(paste0("inkscape --export-type=svg ", output_folder, "UpSet_", virus, "_Mock.pdf"))
 }
 
 # Common genes between viruses at any time point 
@@ -234,13 +240,14 @@ genes.common.chr.tbl <- genes.common.chr.tbl[mixedsort(names(genes.common.chr.tb
 barplot(genes.common.chr.tbl, horiz = T, las = 1)
 
 # UpSet plot of gene sets
-pdf(paste0(out.dir, "/UpSet_minus_LASV_MARV.pdf"), width = 20, height = 8, family = "Helvetica")
+pdf(paste0(out.dir, "/UpSet_minus_LASV_MARV.pdf"), width = 20, height = 8, family = "Arial")
 #svg(paste0(out.dir, "/UpSet_minus_LASV_MARV_svg.svg"), width = 20, height = 8, family = "")
 print(upset(fromList(virus.dge), nsets = 7, nintersects = 40, order.by = "freq", text.scale = c(2,2,1.5,1.5,2,2),
             point.size = 3, line.size = 1, number.angles = 0, set_size.show = T, set_size.scale_max = round(max(sapply(virus.dge, length))+500, -3)+100,
             queries = list(list(query = intersects, params = list(virus.levels), active = T, color = "red"))))
 dev.off()
 system(paste0("inkscape -l ", out.dir, "UpSet_minus_LASV_MARV.svg ", out.dir, "UpSet_minus_LASV_MARV.pdf"))
+system(paste0("inkscape --export-type=svg ", out.dir, "UpSet_minus_LASV_MARV.pdf"))
 
 # plot heatmap of common gene set
 lfc.df.common <- lfc.df[genes.common, -grep("MARV|LASV", colnames(lfc.df))]
@@ -248,22 +255,22 @@ genes.clust <- hclust(dist(lfc.df.common, method = "euclidean"), method = "compl
 distMethod <- "euclidean"
 clusterMethod <- "ward.D2"
 virus.heat <- plotHeatmap(lfc.df.common, filename = paste0(out.dir,"/Heatmap_common_genes_",distMethod,"_",clusterMethod,"_split.pdf"), 
-                          row.dend = T, distMethod = distMethod, plot.fig = T, split.dend = 2,
+                          row.dend = T, distMethod = distMethod, plot.fig = T,
                           colClust = F, clusterMethod = clusterMethod, legend.cut = 1, clrn = 1,
-                          fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA, family = "Helvetica")
+                          fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA, family = "Arial")
 dend.1 <- genes.common[row_order(virus.heat)[[1]]]
 dend.2 <- genes.common[row_order(virus.heat)[[2]]]
 length(dend.1) <- length(dend.2)
 write.csv(cbind(dend.1, dend.2), paste0(out.dir, "Heatmap_split.csv"), quote = F, na = "", row.names = F)
-genes.clust <- row_order(virus.heat$heat)
+genes.clust <- row_order(virus.heat)
 virus.heat1 <- plotHeatmap(lfc.df.common, filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,"_part1.pdf"), 
                           row_subset = genes.clust[1:89], row.dend = F, rowClust = F, clrn = 1,
                           colClust = F, clusterMethod = "ward.D2", legend.cut = 1, legend.limit.up = max(lfc.df.common), legend.limit.down = min(lfc.df.common), 
-                          fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA, family = "Helvetica")
+                          fontsize_row = 3.5, fontsize_col = 7.5, height = 7, border_col = NA, family = "Arial")
 virus.heat2 <- plotHeatmap(lfc.df.common, filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,"_part2.pdf"), 
                            row_subset = genes.clust[90:178], row.dend = F, rowClust = F, clrn = 1,
                            colClust = F, clusterMethod = "ward.D2", legend.cut = 1, legend.limit.up = max(lfc.df.common), legend.limit.down = min(lfc.df.common), 
-                           fontsize_row = 3.5, fontsize_col = 3.5, height = 7, border_col = NA, family = "Helvetica")
+                           fontsize_row = 3.5, fontsize_col = 7.5, height = 7, border_col = NA, family = "Arial")
 
 
 max.lfc <- max(lfc.df[genes.common, -grep("HCV|MARV|LASV", colnames(lfc.df))])
@@ -276,7 +283,7 @@ for(reg in names(genes.common.list)){
                                filename = paste0(out.dir,"/Heatmap_common_genes_LFC",LFC.cut,"_",reg,".pdf"), 
                                row_subset = genes.common.list[[reg]], colNames = F, cellwidth = 6.5, cellheight = 3.5,
                                colClust = F, clusterMethod = "ward.D2", clrn = 1, legend.limit.up = max.lfc, legend.limit.down = min.lfc, 
-                               fontsize_row = 3.5, fontsize_col = 6, border_col = NA, column_title_rot = 0, family = "Helvetica")
+                               fontsize_row = 3.5, fontsize_col = 6, border_col = NA, column_title_rot = 0, family = "Arial")
   #ora <- calc_ora(genes.common.list[[reg]], filename = paste0("ORA_common_",reg), out.dir = paste0(out.dir, "/ORA"), GO = T, REACTOME = F, ont = c("CC","BP","MF"), 
    #               p.cut = 0.05, label.size = 30, legend.size = 25, legend.title.size = 20, width = 15, imagetype = "pdf")
 }
@@ -294,9 +301,9 @@ virus.dge.BPL <- virus.dge.BPL[,-1]
 pheatmap::pheatmap(virus.dge.BPL)
 
 # over-representation analysis
-ora <- calc_ora(genes.common, filename = "ORA_common", GO = T, REACTOME = T, ont = c("CC","BP","MF"), 
-                p.cut = 0.05, label.size = 16, legend.size = 16, title.size = 20, imagetype = "pdf", 
-                width = 18, height = 17, family = "Helvetica", out.dir = output_folder, label_format = function(x) stringr::str_wrap(x, width=30))
+ora <- calc_ora(genes.common, filename = "ORA_common", GO = T, REACTOME = F, KEGG = T, ont = c("CC","BP","MF"), legendlimit=c(0.003, 0.0425),
+                p.cut = 0.05, label.size = 8, legend.size = 6, title.size = 8, imagetype = "pdf", ink = "--export-type=svg -o",
+                width = 10, height = 7, family = "Arial", out.dir = paste0(output_folder, "common_pattern"), label_format = function(x) stringr::str_wrap(x, width=30))
 
 # network analysis using STRING
 string_ppi(string_db, gene.df = data.frame("SYMBOL"=genes.common), filename = "common_genes", out.dir = paste0(out.dir, "/STRING"), link = F, 
@@ -378,14 +385,15 @@ plot_24h <- plot_24h +
                     breaks = c("Virus vs Mock", "Virus vs BPL-Virus"), #labels = c("Virus vs Mock", "Virus vs BPL-Virus"),
                     guide = guide_legend(override.aes = list(pattern = "none"))) +
   guides(pattern = "none") + scale_y_discrete(limits = rev) + scale_x_continuous(labels = scales::percent) +
-  theme(text = element_text(family = "Helvetica", face = "bold"),
-        legend.title = element_blank(), legend.text = element_text(size = 28), axis.text = element_text(size = 28), 
+  theme(text = element_text(family = "Arial", face = "bold"),
+        legend.title = element_blank(), legend.text = element_text(size = 28, face = "plain"), axis.text = element_text(size = 28), 
         axis.title.x = element_text(size = 35, margin = margin(7, 0, 0, 0, "mm")), 
         axis.title.y = element_text(size = 35, margin = margin(0, 7, 0, 0, "mm")), 
         axis.line = element_line(colour = "black", linewidth = 0.5),
         panel.background = element_rect(fill = NA)) #, panel.grid = element_blank())
-ggsave("24h_Mock_vs_BPL_percentage_new.pdf", plot_24h, "pdf", output_folder, width = 14, height = 8)
+ggsave("24h_Mock_vs_BPL_percentage_new.pdf", plot_24h, "pdf", output_folder, width = 23, height = 12)
 system(paste0("inkscape -l ", output_folder, "24h_Mock_vs_BPL_percentage_new.svg ", output_folder, "24h_Mock_vs_BPL_percentage_new.pdf"))
+system(paste0("inkscape --export-type svg ", output_folder, "24h_Mock_vs_BPL_percentage_new.pdf"))
 
 ### Compare 2 groups of viruses ###
 

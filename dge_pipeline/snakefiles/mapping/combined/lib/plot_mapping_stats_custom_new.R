@@ -33,9 +33,14 @@ for(x in unique(stats.df$sample)){
   stats.df[stats.df$sample==x,"mapped_to_both"] <- tmp
 }
 stats.print <- merge(stats.df[stats.df$group=="host",-6], stats.df[stats.df$group=="virus",-c(5,6)], by = c("sample","total_reads"), all = T)
-colnames(stats.print) <- c("Sample","# reads in sample","Host: mapped","Host: uniquely mapped","Mapped to both","Host: multimapped","Virus: mapped","Virus: uniquely mapped","Virus: multimapped")
+stats.print$group <- sub("_\\d$","",stats.print$sample) 
+stats.print.mean <- stats.print %>% group_by(group) %>% summarise(across(total_reads:multimapped.y,mean))
 stats.print <- stats.print[,c(1,2,3,4,6,7,8,9,5)]
+colnames(stats.print) <- c("Sample","# reads in sample","Host: mapped","Host: uniquely mapped","Host: multimapped","Virus: mapped","Virus: uniquely mapped","Virus: multimapped","Mapped to both")
 write.table(stats.print, paste0(output_folder, "mapping_statistic_paper.tsv"), sep = "\t", row.names = F)
+stats.print.mean <- stats.print.mean[,c(1,2,3,4,6,7,8,9,5)]
+colnames(stats.print.mean) <- c("Sample","# reads in sample","Host: mapped","Host: uniquely mapped","Host: multimapped","Virus: mapped","Virus: uniquely mapped","Virus: multimapped","Mapped to both")
+write.table(stats.print.mean, paste0(output_folder, "mapping_statistic_mean_paper.tsv"), sep = "\t", row.names = F)
 
 # transpose data frame for plotting
 stats.t <- data.frame("Sample"=character(), "Total"=integer(), "Count"=integer(), "Organism"=character(), "Category"=character())
@@ -76,16 +81,19 @@ system(paste0("inkscape -l ", output_folder, "mapping_statistic.svg ", output_fo
 
 p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !stats.t.mean$Category_2%in%c("virus:multimapped","host:both") & !grepl("Mock",stats.t.mean$Virus),], 
             aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, fill=factor(Category_new, levels = c("host:multimapped", "host:uniquely mapped", virus.levels)))) +
-  geom_bar(stat = "identity", color = "black") +
+  geom_bar(stat = "identity", color = "black", linewidth = 0.25) +
   facet_wrap(~ factor(Virus, levels = virus.levels), scales = "free_x", ncol = ncol.facet) + scale_x_discrete(labels=c("3 h", "6 h", "12 h", "24 h", "BPL")) +
   xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="") + scale_fill_manual(values=color, breaks = c("host:uniquely mapped", "host:multimapped"), labels = c("Host: uniquely mapped", "Host: multimapped")) + 
-  theme(text = element_text(family = "Helvetica", face = "bold"), axis.title = element_text(size = 35), axis.text = element_text(size = 28), 
-        axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), axis.line.y.left = element_line(color = "black"),
+  theme(text = element_text(family = "Arial", face = "bold"), line = element_line(linewidth = 0.25),
+        axis.title = element_text(size = 12), axis.text = element_text(size = 10), 
+        axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), 
+        axis.line.x.bottom = element_line(color = "black", linewidth = 0.25), axis.line.y.left = element_line(color = "black", linewidth = 0.25),
         panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
-        axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")), axis.title.y = element_text(margin = margin(0, 7, 0, 0, "mm")), 
-        strip.text = element_text(size = 35, face = "bold", vjust = 0.3), strip.background = element_rect(fill = NA, colour = NA), panel.spacing = unit(2, "lines"),
-        legend.text = element_text(size = 28), legend.title = element_text(size = 35))
+        axis.title.x = element_text(margin = margin(1, 0, 0, 0)), axis.title.y = element_text(margin = margin(0, 1, 0, 0)), 
+        strip.text = element_text(size = 12, face = "bold", vjust = 0.3), strip.background = element_rect(fill = NA, colour = NA), 
+        legend.text = element_text(size = 10, face = "plain"), legend.title = element_text(size = 12))
         #panel.background = element_rect(fill = "white"), panel.grid = element_blank(), axis.ticks.x = element_blank())
 #ggsave("mapping_statistic_modified.svg", p, "svg", output_folder, width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
-ggsave("mapping_statistic_modified.pdf", p, "pdf", output_folder, width = 23, height = 12) #width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+ggsave("mapping_statistic_modified.pdf", p, "pdf", output_folder, width = 210, height = 120, units = "mm", dpi = 500) #width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 system(paste0("inkscape -l ", output_folder, "mapping_statistic_modified.svg ", output_folder, "mapping_statistic_modified.pdf"))
+system(paste0("inkscape --export-type=svg ", output_folder, "mapping_statistic_modified.pdf"))

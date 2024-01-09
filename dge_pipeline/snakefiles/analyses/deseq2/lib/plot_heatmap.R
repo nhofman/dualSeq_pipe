@@ -66,23 +66,24 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
   class(as.matrix(xx)[1,1])
 
   if((nrow(xx)>1 | ncol(xx)>1)){
-    heat <- draw(Heatmap(as.matrix(xx), top_annotation = ca, col = col_fun, width = cellwidth, height = cellheight,
+    heat <- draw(Heatmap(as.matrix(xx), col = col_fun, width = cellwidth, height = cellheight, #top_annotation = ca, 
                  show_row_names = rowNames, cluster_rows = rowClust, show_row_dend = row.dend, split = split.dend, cluster_row_slices = F, clustering_distance_rows = distMethod, clustering_method_rows = clusterMethod,
                  show_column_names = colNames, column_names_side = "top", cluster_columns = colClust, column_split = factor(col_split, levels=unique(col_split)), column_names_rot = 0,
-                 clustering_distance_columns = distMethod, clustering_method_columns = clusterMethod,
-                 cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col), column_labels = sub("h","",sub(".*_","",colnames(xx))),
+                 clustering_distance_columns = distMethod, clustering_method_columns = clusterMethod, column_names_centered = T,
+                 cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col*1.5, fontface = "bold"), column_labels = sub("h","",sub(".*_","",colnames(xx))),
                  column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), 
-                 heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = 13)), ...))
-    for(i in 1:length(unique(col_split))){
-      decorate_annotation("foo", slice = i, {
-             grid.rect(x = 0, width = 1, height = unit(0.1, "mm"), gp = gpar(fill = 1, col = NA), just = "left")
-         })
-    }
+                 heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = fontsize_col)), ...))
+    #for(i in 1:length(unique(col_split))){
+    #  decorate_annotation("foo", slice = i, {
+    #         grid.rect(x = 0, width = 1, height = unit(0.1, "mm"), gp = gpar(fill = 1, col = NA), just = "left")
+    #     })
+    #}
     if( plot.fig == T){
       pdf(filename, family = family)
       draw(heat)
       dev.off()
-      system(paste0("inkscape -l ", filename, ".svg ", filename))
+      #system(paste0("inkscape -l ", filename, ".svg ", filename))
+      system(paste0("inkscape --export-type=svg ", filename))
     }
     # heatmap.plot <- pheatmap(xx, cluster_cols=colClust, cluster_rows=rowClust, clustering_distance_rows = distMethod, clustering_distance_cols = distMethod,
     #                          clustering_method = clusterMethod, annotation_col=annCol, annotation_row = annRow, 
