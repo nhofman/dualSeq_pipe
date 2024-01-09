@@ -73,11 +73,13 @@ plotHeatmap <- function(x, filename = "no_name_set.pdf", row_subset = NA, distMe
                  cluster_column_slices = F, column_title_gp = gpar(fontsize = fontsize_col*1.5, fontface = "bold"), column_labels = sub("h","",sub(".*_","",colnames(xx))),
                  column_names_gp = gpar(fontsize = fontsize_col, family = family), row_names_gp = gpar(fontsize = fontsize_row, family = family), 
                  heatmap_legend_param = list(title = NULL, labels_gp = gpar(fontsize = fontsize_col)), ...))
+
     #for(i in 1:length(unique(col_split))){
     #  decorate_annotation("foo", slice = i, {
     #         grid.rect(x = 0, width = 1, height = unit(0.1, "mm"), gp = gpar(fill = 1, col = NA), just = "left")
     #     })
     #}
+
     if( plot.fig == T){
       pdf(filename, family = family)
       draw(heat)

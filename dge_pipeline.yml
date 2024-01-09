@@ -17,8 +17,8 @@ dependencies:
 - multiqc>=1.5
 - pandas>=0.23
 - xlsxwriter>=1.0.5
-#- lofreq
-#- picard
+- lofreq
+- picard
 #- gatk
 - fastp
 - bioconductor-deseq2

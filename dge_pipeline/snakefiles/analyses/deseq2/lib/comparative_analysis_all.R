@@ -203,6 +203,7 @@ names(res.list.filter) <- sub("_"," ",sub("_vs.*", "", names(res.list.filter)))
 # “How many genes are regulated (up or down) during how may time points?”
 # UpSet plot 
 virus.dge.binary <- list2binary(lapply(res.list.filter, "[[", "SYMBOL"))#, paste0(out.dir,"/all_genes_binary.csv"))
+par(mfrow=c(3,3))
 for(virus in virus.levels){
   print(virus)
   virus.sub <- virus.dge.binary[,grep(virus,colnames(virus.dge.binary))]
