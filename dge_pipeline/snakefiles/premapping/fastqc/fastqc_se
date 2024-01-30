@@ -1,5 +1,5 @@
-from os import listdir
-from os.path import isfile, basename, splitext
+#from os import listdir
+#from os.path import isfile, basename, splitext
 
 rule all:
     input:
