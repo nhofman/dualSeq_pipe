@@ -34,7 +34,7 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
                   axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
                   axis.line.y.left = element_line(color = "black"), panel.border = element_blank())
           ggsave(paste(filename,"_",o,"_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
-                 plot = egg::set_panel_size(plot_go, width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
+                 plot = egg::set_panel_size(plot_go, width = unit(width-4, "cm"), height = unit(height, "cm")), width = width+10, height = height+2.5, units = "cm", dpi = dpi)
           #ggsave(paste(filename,"_",o,"_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
       	  system(paste0("inkscape ",ink, out.dir, "/", filename, "_", o, "_barplot.svg ", out.dir, "/", filename, "_", o, "_barplot.pdf"))
 
@@ -61,9 +61,9 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
                 axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
                 axis.line.y.left = element_line(color = "black"), panel.border = element_blank()) 
         ggsave(paste(filename,"_KEGG_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
-               plot = egg::set_panel_size(plot_kegg,width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
+               plot = egg::set_panel_size(plot_kegg,width = unit(width-4, "cm"), height = unit(height+1, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
         #ggsave(paste(filename,"_KEGG_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
-      	#system(paste0("inkscape -l ", out.dir, "/", filename, "_KEGG_barplot.svg ", out.dir, "/", filename, "_KEGG_barplot.pdf"))
+      	system(paste0("inkscape ", ink, out.dir, "/", filename, "_KEGG_barplot.svg ", out.dir, "/", filename, "_KEGG_barplot.pdf"))
 
         write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
@@ -86,9 +86,9 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
                 axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
                 axis.line.y.left = element_line(color = "black"), panel.border = element_blank())
         ggsave(paste(filename,"_REACTOME_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
-               plot = egg::set_panel_size(plot_reactome, width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
+               plot = egg::set_panel_size(plot_reactome, width = unit(width-4, "cm"), height = unit(height+1, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
         #ggsave(paste(filename,"_REACTOME_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)
-      	#system(paste0("inkscape -l ", out.dir, "/", filename, "_REACTOME_barplot.svg ", out.dir, "/", filename, "_REACTOME_barplot.pdf"))
+      	system(paste0("inkscape ", ink, out.dir, "/", filename, "_REACTOME_barplot.svg ", out.dir, "/", filename, "_REACTOME_barplot.pdf"))
 
         write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
