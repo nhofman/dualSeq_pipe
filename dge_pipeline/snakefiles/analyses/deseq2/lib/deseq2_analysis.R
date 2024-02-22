@@ -196,14 +196,17 @@ res.list <- list()
 for (n in 1:nrow(comparisons.df)) {
 #res.list <- mclapply(1:nrow(comparisons.df), function(n){
       print(comparisons.df[n,])
-      res <- results(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), parallel = FALSE)
-      res.list.raw[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
-      write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
+      group_1 <- comparisons.df[n,1]
+      group_2 <- comparisons.df[n,2]
+      # calculate log2 fold changes for condition group_1 vs. group_2
+      res <- results(deseq.results, contrast = c("condition", group_1, group_2), parallel = FALSE)
+      res.list.raw[[paste(group_1, group_2, sep="_vs_")]] <- res 
+      write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
       
-      resLFC <- lfcShrink(deseq.results, contrast = c("condition", comparisons.df[n,2], comparisons.df[n,1]), type = "ashr", res = res)
+      resLFC <- lfcShrink(deseq.results, contrast = c("condition", group_1, group_2), type = "ashr", res = res)
     
-      pdf(paste(output_folder, "plots/MAplot_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""))
-      plotMA(resLFC, ylim = c(-5, 5), main = paste(comparisons.df[n,2], comparisons.df[n,1], sep = "_vs_"))
+      pdf(paste(output_folder, "plots/MAplot_", group_1, "_vs_", group_2, "_shrunk.pdf", sep = ""))
+      plotMA(resLFC, ylim = c(-5, 5), main = paste(group_1, group_2, sep = "_vs_"))
       dev.off()
       
       res <- as.data.frame(resLFC)
@@ -212,20 +215,19 @@ for (n in 1:nrow(comparisons.df)) {
       plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
         theme(axis.title = element_text(size=18, face = "bold")) +
         geom_hline(yintercept = -log10(0.05), color = "red")
-      ggsave(paste("Volcano_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
-      
+      ggsave(paste("Volcano_", group_1, "_vs_", group_2, "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
       
       #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
-      res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,2]),sub("_",".*_",comparisons.df[n,1]), sep="|"),colnames(countdata.normalized))])
+      res <- cbind(res, countdata.normalized[,grep(paste(as.character(group_1),sub("_",".*_",group_2), sep="|"),colnames(countdata.normalized))])
       res <- cbind(SYMBOL = rownames(res), res)
       res <- merge(annotate(as.character(res$SYMBOL), "SYMBOL"), res, by = "SYMBOL", all = T)
       colnames(res)[11:(ncol(res))] <- paste0("normalized_", colnames(res)[11:(ncol(res))])
       res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
       res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
-      write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], ".csv", sep = ""), row.names = TRUE, col.names = NA)
-      write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", comparisons.df[n,2], "_vs_", comparisons.df[n,1], ".xlsx", sep = ""), overwrite = T)
+      write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, ".csv", sep = ""), row.names = TRUE, col.names = NA)
+      write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, ".xlsx", sep = ""), overwrite = T)
      
-     res.list[[paste(comparisons.df[n,2], comparisons.df[n,1], sep="_vs_")]] <- res 
+     res.list[[paste(group_1, group_2, sep="_vs_")]] <- res 
      #return(res)
     }#, mc.cores = threads)
 
@@ -278,4 +280,4 @@ for(LFC.cut in unique(count.genes$LFC_cutoff)){
 
 save.image(paste(output_folder, "/deseq2.RData", sep = ""))
 
-#calc_ora(gene = res$SYMBOL[res$padj<padj.cut & res$log2FoldChange>LFC.cut], main = "", filename = paste0(comparisons.df[n,2],"up"), subdir = "ORA/",)
+#calc_ora(gene = res$SYMBOL[res$padj<padj.cut & res$log2FoldChange>LFC.cut], main = "", filename = paste0(group_1,"up"), subdir = "ORA/",)
