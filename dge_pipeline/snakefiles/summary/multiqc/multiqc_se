@@ -6,6 +6,16 @@ rule all:
     input:
         "summary/multiqc/multiqc_report.html"
 
+rule parse_envs:
+    input:
+        "envs"
+    output:
+        "multiqc_config.yaml"
+    shell:
+        """
+        python scripts/parse_software_versions.py {input}
+        """
+
 rule multiqc:
     input:
         #expand("summary/multiqc/fastqc/{A}_fastqc.html", A=sorted(config['entries'].keys())),
@@ -16,13 +26,13 @@ rule multiqc:
         "analyses/host/count_table/counts.txt.summary"
     output:
         "summary/multiqc/multiqc_report.html"
-    group:
-        "multiqc"
     params:
         "preprocessing/",
         #"mapping/combined/virus/logs",
         "mapping/combined/",
-        "analyses/host/count_table",
+        "analyses/host/count_table"
+    group:
+        "multiqc"
     threads:
         1
     resources:
