@@ -1,0 +1,7 @@
+channels:
+- conda-forge
+- bioconda
+- anaconda
+- defaults
+dependencies:
+- deeptools=3.4.3

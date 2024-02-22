@@ -12,7 +12,7 @@ rule all:
         #"mapping/virus/stats/mapping_stats.xlsx",
         expand("mapping/combined/{A}.bam", A=config['entries'].keys()),
         expand("mapping/combined/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-	      expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+	    expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/virus/stats/{sample}_stats.txt", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/host/stats/{sample}_stats.txt", sample=config['entries'].keys()),
         "mapping/combined/stats/mapping_statistic.tsv",
@@ -44,10 +44,10 @@ rule star_index:
         filelist=virus2genome,
         tmp=temp("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}"+"_tmp"),
         ann_file=annotation_name
-    group:
-        "star_index"
     log:
         "mapping/combined/logs/star_index_"+"{virus}"+".log"
+    group:
+        "star_index"
     conda: "conda_envs/star_env.yaml"
     threads:
         4
@@ -56,18 +56,16 @@ rule star_index:
     shell:
         """
         echo {wildcards.virus}
-	echo params
+	    echo params
         if [[ "{wildcards.virus}" == "None" ]]
-	then
-		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
-	else
-		echo {params.filelist}
-		echo {params.filelist[0]}
-		touch {params.ann_file}    
-		cat %%HOST_GTF%% > {params.ann_file}
-		cat {params.filelist[1]} >> {params.ann_file}
-		STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
-	fi
+	    then
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+	    else
+		   touch {params.ann_file}    
+		   cat %%HOST_GTF%% > {params.ann_file}
+		   cat {params.filelist[1]} >> {params.ann_file}
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+	    fi
 	"""
 
 def get_genome(wildcards):
@@ -90,17 +88,16 @@ rule star_mapping:
         fasta="mapping/combined/{sample}Unmapped.out.mate1"
     params:
         prefix="mapping/combined/{sample}"
-    group:
-        "star_mapping"
     log:
         "mapping/combined/logs/star_mapping.{sample}.log"
+    group:
+        "star_mapping"
     conda: "conda_envs/star_env.yaml"
     threads:
         2
     resources:
         mem_mb=%%MEM_MB_STAR%%
     shell:
-        #--outReadsUnmapped Fastx
         "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx %%ADDITIONAL_STAR_OPTIONS%% 2>&1 |"
         " tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"
 
@@ -113,7 +110,7 @@ rule index_bam:
         "mapping/combined/logs/index.{sample}.log"
     group:
         "star_mapping"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
@@ -129,7 +126,7 @@ rule Mock:
         sample="Mock.*"
     group:
         "bam_process"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -155,7 +152,7 @@ rule split_bam_virus:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -179,7 +176,7 @@ rule split_bam_host:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -195,7 +192,7 @@ rule index_bam_host:
         "mapping/combined/host/{sample}.bam.bai"
     log:
         "mapping/combined/host/logs/index.{sample}.log"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
@@ -211,7 +208,7 @@ rule virusNames:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -230,7 +227,7 @@ rule statistics_host:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -250,7 +247,7 @@ rule statistics_virus:
         "mapping/combined/virus/stats/{sample}_stats.txt"
     group:
         "bam_process"
-    conda: "conda_envs/star_env.yaml"
+    conda: "conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=2000
     shell:
         """

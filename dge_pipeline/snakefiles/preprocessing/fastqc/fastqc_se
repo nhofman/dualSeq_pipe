@@ -13,6 +13,7 @@ rule fastqc:
         "preprocessing/fastqc/{sample}_fastqc.zip"
     group:
         "fastqc"
+    conda: "conda_envs/fastqc_env.yaml"
     threads:
         1
     resources:

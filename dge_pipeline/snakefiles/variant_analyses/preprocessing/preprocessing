@@ -9,7 +9,7 @@ rule remove_spliced:
     "mapping/combined/virus/{sample}.bam"
   output:
     "mapping/combined/virus/{sample}_noSplice.bam"
-  conda: "conda_envs/variant_env.yaml"
+  conda: "conda_envs/samtools.yaml"
   shell:
     """
     samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
