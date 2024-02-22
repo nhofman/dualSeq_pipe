@@ -19,12 +19,10 @@ rule multiqc:
     group:
         "multiqc"
     params:
-        #"summary/multiqc/fastqc",
         "preprocessing/",
         #"mapping/combined/virus/logs",
-        "mapping/combined/host",
+        "mapping/combined/",
         "analyses/host/count_table",
-        #"analyses/virus/count_table"
     threads:
         1
     resources:
