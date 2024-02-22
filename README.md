@@ -4,9 +4,8 @@
 In a dual RNA-Seq approach human HuH7 cells were infected with different pathogenic viruses. Samples were taken after predefined times of infection.
 The pipeline was build to analyse data from (these) infection experiments where samples are a mix of host and pathogenic reads. A python script is used to build and execute a customized snakemake workflow based on the analysis modules and parameters given by the user. 
 Available analysis modules are:
-- Premapping
-	- fastqc
 - Preprocessing
+	- fastqc
 	- fastp
 - Mapping
 	- combined {STAR}
@@ -14,10 +13,10 @@ Available analysis modules are:
 	- count_table {featureCounts}
 	- deseq2
 - Summary
-	- bapmCoverage {bigwig}
+	- bamCoverage {bigwig}
 	- multiqc
 - Variant_analyses
-	- reprocessing
+	- Preprocessing
 	- variant_calling
 
 ## Execution
@@ -61,7 +60,7 @@ Other arguments:
 
 ```
 
-### Prerequisites
+## Prerequisites
 - Snakemake
 - Mamba/Conda
 - Python
@@ -84,9 +83,9 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 | virus_genome_annotation | path to virus annotation file (gff/gtf) |
 
 - **config file**: A yaml file that defines the rules that will be executed and the rule specific parameters. An example pipeline_config.yaml can be found in the test folder.
-- **comparisons file**: A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
-- **host genome**: Host reference genome {fasta}. File path needs to be specified in config file.
-- **host annotation**: Host reference annotation {gff/gtf}. File path needs to be specified in config file.
+	- **comparisons file**: A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
+	- **host genome**: Host reference genome {fasta}. File path needs to be specified in config file.
+	- **host annotation**: Host reference annotation {gff/gtf}. File path needs to be specified in config file.
 }
  
 #### Optional:
@@ -95,18 +94,17 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 
 
 ## Results
-- Premapping
+- **Preprocessing**
 	- FastQC result for each sample (html)
-- Preprocessing
 	- Fastp result for each sample (html)
-- Mapping
+- **Mapping**
 	- Alignment files for each sample 
 		- Host mapping results (bam)
 		- Pathogen mapping resluts (bam)
 	- Mapping statistics
 		- table (tsv)
 		- plot (svg, png)
-- Analyses
+- **Analyses**
 	- Count table (.txt)
 	- DESeq2 result tables (csv, xlsx)
 	- Sample correlation heatmap (pdf)
@@ -115,10 +113,10 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 	- Volcano plot / MAplot (pdf)
 	- Summary of differentially expressed genes (tsv, png, svg)
 	- GSEA (csv, pdf, svg)
-- Summary
+- **Summary**
 	- MultiQC (html)
 	- bamCoverage files (bigwig)
-- Variant analysis
+- **Variant analysis**
 	- variant call files (vcf)
 
 ## Contact
