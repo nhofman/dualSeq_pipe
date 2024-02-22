@@ -1,15 +1,6 @@
 from os import listdir
 from os.path import isfile, splitext
 
-
-def getPath(sample_name):
-    #print(file_name)
-    config['entries'][sample_name]['main']['reads']
-    for seqRun in config['entries'].values():
-            if os.path.basename(seqRun['main']['reads']) == file_name:
-                return seqRun['main']['reads']
-    print('Cannot find {} in groups file'.format(file_name), file=sys.stderr)
-
 rule all:
     input:
         expand("preprocessing/{A}.fq.gz", A=sorted(config['entries'].keys()))
@@ -17,10 +8,9 @@ rule all:
 rule trim_reads:
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
-        #lambda wildcards: getPath(wildcards.sample)
     output:
         "preprocessing/{sample}.fq.gz",
-        "preprocessing/{sample}.fastp.json"
+        "preprocessing/fastp/{sample}_fastp.json"
     group:
         "fastp"
     conda: "conda_envs/fastp_env.yaml"
@@ -29,4 +19,4 @@ rule trim_reads:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/{wildcards.sample}.html -j preprocessing/{wildcards.sample}.fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
+        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/fastp/{wildcards.sample}_fastp.html -j preprocessing/fastp/{wildcards.sample}_fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"

@@ -3,15 +3,14 @@
 
 rule all:
     input:
-        expand("premapping/fastqc/{A}_fastqc.html", A=sorted(config['entries'].keys())) 
+        expand("preprocessing/fastqc/{A}_fastqc.html", A=sorted(config['entries'].keys()))
 
 rule fastqc:
     input:
-        #"preprocessing/{A}.fq.gz"
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
-        "premapping/fastqc/{sample}_fastqc.html",
-        "premapping/fastqc/{sample}_fastqc.zip"
+        "preprocessing/fastqc/{sample}_fastqc.html",
+        "preprocessing/fastqc/{sample}_fastqc.zip"
     group:
         "fastqc"
     threads:
@@ -19,4 +18,4 @@ rule fastqc:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "fastqc -o premapping/fastqc {input}"
+        "fastqc %%ADDITIONAL_FASTQC_OPTIONS%% -o preprocessing/fastqc {input}"
