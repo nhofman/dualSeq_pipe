@@ -9,7 +9,7 @@ optional_settings:
   mem_mb:
     description: "Memory requirement"
     type: "string"
-    default: "500"
+    default: "1000"
 
 single_end:
   snakefile: "fastqc_se"

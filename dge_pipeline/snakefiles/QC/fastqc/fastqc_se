@@ -3,14 +3,17 @@
 
 rule all:
     input:
-        expand("preprocessing/fastqc/{A}_fastqc.html", A=sorted(config['entries'].keys()))
+        expand("QC/fastqc/{A}_fastqc.html", A=sorted(config['entries'].keys()))
 
 rule fastqc:
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
-        "preprocessing/fastqc/{sample}_fastqc.html",
-        "preprocessing/fastqc/{sample}_fastqc.zip"
+        "QC/fastqc/{sample}_fastqc.html",
+        "QC/fastqc/{sample}_fastqc.zip"
+    priority: 1
+    log:
+        "QC/fastqc/log/{sample}.log"
     group:
         "fastqc"
     conda: "conda_envs/fastqc_env.yaml"
@@ -19,4 +22,4 @@ rule fastqc:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "fastqc %%ADDITIONAL_FASTQC_OPTIONS%% -o preprocessing/fastqc {input}"
+        "fastqc %%ADDITIONAL_FASTQC_OPTIONS%% -o QC/fastqc {input} 2>&1 | tee {log}"
