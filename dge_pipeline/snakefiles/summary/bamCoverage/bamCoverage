@@ -12,13 +12,16 @@ rule create_bigwig_host:
         bai = "mapping/combined/host/{sample}.bam.bai"
     output:
         "summary/bigwig/host/{sample}.bigWig"
+    priority: 1
+    log:
+        "summary/bigwig/host/log/{sample}.log"
     group: "bigwig_host"
     threads:
         4
     resources:
         mem_mb=%%MEM_MB_HOST%%
     shell:
-        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize %%EFFECTIVEGENOMESIZE%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%%"
+        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize %%EFFECTIVEGENOMESIZE%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%% 2> {log}"
 
 rule create_bigwig_virus:
     input:
@@ -26,6 +29,9 @@ rule create_bigwig_virus:
         bai = "mapping/combined/virus/{sample}.bam.bai"
     output:
         "summary/bigwig/virus/{sample}.bigWig"
+    priority: 1
+    log:
+        "summary/bigwig/virus/log/{sample}.log"
     group: "bigwig_virus"
     benchmark:
         repeat("benchmarks/bigwig/{sample}.tsv", 1)
@@ -35,4 +41,4 @@ rule create_bigwig_virus:
         mem_mb=%%MEM_MB_VIRUS%%
     run:
         for line in shell("samtools view -H  {input.bam} | awk '$1 ~ /^@SQ/{{split($3,a,/:/);print a[2]}}' | awk '{{s+=$1}} END {{print s}}'", iterable=True):
-                shell("bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize {line} %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%%")
+                shell("bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize {line} %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%% 2>&1 | tee {log}")

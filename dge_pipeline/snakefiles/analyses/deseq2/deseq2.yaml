@@ -58,7 +58,7 @@ optional_settings:
 
   mem_mb:
     description: "Memory requirement"
-    type: "int"
+    type: "string"
     default: "2000"
 
 

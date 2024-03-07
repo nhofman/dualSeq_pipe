@@ -33,6 +33,7 @@ rule all:
 rule create_conditions_human:
     output:
         temp("analyses/host/deseq2/conditions.txt")
+    priority: 1
     run:
         with(open(output[0], 'w')) as output_file:
             for name in sorted(config['entries'].keys()):
@@ -51,12 +52,13 @@ rule deseq2_human:
         assignment_statistics="analyses/host/deseq2/counts_assignment.pdf",
         #summary=expand('analyses/host/deseq2/summary/{COND}.tsv', COND=getConditions())
         #comparisons=directory("analyses/host/deseq2/deseq2_comparisons")
+    priority: 1
     group:
         "deseq2"
     params:
         output_folder="analyses/host/deseq2/"
     log:
-        log="analyses/host/deseq2/logs/deseq2.log"
+        "analyses/host/deseq2/logs/deseq2.log"
     conda: "conda_envs/R_env.yaml"
     threads:
         1
@@ -73,12 +75,13 @@ rule functional_analysis:
     output:
         directory("analyses/host/deseq2/GSEA"),
         #directory("analyses/host/deseq2/STRING")
+    priority: 1
     group:
         "deseq2"
     params:
         output_folder="analyses/host/deseq2/"
     log:
-        log="analyses/host/deseq2/logs/functional_analysis.log"
+        "analyses/host/deseq2/logs/functional_analysis.log"
     conda: "conda_envs/R_env.yaml"
     threads:
         1

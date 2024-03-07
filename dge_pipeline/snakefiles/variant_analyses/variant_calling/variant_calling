@@ -10,13 +10,16 @@ rule call_variant:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
     output:
         "variant_analyses/variant_calling/{sample}.vcf"
+    priority: 1
+    log:
+        "variant_analyses/variant_calling/log/{sample}.log"
     group: "lofreq"
     conda: "conda_envs/variant_env.yaml"
     threads: 1
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "lofreq call %%ADDITIONAL_LOFREQ_OPTIONS%% -f {input.genome} -o {output} {input.bam}"
+        "lofreq call %%ADDITIONAL_LOFREQ_OPTIONS%% -f {input.genome} -o {output} {input.bam} 2>&1 | tee {log}"
 
 
 

@@ -1,6 +1,7 @@
 from os import listdir
 from os.path import isfile, basename, splitext
 
+localrules: all, parse_envs
 
 rule all:
     input:
@@ -8,34 +9,39 @@ rule all:
 
 rule parse_envs:
     input:
-        "envs"
+        "conda_envs"
     output:
         "multiqc_config.yaml"
+    log:
+        "summary/multiqc/log/parse_envs.log"
     shell:
         """
-        python scripts/parse_software_versions.py {input}
+        python scripts/parse_software_versions.py {input} 2>&1 | tee {log}
         """
 
 rule multiqc:
     input:
-        #expand("summary/multiqc/fastqc/{A}_fastqc.html", A=sorted(config['entries'].keys())),
-        expand("preprocessing/{A}.fastp.json", A=sorted(config['entries'].keys())),
-        expand("mapping/combined/{A}Log.final.out", A=sorted(config['entries'].keys())),
-        #expand("mapping/virus/logs/bowtie2_mapping.{A}.log", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        #expand("analyses/virus/count_table/{A}counts.txt.summary", A=[splitext(basename(seqRun['main']['reads']))[0] for seqRun in config['entries'].values()])
-        "analyses/host/count_table/counts.txt.summary"
+        #expand("QC/{A}_fastqc.html", A=sorted(config['entries'].keys()))
+        #expand("preprocessing/{A}.fastp.json", A=sorted(config['entries'].keys())),
+        #expand("mapping/combined/{A}Log.final.out", A=sorted(config['entries'].keys())),
+        #"analyses/host/count_table/counts.txt.summary",
+        "multiqc_config.yaml"
     output:
         "summary/multiqc/multiqc_report.html"
     params:
+        "QC",
         "preprocessing/",
         #"mapping/combined/virus/logs",
         "mapping/combined/",
         "analyses/host/count_table"
+    log:
+        "summary/multiqc/log/multiqc.log"
     group:
         "multiqc"
+    conda: "conda_envs/multiqc_env.yaml"
     threads:
         1
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% -o summary/multiqc {params}"
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% -o summary/multiqc . 2>&1 | tee {log}"

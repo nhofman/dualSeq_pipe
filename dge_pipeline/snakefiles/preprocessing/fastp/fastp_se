@@ -11,6 +11,9 @@ rule trim_reads:
     output:
         "preprocessing/{sample}.fq.gz",
         "preprocessing/fastp/{sample}_fastp.json"
+    priority: 1
+    log:
+        "preprocessing/fastp/log/{sample}.log"
     group:
         "fastp"
     conda: "conda_envs/fastp_env.yaml"
@@ -19,4 +22,4 @@ rule trim_reads:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/fastp/{wildcards.sample}_fastp.html -j preprocessing/fastp/{wildcards.sample}_fastp.json %%ADDITIONAL_FASTP_OPTIONS%%"
+        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/fastp/{wildcards.sample}_fastp.html -j preprocessing/fastp/{wildcards.sample}_fastp.json %%ADDITIONAL_FASTP_OPTIONS%% 2>&1 | tee {log}"

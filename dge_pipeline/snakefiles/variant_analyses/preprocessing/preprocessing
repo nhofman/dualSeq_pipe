@@ -9,7 +9,8 @@ rule remove_spliced:
     "mapping/combined/virus/{sample}.bam"
   output:
     "mapping/combined/virus/{sample}_noSplice.bam"
-  conda: "conda_envs/samtools.yaml"
+  priority: 1
+  conda: "conda_envs/samtools_env.yaml"
   shell:
     """
     samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
@@ -23,13 +24,16 @@ rule markDuplicates:
     output:
         bam="variant_analyses/preprocessing/{sample}_dedup.bam",
         metric="variant_analyses/preprocessing/Duplicate_Metric/{sample}"
+    priority: 1
+    log:
+        "variant_analyses/preprocessing/log/{sample}.markDuplicates.log"
     group: "dedup"
     conda: "conda_envs/variant_env.yaml"
     threads: 1
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam}"
+        "picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam} 2>&1 | tee {log}"
 
 # (Probabilistic) realignment
 # correct for mapping errors
@@ -39,13 +43,16 @@ rule realign:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
     output:
         "variant_analyses/preprocessing/{sample}_realign.bam"
+    priority: 1
+    log:
+        "variant_analyses/preprocessing/log/{sample}.realign.log"
     group: "realign"
     conda: "conda_envs/variant_env.yaml"
     threads: 1
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "lofreq viterbi -f {input.genome} {input.bam} | samtools sort - > {output}"
+        "lofreq viterbi -f {input.genome} {input.bam} | samtools sort - > {output} 2>&1 | tee {log}"
 		
 # Insert indel qualities
 rule indel_qual:
@@ -54,11 +61,14 @@ rule indel_qual:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
     output:
         "variant_analyses/preprocessing/{sample}_indel.bam"
+    priority: 1
+    log:
+        "variant_analyses/preprocessing/log/{sample}.indelQual.log"
     group: "indel_qual"
     conda: "conda_envs/variant_env.yaml"
     threads: 1
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "lofreq indelqual --dindel -f {input.genome} -o {output} {input.bam}"
+        "lofreq indelqual --dindel -f {input.genome} -o {output} {input.bam} 2>&1 | tee {log}"
 			 

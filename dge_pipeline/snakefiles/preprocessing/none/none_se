@@ -8,6 +8,7 @@ rule create_symlink:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
         "preprocessing/{sample}.fq.gz"
+    priority: 1
     threads:
         1
     shell:

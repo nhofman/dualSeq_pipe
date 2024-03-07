@@ -8,7 +8,7 @@ optional_settings:
 
   mem_mb:
     description: "Memory requirement"
-    type: "integer"
+    type: "string"
     default: "3000"
 
 single_end:

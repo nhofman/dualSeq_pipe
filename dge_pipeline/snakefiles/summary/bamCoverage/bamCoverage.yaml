@@ -23,7 +23,7 @@ optional_settings:
 
   mem_mb_virus:
     description: "Memory requirement for virus"
-    type: "integer"
+    type: "string"
     default: "2000"
 
 single_end:

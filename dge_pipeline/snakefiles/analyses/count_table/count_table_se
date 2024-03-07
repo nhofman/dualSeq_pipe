@@ -13,8 +13,9 @@ rule count_reads_host:
     output:
         counts = "analyses/host/count_table/counts.txt",
         summary = "analyses/host/count_table/counts.txt.summary"
+    priority: 1
     log:
-        log="analyses/host/count_table/logs/featurecounts.log"
+        "analyses/host/count_table/logs/featurecounts.log"
     group:
         "count_reads_host"
     conda: "conda_envs/counts_env.yaml"
