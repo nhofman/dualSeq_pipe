@@ -11,12 +11,12 @@ rule parse_envs:
     input:
         "conda_envs"
     output:
-        "multiqc_config.yaml"
+        "summary/multiqc/multiqc_config.yaml"
     log:
         "summary/multiqc/log/parse_envs.log"
     shell:
         """
-        python scripts/parse_software_versions.py {input} 2>&1 | tee {log}
+        python scripts/parse_software_versions.py {input} {output} 2>&1 | tee {log}
         """
 
 rule multiqc:
@@ -25,7 +25,8 @@ rule multiqc:
         #expand("preprocessing/{A}.fastp.json", A=sorted(config['entries'].keys())),
         #expand("mapping/combined/{A}Log.final.out", A=sorted(config['entries'].keys())),
         #"analyses/host/count_table/counts.txt.summary",
-        "multiqc_config.yaml"
+        #"multiqc_config.yaml"
+        rules.parse_envs.output
     output:
         "summary/multiqc/multiqc_report.html"
     params:
@@ -44,4 +45,4 @@ rule multiqc:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% -o summary/multiqc . 2>&1 | tee {log}"
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --ignore .snakemake --config {input} --outdir summary/multiqc . 2>&1 | tee {log}"
