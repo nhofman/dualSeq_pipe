@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
 import yaml
-from snakemake import snakemake
+#from snakemake import snakemake
 
 import metadata
 
@@ -26,23 +26,25 @@ def main():
     validate_argsfiles(args.groups_file, args.config_file)
     groups = parse_groups_file(args.groups_file, used_modules, paired_end)
     create_output_directory(args.output_folder)
+    create_scripts_lib(args.output_folder)
     snakefile = create_snakefile(args.output_folder, groups, used_modules)
-    if(args.use_conda):
+    run_command = ['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--latency-wait', str(args.latency)]
+    if args.verbose:
+        run_command.append('--verbose')
+    if args.use_conda:
         create_conda_lib(args.output_folder)
-        if(args.conda_create_envs_only):
-            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--conda-create-envs-only', '--dry-run'])
-		      #snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, workdir=str(args.output_folder),
-		      #             verbose=args.verbose, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only)
-        else:
-            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--jobs', str(args.cluster_nodes), '--directory', str(args.output_folder), '--verbose', '--use-conda', '--conda-frontend', str(args.conda_frontend), '--profile', str(args.cluster_profile),'--latency-wait', str(args.latency), '--dry-run'])
-        #if not snakemake(str(snakefile), cores=args.cores, local_cores=args.cores, nodes=args.cluster_nodes, workdir=str(args.output_folder),
-        #             verbose=args.verbose, cluster=args.cluster_command, cluster_config=str(args.cluster_config_file) if args.cluster_config_file is not None else None, 
-        #             latency_wait=args.latency, use_conda=args.use_conda, conda_frontend=args.conda_frontend, conda_create_envs_only=args.conda_create_envs_only):
-    else:
-        if(args.cluster_profile is not None):
-            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--jobs', str(args.cluster_nodes), '--directory', str(args.output_folder), '--verbose', '--profile', str(args.cluster_profile),'--latency-wait', str(args.latency), '--dry-run']) #'--rerun-triggers', 'mtime',
-        else:
-            subprocess.run(['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--verbose', '--latency-wait', str(args.latency), '--dry-run']) #'--rerun-triggers', 'mtime',
+        run_command.extend(['--use-conda', '--conda-frontend', str(args.conda_frontend)])
+        if args.conda_create_envs_only:
+            run_command.append('--conda-create-envs-only')
+    if args.profile is not None:
+        args.profile = Path(args.profile).resolve()
+        run_command.extend(['--profile', str(args.profile)])
+    if args.other is not None:
+        args.other = '--' + args.other
+        run_command.append(args.other)
+    print(' '.join(run_command))
+    subprocess.run(' '.join(run_command), shell=True) #'--rerun-triggers', 'mtime',
+            #subprocess.run(['snakemake', '--snakefile', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/Snakefile', '--cores', '4', '--directory', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/'])
     exit(1)
 
 
@@ -70,7 +72,7 @@ def check_columns(col_names: List[str], modules: Dict[str, List['Module']], pair
         raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('name'))
     else:
         col2module[col_names.index('condition')] = ('main', 'string')
-        
+
     for module in [module for module_list in modules.values() for module in module_list]:
         if len(module.columns) > 0:
             for col_name, properties in module.columns.items():
@@ -106,14 +108,14 @@ def parse_groups_file(groups_file: Path, modules: Dict[str, List['Module']], pai
 
 def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool]:
     modules = {"preprocessing": [],
-               "premapping": [],
+               "QC": [],
                "mapping": [],
                "analyses": [],
                "summary": [],
                "variant_analyses": []}
 
     used_modules = {"preprocessing": [],
-                    "premapping": [],
+                    "QC": [],
                     "mapping": [],
                     "analyses": [],
                     "summary": [],
@@ -130,22 +132,22 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 modules["preprocessing"].append(config["preprocessing"]["module"])
         else:
             modules["preprocessing"].append('none')
-    else:
-        modules["preprocessing"].append('none')
-    if "premapping" in config:
-        if "modules" in config["premapping"]:
-            if "module" in config["premapping"]:
-                raise InvalidConfigFileError('premapping: Please use either "module" or "modules"')
-            if not isinstance(config["premapping"]["modules"], list):
-                raise InvalidConfigFileError("premapping: modules must be a LIST of modules")
+    #else:
+    #    modules["preprocessing"].append('none')
+    if "QC" in config:
+        if "modules" in config["QC"]:
+            if "module" in config["QC"]:
+                raise InvalidConfigFileError('QC: Please use either "module" or "modules"')
+            if not isinstance(config["QC"]["modules"], list):
+                raise InvalidConfigFileError("QC: modules must be a LIST of modules")
             else:
-                for module in config["premapping"]["modules"]:
-                    modules["premapping"].append(module)
-        elif "module" in config["premapping"]:
-            if not isinstance(config["premapping"]["module"], str):
-                raise InvalidConfigFileError('premapping: Only one module as a string is allowed. For multiple modules use "modules"')
+                for module in config["QC"]["modules"]:
+                    modules["QC"].append(module)
+        elif "module" in config["QC"]:
+            if not isinstance(config["QC"]["module"], str):
+                raise InvalidConfigFileError('QC: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
-                modules["premapping"].append(config["premapping"]["module"])
+                modules["QC"].append(config["QC"]["module"])
     if "mapping" in config:
         if "module" in config["mapping"]:
             if not isinstance(config["mapping"]["module"], str):
@@ -202,8 +204,6 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 raise InvalidConfigFileError('variant_analyses: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["variant_analyses"].append(config["variant_analyses"]["module"])
-    #else:
-        #modules["summary"].append('none')
     if "pipeline" in config:
         if "paired_end" in config["pipeline"]:
             if not isinstance(config["pipeline"]["paired_end"], bool) and not (
@@ -380,14 +380,14 @@ def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, 
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('premapping', 'analyses', 'mapping', 'summary', 'variant_analyses')]:
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'analyses', 'mapping', 'summary', 'variant_analyses')]:
             snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-', '_')))
 
     return snakefile_main_path
 
 
 def create_snakemake_config_file(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, Any]]]) -> Path:
-    config_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'snakefile_config.yml'
+    config_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'snakefile_config.yaml'
     with config_path.open('w') as config_file:
         config_file.write('entries:\n')
         for row, modules in groups.items():
@@ -402,6 +402,17 @@ def create_snakemake_config_file(output_folder: Path, groups: Dict[str, Dict[str
 def create_conda_lib(output_folder: Path):
     lib_src = CURRENT_DIRECTORY / 'conda_envs'
     lib_dest = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'conda_envs'
+    if lib_dest.is_dir():
+        dir_comp = filecmp.dircmp(str(lib_src), str(lib_dest))
+        if dir_comp.left_only or dir_comp.diff_files:
+            copy_lib(lib_src, lib_dest)
+    else:
+        copy_lib(lib_src, lib_dest)
+
+
+def create_scripts_lib(output_folder: Path):
+    lib_src = CURRENT_DIRECTORY / 'scripts'
+    lib_dest = output_folder / 'scripts'
     if lib_dest.is_dir():
         dir_comp = filecmp.dircmp(str(lib_src), str(lib_dest))
         if dir_comp.left_only or dir_comp.diff_files:
@@ -434,8 +445,8 @@ def parse_arguments() -> argparse.Namespace:
     other.add_argument('--cluster-config-file', dest='cluster_config_file', default=None, type=str,
                        help="Path to cluster config file. "
                             "See also: https://snakemake.readthedocs.io/en/stable/snakefiles/configuration.html#cluster-configuration")
-    other.add_argument('--cluster-profile', dest='cluster_profile', default=None, type=str, 
-                       help="Path to folder containing cluster profile 'config.yaml'. " 
+    other.add_argument('--profile', dest='profile', default=None, type=str,
+                       help="Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. " 
                        "See also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles")
     other.add_argument('-t', '--cores', dest='cores', default=1, type=int,
                        help="Number of threads/cores (Default: %(default)s). Defines locale cores in cluster mode")
@@ -451,6 +462,7 @@ def parse_arguments() -> argparse.Namespace:
                        help="Seconds to wait before checking if all files of a rule were created (Default: %(default)s). Should be increased if using cluster mode.")
     other.add_argument('-v', '--version', action='version', version='%(prog)s \nVersion: {}'.format(metadata.__version__),
                        help="Show program's version number and exit")
+    other.add_argument('--other', dest='other', default=None, type=str, help="Add additional snakemake command line options, e.g. 'dry-run'. '--' is automatically placed in front.")
     other.add_argument('--verbose', dest='verbose', action="store_true", help="Print debugging output")
     other.add_argument('-h', '--help', action="help", help="Show this help message and exit")
 
@@ -458,9 +470,10 @@ def parse_arguments() -> argparse.Namespace:
     args.groups_file = Path(args.groups_file).resolve()
     args.output_folder = Path(args.output_folder)
     args.config_file = Path(args.config_file).resolve()
+    #if args.cluster_profile is not None:
+        #args.cluster_profile = Path(args.cluster_profile).resolve()
     if args.cluster_config_file is not None:
         args.cluster_config_file = Path(args.cluster_config_file).resolve()
-
     return args
 
 
