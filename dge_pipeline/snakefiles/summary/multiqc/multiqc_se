@@ -26,7 +26,7 @@ rule multiqc:
         #expand("mapping/combined/{A}Log.final.out", A=sorted(config['entries'].keys())),
         #"analyses/host/count_table/counts.txt.summary",
         #"multiqc_config.yaml"
-        rules.parse_envs.output
+        rules.multiqc__parse_envs.output
     output:
         "summary/multiqc/multiqc_report.html"
     params:

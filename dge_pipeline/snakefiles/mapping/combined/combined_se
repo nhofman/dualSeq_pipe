@@ -12,12 +12,11 @@ rule all:
         #"mapping/virus/stats/mapping_stats.xlsx",
         expand("mapping/combined/{A}.bam", A=config['entries'].keys()),
         expand("mapping/combined/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-	    expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+	expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/virus/stats/{sample}_stats.txt", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/host/stats/{sample}_stats.txt", sample=config['entries'].keys()),
         "mapping/combined/stats/mapping_statistic.tsv",
         "mapping/combined/stats/mapping_statistic.svg"
-        #expand("mapping/mapping_stat_{A}.svg", A=["dual","mock"])
 
 def virus2genome(wildcards):
 	for sample in config['entries'].keys():
@@ -26,7 +25,6 @@ def virus2genome(wildcards):
 				return("None","None")
 		elif wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
 			files = [config['entries'][sample]['combined']['virus_genome'], config['entries'][sample]['combined']['virus_genome_annotation']]
-			print(files)
 			return files
 
 def annotation_name(wildcards):
