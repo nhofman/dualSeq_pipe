@@ -102,7 +102,7 @@ deseqDataset <- DESeqDataSetFromMatrix(countData = countdata, colData = conditio
 # Write normalized count table
 deseqDataset <- estimateSizeFactors(deseqDataset)
 countdata.normalized <- counts(deseqDataset, normalized = TRUE)
-write.table(countdata.normalized, file = paste(output_folder, "/counts_normalized.txt", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
+write.table(countdata.normalized, file = paste(output_folder, "/counts_normalized.tsv", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
 #for(virus in unique(conditiontable$treatment)){
 #  write.table(c(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2]), paste(output_folder, "conditions_", virus, ".tsv", sep = ""), row.names = F, col.names = F)
 #  countdata.normalized.virus <- countdata.normalized[,grep(paste(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2], collapse = "|", sep = "|"), colnames(countdata.normalized))]
@@ -145,6 +145,7 @@ if(exists("color")){
   plot_PCA <- plot_PCA + scale_colour_manual(values=color)
 }
 ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder, width = 10, height = 6)
+ggsave("PCA.png", plot = plot_PCA, device = "png", path = output_folder, width = 10, height = 6)
 
 for (time in unique(conditiontable$time)) {
   pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
@@ -156,6 +157,7 @@ for (time in unique(conditiontable$time)) {
     plot_PCA <- plot_PCA + scale_colour_manual(values=color)
   }
   ggsave(paste0("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
+  ggsave(paste0("PCA_", time, ".png"), plot = plot_PCA, device = "png", path = output_folder)
 }
 
 
@@ -202,6 +204,7 @@ for (n in 1:nrow(comparisons.df)) {
       res <- results(deseq.results, contrast = c("condition", group_1, group_2), parallel = FALSE)
       res.list.raw[[paste(group_1, group_2, sep="_vs_")]] <- res 
       write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
+      write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.xlsx", sep = ""), row.names = TRUE)
       
       resLFC <- lfcShrink(deseq.results, contrast = c("condition", group_1, group_2), type = "ashr", res = res)
     
@@ -216,6 +219,7 @@ for (n in 1:nrow(comparisons.df)) {
         theme(axis.title = element_text(size=18, face = "bold")) +
         geom_hline(yintercept = -log10(0.05), color = "red")
       ggsave(paste("Volcano_", group_1, "_vs_", group_2, "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
+      ggsave(paste("Volcano_", group_1, "_vs_", group_2, "_shrunk.png", sep = ""), plot = plot_volcano, device = "png", path = paste(output_folder, "plots/", sep = ""))
       
       #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
       res <- cbind(res, countdata.normalized[,grep(paste(as.character(group_1),sub("_",".*_",group_2), sep="|"),colnames(countdata.normalized))])
@@ -243,6 +247,8 @@ rownames(padj.df) <- padj.df$SYMBOL
 padj.df <- padj.df[,-1, drop = FALSE]
 padj.df <- padj.df[,mixedorder(colnames(padj.df))]
 write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), row.names = T, overwrite = T)
+write.table(lfc.df, file = paste(output_folder,"deseq2_comparisons_shrunken/LFC_data_all.xlsx", sep = ""), row.names = T, sep = "\t")
+write.table(padj.df, file = paste(output_folder,"deseq2_comparisons_shrunken/padj_data_all.xlsx", sep = ""), row.names = T, sep = "\t")
 
 lfc.df[is.na(lfc.df)] <- 0
 
@@ -264,6 +270,7 @@ for (sample in names(res.list)) {
 colnames(count.genes) <- c("Sample", "Count","Direction","LFC_cutoff")
 count.genes <- as.data.frame(count.genes)
 write.table(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.csv", sep = ""), sep = "\t", row.names = FALSE, col.names = TRUE)
+write.xlsx(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.xlsx", sep = ""), row.names = FALSE, col.names = TRUE)
 
 count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_]*_vs_", F), "Mock", c("Control","Time"),"_")
 #count.genes <- separate(count.genes, "Sample", c("Virus","Control"), "_[^_]*_vs_", F)
@@ -274,10 +281,8 @@ for(LFC.cut in unique(count.genes$LFC_cutoff)){
     geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
     scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
     geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
-  #ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
+  ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 14, height = 7)
 }
 
 save.image(paste(output_folder, "/deseq2.RData", sep = ""))
-
-#calc_ora(gene = res$SYMBOL[res$padj<padj.cut & res$log2FoldChange>LFC.cut], main = "", filename = paste0(group_1,"up"), subdir = "ORA/",)

@@ -12,9 +12,9 @@ rule all:
         #"mapping/virus/stats/mapping_stats.xlsx",
         expand("mapping/combined/{A}.bam", A=config['entries'].keys()),
         expand("mapping/combined/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-	expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/combined/virus/stats/{sample}_stats.txt", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/combined/host/stats/{sample}_stats.txt", sample=config['entries'].keys()),
+        expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/combined/virus/stats/{sample}_stats.tsv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/combined/host/stats/{sample}_stats.tsv", sample=config['entries'].keys()),
         "mapping/combined/stats/mapping_statistic.tsv",
         "mapping/combined/stats/mapping_statistic.svg"
 
@@ -38,7 +38,6 @@ rule star_index:
     output:
         directory("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}")
     params:
-        #genome_virus=lambda wildcards: virus2genome(wildcards),
         filelist=virus2genome,
         tmp=temp("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}"+"_tmp"),
         ann_file=annotation_name
@@ -122,7 +121,7 @@ rule Mock:
         bai = "mapping/combined/{sample}.bam.bai"
     output:
         bam = "mapping/combined/host/{sample}.bam",
-        stat = "mapping/combined/host/stats/{sample}_stats.txt"
+        stat = "mapping/combined/host/stats/{sample}_stats.tsv"
     priority: 1
     wildcard_constraints:
         sample="Mock.*"
@@ -228,7 +227,7 @@ rule statistics_host:
         names="mapping/combined/virus/{sample}_common.txt",
         host_bam="mapping/combined/host/{sample}.bam",
     output:
-        "mapping/combined/host/stats/{sample}_stats.txt"
+        "mapping/combined/host/stats/{sample}_stats.tsv"
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -251,7 +250,7 @@ rule statistics_virus:
         names="mapping/combined/virus/{sample}_common.txt",
         virus_bam="mapping/combined/virus/{sample}.bam",
     output:
-        "mapping/combined/virus/stats/{sample}_stats.txt"
+        "mapping/combined/virus/stats/{sample}_stats.tsv"
     priority: 1
     group:
         "bam_process"

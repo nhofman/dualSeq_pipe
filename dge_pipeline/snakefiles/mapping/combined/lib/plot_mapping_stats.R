@@ -4,7 +4,7 @@ stat_host <- args[match('--stat-host', args) + 1]
 stat_virus <- args[match('--stat-virus', args) + 1]
 output_folder <- args[match('--output', args) + 1] 
 
-for (package in c("ggplot2", "tidyr", "gtools", "dplyr")) {
+for (package in c("ggplot2", "tidyr", "gtools", "dplyr", "openxlsx")) {
   if (!(package %in% rownames(installed.packages()))) {
     stop(paste('Package "', package, '" not installed', sep=""))
   } else {
@@ -22,6 +22,7 @@ stats.df <- Reduce(rbind,lapply(c(list.files(stat_host, ".*_stats.txt", full.nam
   return(tmp)
 }))
 write.table(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.tsv"), sep = "\t", row.names = F)
+write.xlsx(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.tsv"))
 
 # transpose data frame for plotting
 stats.t <- data.frame("Sample"=character(), "Total"=integer(), "Count"=integer(), "Organism"=character(), "Category"=character())
@@ -57,7 +58,7 @@ p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !grepl("Mock",stats.t
         panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
 ggsave("mapping_statistic.svg", p, "svg", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 ggsave("mapping_statistic.png", p, "png", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
-ggsave("mapping_statistic.pdf", p, "pdf", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+#ggsave("mapping_statistic.pdf", p, "pdf", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 
 ncol.facet <- ceiling(sqrt(length(unique(stats.t.mean$Virus[grepl("Mock",stats.t.mean$Virus)]))))
 ncol.facet <- ifelse(ncol.facet==1, 2, ncol.facet)
