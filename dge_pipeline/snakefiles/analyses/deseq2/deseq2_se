@@ -59,7 +59,7 @@ rule deseq2_human:
         output_folder="analyses/host/deseq2/"
     log:
         "analyses/host/deseq2/logs/deseq2.log"
-    conda: "conda_envs/R_env.yaml"
+    conda: "../conda_envs/R_env.yaml"
     threads:
         1
     resources:
@@ -82,7 +82,7 @@ rule functional_analysis:
         output_folder="analyses/host/deseq2/"
     log:
         "analyses/host/deseq2/logs/functional_analysis.log"
-    conda: "conda_envs/R_env.yaml"
+    conda: "../conda_envs/R_env.yaml"
     threads:
         1
     shell:

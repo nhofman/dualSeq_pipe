@@ -42,7 +42,7 @@ def main():
     if args.other is not None:
         args.other = '--' + args.other
         run_command.append(args.other)
-    print(' '.join(run_command))
+    #print(' '.join(run_command))
     subprocess.run(' '.join(run_command), shell=True) #'--rerun-triggers', 'mtime',
             #subprocess.run(['snakemake', '--snakefile', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/Snakefile', '--cores', '4', '--directory', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/'])
     exit(1)
@@ -401,7 +401,7 @@ def create_snakemake_config_file(output_folder: Path, groups: Dict[str, Dict[str
 
 def create_conda_lib(output_folder: Path):
     lib_src = CURRENT_DIRECTORY / 'conda_envs'
-    lib_dest = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'conda_envs'
+    lib_dest = output_folder / 'conda_envs'
     if lib_dest.is_dir():
         dir_comp = filecmp.dircmp(str(lib_src), str(lib_dest))
         if dir_comp.left_only or dir_comp.diff_files:

@@ -16,7 +16,7 @@ rule trim_reads:
         "preprocessing/fastp/log/{sample}.log"
     group:
         "fastp"
-    conda: "conda_envs/fastp_env.yaml"
+    conda: "../conda_envs/fastp_env.yaml"
     threads:
         2
     resources:

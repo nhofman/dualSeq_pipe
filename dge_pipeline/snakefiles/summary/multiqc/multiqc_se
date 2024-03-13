@@ -39,7 +39,7 @@ rule multiqc:
         "summary/multiqc/log/multiqc.log"
     group:
         "multiqc"
-    conda: "conda_envs/multiqc_env.yaml"
+    conda: "../conda_envs/multiqc_env.yaml"
     threads:
         1
     resources:

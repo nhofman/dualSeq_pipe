@@ -46,7 +46,7 @@ rule star_index:
         "mapping/combined/logs/star_index_"+"{virus}"+".log"
     group:
         "star_index"
-    conda: "conda_envs/star_env.yaml"
+    conda: "../conda_envs/star_env.yaml"
     threads:
         4
     resources:
@@ -91,7 +91,7 @@ rule star_mapping:
         "mapping/combined/logs/star_mapping.{sample}.log"
     group:
         "star_mapping"
-    conda: "conda_envs/star_env.yaml"
+    conda: "../conda_envs/star_env.yaml"
     threads:
         2
     resources:
@@ -110,7 +110,7 @@ rule index_bam:
         "mapping/combined/logs/index.{sample}.log"
     group:
         "star_mapping"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
@@ -127,7 +127,7 @@ rule Mock:
         sample="Mock.*"
     group:
         "bam_process"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -154,7 +154,7 @@ rule split_bam_virus:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -179,7 +179,7 @@ rule split_bam_host:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -196,7 +196,7 @@ rule index_bam_host:
     priority: 1
     log:
         "mapping/combined/host/logs/index.{sample}.log"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
@@ -213,7 +213,7 @@ rule virusNames:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -233,7 +233,7 @@ rule statistics_host:
         sample="(?!Mock).*"
     group:
         "bam_process"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
@@ -254,7 +254,7 @@ rule statistics_virus:
     priority: 1
     group:
         "bam_process"
-    conda: "conda_envs/samtools_env.yaml"
+    conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=2000
     shell:
         """
@@ -268,8 +268,8 @@ rule statistics_virus:
 
 rule plot_statistics:
     input:
-        stat_host=expand("mapping/combined/host/stats/{sample}_stats.txt", sample=config['entries'].keys()),
-        stat_virus=expand("mapping/combined/virus/stats/{sample}_stats.txt", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
+        stat_host=expand("mapping/combined/host/stats/{sample}_stats.tsv", sample=config['entries'].keys()),
+        stat_virus=expand("mapping/combined/virus/stats/{sample}_stats.tsv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
     output:
         "mapping/combined/stats/mapping_statistic.tsv",
         "mapping/combined/stats/mapping_statistic.svg",
@@ -277,7 +277,7 @@ rule plot_statistics:
     params:
         "mapping/combined/"
     priority: 1
-    conda: "conda_envs/R_env.yaml"
+    conda: "../conda_envs/R_env.yaml"
     shell:
         """
         R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/combined/host/stats/ --stat-virus mapping/combined/virus/stats/ --output {params}

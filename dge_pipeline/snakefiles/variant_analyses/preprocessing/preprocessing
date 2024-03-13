@@ -10,7 +10,7 @@ rule remove_spliced:
   output:
     "mapping/combined/virus/{sample}_noSplice.bam"
   priority: 1
-  conda: "conda_envs/samtools_env.yaml"
+  conda: "../conda_envs/samtools_env.yaml"
   shell:
     """
     samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
@@ -28,7 +28,7 @@ rule markDuplicates:
     log:
         "variant_analyses/preprocessing/log/{sample}.markDuplicates.log"
     group: "dedup"
-    conda: "conda_envs/variant_env.yaml"
+    conda: "../conda_envs/variant_env.yaml"
     threads: 1
     resources:
         mem_mb=%%MEM_MB%%
@@ -47,7 +47,7 @@ rule realign:
     log:
         "variant_analyses/preprocessing/log/{sample}.realign.log"
     group: "realign"
-    conda: "conda_envs/variant_env.yaml"
+    conda: "../conda_envs/variant_env.yaml"
     threads: 1
     resources:
         mem_mb=%%MEM_MB%%
@@ -65,7 +65,7 @@ rule indel_qual:
     log:
         "variant_analyses/preprocessing/log/{sample}.indelQual.log"
     group: "indel_qual"
-    conda: "conda_envs/variant_env.yaml"
+    conda: "../conda_envs/variant_env.yaml"
     threads: 1
     resources:
         mem_mb=%%MEM_MB%%

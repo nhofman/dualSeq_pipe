@@ -16,6 +16,7 @@ rule create_bigwig_host:
     log:
         "summary/bigwig/host/log/{sample}.log"
     group: "bigwig_host"
+    conda: "../conda_envs/bigwig_env.yaml"
     threads:
         4
     resources:
@@ -33,6 +34,7 @@ rule create_bigwig_virus:
     log:
         "summary/bigwig/virus/log/{sample}.log"
     group: "bigwig_virus"
+    conda: "../conda_envs/bigwig_env.yaml"
     benchmark:
         repeat("benchmarks/bigwig/{sample}.tsv", 1)
     threads:

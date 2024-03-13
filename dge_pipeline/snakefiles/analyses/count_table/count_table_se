@@ -18,7 +18,7 @@ rule count_reads_host:
         "analyses/host/count_table/logs/featurecounts.log"
     group:
         "count_reads_host"
-    conda: "conda_envs/counts_env.yaml"
+    conda: "../conda_envs/counts_env.yaml"
     threads:
         8
     resources:
