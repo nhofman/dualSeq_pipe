@@ -13,17 +13,17 @@ rRNA_file <- args[match('--rRNA', args) + 1]
 
 # required packages
 for (package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr", "openxlsx", "org.Hs.eg.db")) {
-    if (!(package %in% rownames(installed.packages()))) {
-        stop(paste('Package "', package, '" not installed', sep=""))
-    } else {
-        print(paste("Import:", package))
-        library(package, character.only=TRUE)
-    }
+  if (!(package %in% rownames(installed.packages()))) {
+    stop(paste('Package "', package, '" not installed', sep=""))
+  } else {
+    print(paste("Import:", package))
+    library(package, character.only=TRUE)
+  }
 }
 
 # Run on multiple threads
 if ("BiocParallel" %in% rownames(installed.packages())) {
-      register(MulticoreParam(threads))
+  register(MulticoreParam(threads))
 }
 
 # Annotate genes
@@ -70,7 +70,7 @@ create_feature_counts_statistics <- function(featureCountsLog) {
           strip.text = element_text(size = 20, face = "bold"),
           legend.text = element_text(size = 16), legend.title = element_text(size = 20))
   
-  return(list(assignment.absolute, assignment.relative))
+  return(list("absolute"=assignment.absolute, "relative"=assignment.relative))
 }
 
 
@@ -89,7 +89,7 @@ if(rRNA_file != "NULL"){
 # Import condition file
 conditiontable <- read.csv(condition_file, header = FALSE, row.names = 1, sep = "\t", comment.char = "#", stringsAsFactors = FALSE)
 colnames(conditiontable) <- c('condition')
-conditiontable <- separate(conditiontable, condition, c("treatment", "time"), "_", FALSE)
+conditiontable <- separate(conditiontable, condition, c("Treatment", "Time"), "_", FALSE)
 conditiontable <- conditiontable[mixedorder(rownames(conditiontable)),]
 conditiontable <- as.data.frame(row.names=colnames(countdata), lapply(conditiontable, as.factor))
 condition <- as.factor(conditiontable[, 1])
@@ -103,16 +103,15 @@ deseqDataset <- DESeqDataSetFromMatrix(countData = countdata, colData = conditio
 deseqDataset <- estimateSizeFactors(deseqDataset)
 countdata.normalized <- counts(deseqDataset, normalized = TRUE)
 write.table(countdata.normalized, file = paste(output_folder, "/counts_normalized.tsv", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
-#for(virus in unique(conditiontable$treatment)){
-#  write.table(c(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2]), paste(output_folder, "conditions_", virus, ".tsv", sep = ""), row.names = F, col.names = F)
-#  countdata.normalized.virus <- countdata.normalized[,grep(paste(comparisons.df[grep(virus, comparisons.df[,2]),1], comparisons.df[grep(virus, comparisons.df[,2]),2], collapse = "|", sep = "|"), colnames(countdata.normalized))]
-#  countdata.normalized.virus <- as.data.frame(countdata.normalized.virus)
-#  countdata.normalized.virus <- cbind(Gene=rownames(countdata.normalized.virus), countdata.normalized.virus)
-#  write.table(countdata.normalized.virus, file = paste(output_folder, "counts_normalized_", virus, ".tsv", sep = ""), sep = "\t", row.names = F)
-#}
 
 # Plot raw countdata and normalized countdata 
 pdf(paste(output_folder, "/counts.pdf", sep = ""), width = 25, height=15)
+par(mfrow=c(1,2), mar=c(20, 4, 5, 2) + 0.1, lwd=2)
+boxplot(countdata, outline = FALSE, las = 2, ylab = "raw reads", xlab = "")
+boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "")
+dev.off()
+
+png(paste(output_folder, "/counts.png", sep = ""), width = 25, height=15)
 par(mfrow=c(1,2), mar=c(20, 4, 5, 2) + 0.1, lwd=2)
 boxplot(countdata, outline = FALSE, las = 2, ylab = "raw reads", xlab = "")
 boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "")
@@ -134,59 +133,66 @@ if(color_file != "NULL"){
 }
 
 # Plot PCA
-shape <- if(length(unique(conditiontable$time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$time))) }else{ c(1:length(unique(conditiontable$time)))}
-names(shape) <- unique(conditiontable$time)
-pca <- plotPCA(deseq.results.vst, intgroup = c("treatment", "time"), returnData = TRUE)
-plot_PCA <- ggplot(pca, aes(PC1, PC2, color = treatment, shape = factor(time, levels = mixedsort(as.character(unique(conditiontable$time)))))) + 
-  geom_point(size=3) + labs(color = "Treatment", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
+shape <- if(length(unique(conditiontable$Time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$Time))) }else{ c(1:length(unique(conditiontable$Time)))}
+names(shape) <- unique(conditiontable$Time)
+pca <- plotPCA(deseq.results.vst, intgroup = c("Treatment", "Time"), returnData = TRUE)
+plot_PCA <- ggplot(pca, aes(PC1, PC2, color = Treatment, shape = factor(Time, levels = mixedsort(as.character(unique(conditiontable$Time)))))) + 
+  geom_point(size=3) + labs(color = "Infection", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
   theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"),  
         legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank())
 if(exists("color")){
   plot_PCA <- plot_PCA + scale_colour_manual(values=color)
 }
-ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder, width = 10, height = 6)
+ggsave("PCA.pdf", plot = plot_PCA, device = "pdf", path = output_folder, width = 10, height = 6)
 ggsave("PCA.png", plot = plot_PCA, device = "png", path = output_folder, width = 10, height = 6)
 
-for (time in unique(conditiontable$time)) {
-  pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
-  plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = treatment, shape = time)) + geom_point(size=3) + labs(color = "Treatment", shape = "Time") +
-    theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"),  
-          legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank())
-  scale_shape_manual(values=shape)
+for (time in unique(conditiontable$Time)) {
+  pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("Treatment", "Time"), returnData = TRUE)
+  plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Treatment, shape = Time)) + geom_point(size=5) + 
+    labs(color = "Infection", shape = "Time") + ggtitle(main) + 
+    theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5), axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16),  
+          legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank()) +
+    scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = F) 
   if(exists("color")){
     plot_PCA <- plot_PCA + scale_colour_manual(values=color)
   }
-  ggsave(paste0("PCA_", time, ".svg"), plot = plot_PCA, device = "svg", path = output_folder)
+  ggsave(paste0("PCA_", time, ".pdf"), plot = plot_PCA, device = "pdf", path = output_folder)
   ggsave(paste0("PCA_", time, ".png"), plot = plot_PCA, device = "png", path = output_folder)
 }
 
 
 # Heatmap showing correlations between samples
 if ("pheatmap" %in% rownames(installed.packages())) {
-    sample_cor <- cor(assay(deseq.results.vst), method = 'pearson', use = 'pairwise.complete.obs')
-    pdf(paste(output_folder, 'correlation_heatmap.pdf', sep = ""), width = 15, height = 15, onefile = FALSE)
-    pheatmap(sample_cor, annotation_col = conditiontable[,-1], annotation_row = conditiontable[,-1], fontsize=5)
-    dev.off()
+  sample_cor <- cor(assay(deseq.results.vst), method = 'pearson', use = 'pairwise.complete.obs')
+  if(exists("color")){
+    annColor <- list(Treatment = color)
+  }else(
+    annColor <- NA
+  )
+  pdf(paste(output_folder, 'correlation_heatmap.pdf', sep = ""), width = 15, height = 15, onefile = FALSE)
+  pheatmap(sample_cor, annotation_col = conditiontable[,-1], annotation_row = conditiontable[,-1], fontsize=8, annotation_colors = annColor)
+  dev.off()
 }
 
-for (time in unique(conditiontable$time)) {
-    sample_cor <- cor(assay(deseq.results.vst[,grep(time, colnames(deseq.results.vst))]), method = 'pearson', use = 'pairwise.complete.obs')
-    svg(paste(output_folder, 'correlation_heatmap_', time, '.svg', sep = ""), width = 10, height = 10, onefile = FALSE)
-    pheatmap(sample_cor, annotation_col = conditiontable[grep(time, rownames(conditiontable)),], annotation_row = conditiontable[grep(time, rownames(conditiontable)),], fontsize=8)
-    dev.off()
+for (time in unique(conditiontable$Time)) {
+  sample_cor <- cor(assay(deseq.results.vst[,grep(time, colnames(deseq.results.vst))]), method = 'pearson', use = 'pairwise.complete.obs')
+  pdf(paste(output_folder, 'correlation_heatmap_', time, '.pdf', sep = ""), width = 10, height = 10, onefile = FALSE)
+  pheatmap(sample_cor, annotation_col = conditiontable[grep(time, rownames(conditiontable)), -1], annotation_row = conditiontable[grep(time, rownames(conditiontable)), -1], fontsize=8)
+  dev.off()
 }
-
 
 # Bar charts showing the assignment of alignments to genes (featureCounts statistics)
 if (("ggplot2" %in% rownames(installed.packages())) && ("reshape2" %in% rownames(installed.packages()))) {
-    pdf(paste(output_folder, 'counts_assignment.pdf', sep = ""), width = 20, height = 10)
-    invisible(lapply(create_feature_counts_statistics(feature_counts_log_file), print))
-    dev.off()
+  plot.list <- create_feature_counts_statistics(feature_counts_log_file)
+  invisible(sapply(list("pdf", "png"), function(p){
+    sapply(names(plot.list), function(x){
+      ggsave(plot=plot.list[[x]],filename=paste0("counts_assignment_", x, ".", p), device=p, path=output_folder, width=18, height=12)
+    })}))
 }
 
 # Create all DESeq2 comparisons from comparison table
 if (!dir.exists(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))) {
-    dir.create(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))
+  dir.create(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))
 }
 if (!dir.exists(paste(output_folder, "plots", sep = ""))) {
   dir.create(paste(output_folder, "plots", sep = ""))
@@ -196,44 +202,48 @@ res.list.raw <- list()
 res.list <- list()
 
 for (n in 1:nrow(comparisons.df)) {
-#res.list <- mclapply(1:nrow(comparisons.df), function(n){
-      print(comparisons.df[n,])
-      group_1 <- comparisons.df[n,1]
-      group_2 <- comparisons.df[n,2]
-      # calculate log2 fold changes for condition group_1 vs. group_2
-      res <- results(deseq.results, contrast = c("condition", group_1, group_2), parallel = FALSE)
-      res.list.raw[[paste(group_1, group_2, sep="_vs_")]] <- res 
-      write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
-      write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.xlsx", sep = ""), row.names = TRUE)
-      
-      resLFC <- lfcShrink(deseq.results, contrast = c("condition", group_1, group_2), type = "ashr", res = res)
-    
-      pdf(paste(output_folder, "plots/MAplot_", group_1, "_vs_", group_2, "_shrunk.pdf", sep = ""))
-      plotMA(resLFC, ylim = c(-5, 5), main = paste(group_1, group_2, sep = "_vs_"))
-      dev.off()
-      
-      res <- as.data.frame(resLFC)
-      res <- cbind(res, `-log10(padj)` = -log10(res$padj))
+  #res.list <- mclapply(1:nrow(comparisons.df), function(n){
+  print(comparisons.df[n,])
+  group_1 <- comparisons.df[n,1]
+  group_2 <- comparisons.df[n,2]
+  # calculate log2 fold changes for condition group_1 vs. group_2
+  res <- results(deseq.results, contrast = c("condition", group_1, group_2), parallel = FALSE)
+  res.list.raw[[paste(group_1, group_2, sep="_vs_")]] <- res 
+  write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
+  write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.xlsx", sep = ""), row.names = TRUE)
   
-      plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
-        theme(axis.title = element_text(size=18, face = "bold")) +
-        geom_hline(yintercept = -log10(0.05), color = "red")
-      ggsave(paste("Volcano_", group_1, "_vs_", group_2, "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
-      ggsave(paste("Volcano_", group_1, "_vs_", group_2, "_shrunk.png", sep = ""), plot = plot_volcano, device = "png", path = paste(output_folder, "plots/", sep = ""))
-      
-      #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
-      res <- cbind(res, countdata.normalized[,grep(paste(as.character(group_1),sub("_",".*_",group_2), sep="|"),colnames(countdata.normalized))])
-      res <- cbind(SYMBOL = rownames(res), res)
-      res <- merge(annotate(as.character(res$SYMBOL), "SYMBOL"), res, by = "SYMBOL", all = T)
-      colnames(res)[11:(ncol(res))] <- paste0("normalized_", colnames(res)[11:(ncol(res))])
-      res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
-      res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
-      write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, ".csv", sep = ""), row.names = TRUE, col.names = NA)
-      write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, ".xlsx", sep = ""), overwrite = T)
-     
-     res.list[[paste(group_1, group_2, sep="_vs_")]] <- res 
-     #return(res)
-    }#, mc.cores = threads)
+  resLFC <- lfcShrink(deseq.results, contrast = c("condition", group_1, group_2), type = "ashr", res = res)
+  
+  pdf(paste(output_folder, "plots/MAplot_", group_1, "_vs_", group_2, "_shrunk.pdf", sep = ""))
+  plotMA(resLFC, ylim = c(-5, 5), main = paste(group_1, group_2, sep = "_vs_"))
+  dev.off()
+  
+  png(paste(output_folder, "plots/MAplot_", group_1, "_vs_", group_2, "_shrunk.png", sep = ""))
+  plotMA(resLFC, ylim = c(-5, 5), main = paste(group_1, group_2, sep = "_vs_"))
+  dev.off()
+  
+  res <- as.data.frame(resLFC)
+  res <- cbind(res, `-log10(padj)` = -log10(res$padj))
+  
+  plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
+    theme(axis.title = element_text(size=18, face = "bold")) +
+    geom_hline(yintercept = -log10(0.05), color = "red")
+  ggsave(paste("Volcano_", group_1, "_vs_", group_2, "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
+  ggsave(paste("Volcano_", group_1, "_vs_", group_2, "_shrunk.png", sep = ""), plot = plot_volcano, device = "png", path = paste(output_folder, "plots/", sep = ""))
+  
+  #res <- cbind(res, countdata.normalized[,grep(paste(as.character(comparisons.df[n,]), collapse="|"),colnames(countdata.normalized))])
+  res <- cbind(res, countdata.normalized[,grep(paste(as.character(group_1),sub("_",".*_",group_2), sep="|"),colnames(countdata.normalized))])
+  res <- cbind(SYMBOL = rownames(res), res)
+  res <- merge(annotate(as.character(res$SYMBOL), "SYMBOL"), res, by = "SYMBOL", all = T)
+  colnames(res)[11:(ncol(res))] <- paste0("normalized_", colnames(res)[11:(ncol(res))])
+  res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
+  res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
+  write.table(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, ".tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
+  write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, ".xlsx", sep = ""), overwrite = T)
+  
+  res.list[[paste(group_1, group_2, sep="_vs_")]] <- res 
+  #return(res)
+}#, mc.cores = threads)
 
 #names(res.list.shrunk) <- comparisons.df[,2]
 
@@ -256,23 +266,23 @@ lfc.df[is.na(lfc.df)] <- 0
 padj_cut <- 0.05
 count.genes <- data.frame()
 for (sample in names(res.list)) {
-    res <- res.list[[sample]]
-    #expr_genes <- res[which(res$log2FoldChange!=0 & !is.na(res$padj)),]
-    count_padj <- length(which(res$padj<padj_cut))
-    for(LFC.cut in c(0,1,1.5,2,3)){
-      count_fc_up <- length(which(res$padj<padj_cut & res$log2FoldChange> LFC.cut & apply(res[,grep("normalized", colnames(res))],1,max) >= 10))
-      count_fc_down <- length(which(res$padj<padj_cut & res$log2FoldChange< -LFC.cut & apply(res[,grep("normalized", colnames(res))],1,max) >= 10))
-      count.genes <- rbind(count.genes,c(sample,count_fc_up,"up",LFC.cut), stringsAsFactors = F)
-      count.genes <- rbind(count.genes,c(sample,-count_fc_down,"down",LFC.cut), stringsAsFactors = F)
-    }
-    
+  res <- res.list[[sample]]
+  #expr_genes <- res[which(res$log2FoldChange!=0 & !is.na(res$padj)),]
+  count_padj <- length(which(res$padj<padj_cut))
+  for(LFC.cut in c(0,1,1.5,2,3)){
+    count_fc_up <- length(which(res$padj<padj_cut & res$log2FoldChange> LFC.cut & apply(res[,grep("normalized", colnames(res))],1,max) >= 10))
+    count_fc_down <- length(which(res$padj<padj_cut & res$log2FoldChange< -LFC.cut & apply(res[,grep("normalized", colnames(res))],1,max) >= 10))
+    count.genes <- rbind(count.genes,c(sample,count_fc_up,"up",LFC.cut), stringsAsFactors = F)
+    count.genes <- rbind(count.genes,c(sample,-count_fc_down,"down",LFC.cut), stringsAsFactors = F)
+  }
+  
 }
-colnames(count.genes) <- c("Sample", "Count","Direction","LFC_cutoff")
+colnames(count.genes) <- c("Sample", "Count", "Direction", "LFC_cutoff")
 count.genes <- as.data.frame(count.genes)
 write.table(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.csv", sep = ""), sep = "\t", row.names = FALSE, col.names = TRUE)
 write.xlsx(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.xlsx", sep = ""), row.names = FALSE, col.names = TRUE)
 
-count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_]*_vs_", F), "Mock", c("Control","Time"),"_")
+count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_]*_vs_", F), "Mock", c("Control","Time"), "_")
 #count.genes <- separate(count.genes, "Sample", c("Virus","Control"), "_[^_]*_vs_", F)
 count.genes$Count <- as.numeric(count.genes$Count) 
 count.genes <- count.genes[mixedorder(count.genes$Time),]
@@ -281,7 +291,7 @@ for(LFC.cut in unique(count.genes$LFC_cutoff)){
     geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
     scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
     geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
-  ggsave(paste0("DEG_count_LFC",LFC.cut,".svg"), p, "svg", output_folder)
+  ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "svg", output_folder)
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 14, height = 7)
 }
 

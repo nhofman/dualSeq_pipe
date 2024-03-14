@@ -10,11 +10,10 @@ localrules: deseq2__create_conditions_human
 rule all:
     input:
         #"analyses/host/deseq2/counts.txt",
-        "analyses/host/deseq2/counts_normalized.txt",
+        "analyses/host/deseq2/counts_normalized.tsv",
         "analyses/host/deseq2/deseq2.RData",
         "analyses/host/deseq2/GSEA",
         #"analyses/host/deseq2/STRING/"
-        #expand('analyses/{human_or_virus}/deseq2/summary/{COND}.xlsx', COND=getConditions())
 
 #rule summary_tsv_to_xslx:
 #    input:
@@ -47,7 +46,7 @@ rule deseq2_human:
         feature_counts_log = "analyses/host/count_table/counts.txt.summary"
     output:
         rdata="analyses/host/deseq2/deseq2.RData",
-        counts_normalized="analyses/host/deseq2/counts_normalized.txt",
+        counts_normalized="analyses/host/deseq2/counts_normalized.tsv",
         correlation_heatmap="analyses/host/deseq2/correlation_heatmap.pdf",
         assignment_statistics="analyses/host/deseq2/counts_assignment.pdf",
         #summary=expand('analyses/host/deseq2/summary/{COND}.tsv', COND=getConditions())

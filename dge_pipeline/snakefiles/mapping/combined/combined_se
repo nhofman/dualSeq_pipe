@@ -16,7 +16,7 @@ rule all:
         expand("mapping/combined/virus/stats/{sample}_stats.tsv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/host/stats/{sample}_stats.tsv", sample=config['entries'].keys()),
         "mapping/combined/stats/mapping_statistic.tsv",
-        "mapping/combined/stats/mapping_statistic.svg"
+        "mapping/combined/stats/mapping_statistic.pdf"
 
 def virus2genome(wildcards):
 	for sample in config['entries'].keys():
@@ -272,8 +272,8 @@ rule plot_statistics:
         stat_virus=expand("mapping/combined/virus/stats/{sample}_stats.tsv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
     output:
         "mapping/combined/stats/mapping_statistic.tsv",
-        "mapping/combined/stats/mapping_statistic.svg",
-        "mapping/combined/stats/mapping_statistic_mock.svg"
+        "mapping/combined/stats/mapping_statistic.pdf",
+        "mapping/combined/stats/mapping_statistic_mock.pdf"
     params:
         "mapping/combined/"
     priority: 1
