@@ -12,8 +12,8 @@ color_file <- args[match('--color', args) + 1]
 rRNA_file <- args[match('--rRNA', args) + 1]
 
 # required packages
-for (package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr", "openxlsx", "org.Hs.eg.db")) {
-  if (!(package %in% rownames(installed.packages()))) {
+for(package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr", "openxlsx", "org.Hs.eg.db")) {
+  if(!(package %in% rownames(installed.packages()))) {
     stop(paste('Package "', package, '" not installed', sep=""))
   } else {
     print(paste("Import:", package))
@@ -22,13 +22,13 @@ for (package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "
 }
 
 # Run on multiple threads
-if ("BiocParallel" %in% rownames(installed.packages())) {
+if("BiocParallel" %in% rownames(installed.packages())) {
   register(MulticoreParam(threads))
 }
 
 # Annotate genes
 annotate <- function(genes, keytype){
-  genes.ann <- AnnotationDbi::select(org.Hs.eg.db,genes,c("UNIPROT","GENENAME","PATH"), keytype)
+  genes.ann <- AnnotationDbi::select(org.Hs.eg.db, genes,c("UNIPROT","GENENAME","PATH"), keytype)
   genes.ann <- aggregate(genes.ann, by = list(genes.ann$SYMBOL), FUN = function(x) paste(unique(x), collapse = ";"))[,-1]
   return(genes.ann)
 }
@@ -104,17 +104,33 @@ deseqDataset <- estimateSizeFactors(deseqDataset)
 countdata.normalized <- counts(deseqDataset, normalized = TRUE)
 write.table(countdata.normalized, file = paste(output_folder, "/counts_normalized.tsv", sep = ""), sep = "\t", row.names = TRUE, col.names = NA)
 
+# Import color
+if(color_file != "NULL"){
+  color.df <- read.table(color_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+  color <- color.df[,2]
+  names(color) <- color.df[,1]
+  
+  # Set color for column names of countdata
+  colnames.col <- c()
+  for(x in names(color)){
+    i <- grep(x, colnames(countdata.normalized))
+    colnames.col[i] <- color[x]
+  }
+}else{
+  colnames.col <- "lightgrey"
+}
+
 # Plot raw countdata and normalized countdata 
-pdf(paste(output_folder, "/counts.pdf", sep = ""), width = 25, height=15)
-par(mfrow=c(1,2), mar=c(20, 4, 5, 2) + 0.1, lwd=2)
-boxplot(countdata, outline = FALSE, las = 2, ylab = "raw reads", xlab = "")
-boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "")
+pdf(paste(output_folder, "/counts.pdf", sep = ""), width = 30, height = 15)
+par(mfrow=c(1,2), mar=c(12, 5.5, 5, 2) + 0.1, lwd=2, cex.lab=1.75)
+boxplot(countdata, outline = FALSE, las = 2, ylab = "Raw reads", xlab = "", col = colnames.col)
+boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "", col = colnames.col)
 dev.off()
 
-png(paste(output_folder, "/counts.png", sep = ""), width = 25, height=15)
-par(mfrow=c(1,2), mar=c(20, 4, 5, 2) + 0.1, lwd=2)
-boxplot(countdata, outline = FALSE, las = 2, ylab = "raw reads", xlab = "")
-boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "")
+png(paste(output_folder, "/counts.png", sep = ""), width = 30, height = 15, units = "in", res = 300)
+par(mfrow=c(1,2), mar=c(8, 5.5, 5, 2) + 0.1, lwd=2, cex.lab=1.75)
+boxplot(countdata, outline = FALSE, las = 2, ylab = "Raw reads", xlab = "", col = colnames.col)
+boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "", col = colnames.col)
 dev.off()
 
 # Calculate differential expression analysis steps
@@ -124,13 +140,6 @@ deseq.results <- DESeq(object = deseqDataset, parallel = FALSE)
 deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
 
 #deseq.results[ rowSums(counts(deseq.results)) == 0, ] <- 1 # replace rows that have no reads with pseudocount
-
-# Import color
-if(color_file != "NULL"){
-  color.df <- read.table(color_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
-  color <- color.df[,2]
-  names(color) <- color.df[,1]
-}
 
 # Plot PCA
 shape <- if(length(unique(conditiontable$Time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$Time))) }else{ c(1:length(unique(conditiontable$Time)))}
@@ -146,7 +155,7 @@ if(exists("color")){
 ggsave("PCA.pdf", plot = plot_PCA, device = "pdf", path = output_folder, width = 10, height = 6)
 ggsave("PCA.png", plot = plot_PCA, device = "png", path = output_folder, width = 10, height = 6)
 
-for (time in unique(conditiontable$Time)) {
+for(time in unique(conditiontable$Time)) {
   pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("Treatment", "Time"), returnData = TRUE)
   plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Treatment, shape = Time)) + geom_point(size=5) + 
     labs(color = "Infection", shape = "Time") + ggtitle(main) + 
@@ -160,29 +169,37 @@ for (time in unique(conditiontable$Time)) {
   ggsave(paste0("PCA_", time, ".png"), plot = plot_PCA, device = "png", path = output_folder)
 }
 
-
 # Heatmap showing correlations between samples
-if ("pheatmap" %in% rownames(installed.packages())) {
+if("pheatmap" %in% rownames(installed.packages())) {
   sample_cor <- cor(assay(deseq.results.vst), method = 'pearson', use = 'pairwise.complete.obs')
   if(exists("color")){
     annColor <- list(Treatment = color)
   }else(
     annColor <- NA
   )
+  plot.heat <- pheatmap(sample_cor, annotation_col = conditiontable[,-1], annotation_row = conditiontable[,-1], fontsize=8, annotation_colors = annColor)
   pdf(paste(output_folder, 'correlation_heatmap.pdf', sep = ""), width = 15, height = 15, onefile = FALSE)
-  pheatmap(sample_cor, annotation_col = conditiontable[,-1], annotation_row = conditiontable[,-1], fontsize=8, annotation_colors = annColor)
+  print(plot.heat)
   dev.off()
-}
+  png(paste(output_folder, 'correlation_heatmap.png', sep = ""), width = 1300, height = 1300)
+  print(plot.heat)
+  dev.off()
 
-for (time in unique(conditiontable$Time)) {
-  sample_cor <- cor(assay(deseq.results.vst[,grep(time, colnames(deseq.results.vst))]), method = 'pearson', use = 'pairwise.complete.obs')
-  pdf(paste(output_folder, 'correlation_heatmap_', time, '.pdf', sep = ""), width = 10, height = 10, onefile = FALSE)
-  pheatmap(sample_cor, annotation_col = conditiontable[grep(time, rownames(conditiontable)), -1], annotation_row = conditiontable[grep(time, rownames(conditiontable)), -1], fontsize=8)
-  dev.off()
+  for(time in unique(conditiontable$Time)) {
+    sample_cor <- cor(assay(deseq.results.vst[,grep(time, colnames(deseq.results.vst))]), method = 'pearson', use = 'pairwise.complete.obs')
+    plot.heat <- pheatmap(sample_cor, annotation_col = conditiontable[grep(time, rownames(conditiontable)), -1], annotation_row = conditiontable[grep(time, rownames(conditiontable)), -1], 
+                          fontsize=12, annotation_colors = annColor, fontfamily = "")
+    pdf(paste(output_folder, 'correlation_heatmap_', time, '.pdf', sep = ""), width = 10, height = 10, onefile = FALSE)
+    print(plot.heat)
+    dev.off()
+    png(paste(output_folder, 'correlation_heatmap_', time, '.png', sep = ""), width = 600, height = 600)
+    print(plot.heat)
+    dev.off()
+  }
 }
 
 # Bar charts showing the assignment of alignments to genes (featureCounts statistics)
-if (("ggplot2" %in% rownames(installed.packages())) && ("reshape2" %in% rownames(installed.packages()))) {
+if(("ggplot2" %in% rownames(installed.packages())) && ("reshape2" %in% rownames(installed.packages()))) {
   plot.list <- create_feature_counts_statistics(feature_counts_log_file)
   invisible(sapply(list("pdf", "png"), function(p){
     sapply(names(plot.list), function(x){
@@ -191,21 +208,21 @@ if (("ggplot2" %in% rownames(installed.packages())) && ("reshape2" %in% rownames
 }
 
 # Create all DESeq2 comparisons from comparison table
-if (!dir.exists(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))) {
+if(!dir.exists(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))) {
   dir.create(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))
 }
-if (!dir.exists(paste(output_folder, "plots", sep = ""))) {
+if(!dir.exists(paste(output_folder, "plots", sep = ""))) {
   dir.create(paste(output_folder, "plots", sep = ""))
 }
 
 res.list.raw <- list()
 res.list <- list()
 
-for (n in 1:nrow(comparisons.df)) {
+for(n in 1:nrow(comparisons.df)) {
   #res.list <- mclapply(1:nrow(comparisons.df), function(n){
   print(comparisons.df[n,])
-  group_1 <- comparisons.df[n,1]
-  group_2 <- comparisons.df[n,2]
+  group_1 <- comparisons.df[n,1] # e.g. infected
+  group_2 <- comparisons.df[n,2] # e.g. uninfected
   # calculate log2 fold changes for condition group_1 vs. group_2
   res <- results(deseq.results, contrast = c("condition", group_1, group_2), parallel = FALSE)
   res.list.raw[[paste(group_1, group_2, sep="_vs_")]] <- res 
@@ -265,7 +282,7 @@ lfc.df[is.na(lfc.df)] <- 0
 # Count differentially expressed genes
 padj_cut <- 0.05
 count.genes <- data.frame()
-for (sample in names(res.list)) {
+for(sample in names(res.list)) {
   res <- res.list[[sample]]
   #expr_genes <- res[which(res$log2FoldChange!=0 & !is.na(res$padj)),]
   count_padj <- length(which(res$padj<padj_cut))

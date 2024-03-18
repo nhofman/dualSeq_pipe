@@ -80,7 +80,7 @@ if(exists("color")){
 }
 ggsave("PCA.svg", plot = plot_PCA, device = "svg", path = output_folder, width = 10, height = 8)
 
-for (time in unique(conditiontable$time[!conditiontable$treatment%in%c("HCV","LASV","Mock")])) {
+for(time in unique(conditiontable$time[!conditiontable$treatment%in%c("HCV","LASV","Mock")])) {
   pca_time <- plotPCA(deseq.results.vst[,grep(paste(names(virus.levels)[!names(virus.levels) %in% c("HCV","LASV")], time, collapse = "|", sep="_"), colnames(deseq.results.vst))], intgroup = c("treatment"), returnData = TRUE)
   if(time!="BPL"){
     main <- paste(time, "p.i.")
