@@ -431,20 +431,14 @@ def copy_lib(src_folder: Path, dest_folder: Path):
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog=metadata.__program_name__, add_help=False)
+    parser = argparse.ArgumentParser(description=metadata.__program_name__, add_help=False)
 
     required = parser.add_argument_group('Required arguments')
-    required.add_argument('--groups', dest='groups_file', required=True)
-    required.add_argument('--config', dest='config_file', required=True)
-    required.add_argument('--output', dest='output_folder', required=True)
-    #required.add_argument('--genome', dest='genome_info_file', required=True)
+    required.add_argument('--groups', dest='groups_file', required=True, help="Path to comma- or tab-separated file that lists all input data.")
+    required.add_argument('--config', dest='config_file', required=True, help="Path to yaml file that defines rules and rule specific parameters.")
+    required.add_argument('--output', dest='output_folder', required=True, help="Path to output folder.")
 
     other = parser.add_argument_group('Other arguments')
-    other.add_argument('--cluster-command', dest='cluster_command', default=None, type=str,
-                       help="Command for cluster execution. , e.g. 'qsub'. For resource requests use also --cluster-config")
-    other.add_argument('--cluster-config-file', dest='cluster_config_file', default=None, type=str,
-                       help="Path to cluster config file. "
-                            "See also: https://snakemake.readthedocs.io/en/stable/snakefiles/configuration.html#cluster-configuration")
     other.add_argument('--profile', dest='profile', default=None, type=str,
                        help="Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. " 
                        "See also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles")
@@ -454,7 +448,7 @@ def parse_arguments() -> argparse.Namespace:
                        help="Maximal number of parallel jobs send to the cluster (Default: %(default)s). Only used in cluster mode.")
     other.add_argument('--use-conda', dest='use_conda', action='store_true',
                        help="Run job in conda environment, if defined in rule.")
-    other.add_argument('--conda_frontend', dest='conda_frontend', default='mamba', type=str, choices=['mamba','conda'],
+    other.add_argument('--conda-frontend', dest='conda_frontend', default='mamba', type=str, choices=['mamba','conda'],
                        help="Choose frontend for installing environmnents ['conda', 'mamba']. (Default: %(default)s)")
     other.add_argument('--conda-create-envs-only', dest='conda_create_envs_only', action='store_true',
                        help="Only create job-specific environments and exit. --use-conda has to be set.")

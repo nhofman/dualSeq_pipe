@@ -1,11 +1,12 @@
-# Differential gene expression pipeline for dual RNA-Seq analysis
+# Dual RNA-Seq analysis pipeline
 
 ## Description
 In a dual RNA-Seq approach human HuH7 cells were infected with different pathogenic viruses. Samples were taken after predefined times of infection.
 The pipeline was build to analyse data from (these) infection experiments where samples are a mix of host and pathogenic reads. A python script is used to build and execute a customized snakemake workflow based on the analysis modules and parameters given by the user. 
 Available analysis modules are:
-- Preprocessing
+- QC
 	- fastqc
+- Preprocessing
 	- fastp
 - Mapping
 	- combined {STAR}
@@ -21,12 +22,15 @@ Available analysis modules are:
 
 ## Execution
 ```
-python dge_cluster_test.py --groups {groups_file} --config {config_file.yaml} --output {path_to_output_folder} (-t {threads} --cluster-nodes {jobs} --cluster-profile {path_to_snakemake_profile} --use-conda)
+usage: dualSeq.py --groups GROUPS_FILE --config CONFIG_FILE --output OUTPUT_FOLDER [--profile PROFILE] [-t CORES] [--cluster-nodes CLUSTER_NODES] [--use-conda] [--conda-frontend {mamba,conda}] [--conda-create-envs-only] [--latency-wait LATENCY] [-v] [--other OTHER] [--verbose] [-h]
+
+Differential gene expression pipeline for dual RNA-Seq analysis
 
 Required arguments:
-  --groups GROUPS_FILE
-  --config CONFIG_FILE
+  --groups GROUPS_FILE  Path to comma- or tab-separated file that lists all input data.
+  --config CONFIG_FILE  Path to yaml file that defines rules and rule specific parameters.
   --output OUTPUT_FOLDER
+                        Path to output folder.
 
 Other arguments:
   --profile PROFILE     Path to folder containing profile 'config.yaml' for
@@ -41,7 +45,7 @@ Other arguments:
                         Maximal number of parallel jobs send to the cluster
                         (Default: 1). Only used in cluster mode.
   --use-conda           Run job in conda environment, if defined in rule.
-  --conda_frontend {mamba,conda}
+  --conda-frontend {mamba,conda}
                         Choose frontend for installing environmnents ['conda',
                         'mamba']. (Default: mamba)
   --conda-create-envs-only
@@ -94,8 +98,9 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 
 
 ## Results
-- **Preprocessing**
+- **QC**
 	- FastQC result for each sample (html)
+- **Preprocessing**
 	- Fastp result for each sample (html)
 - **Mapping**
 	- Alignment files for each sample 
