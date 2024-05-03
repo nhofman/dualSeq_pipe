@@ -1,0 +1,29 @@
+from os import listdir
+from os.path import isfile
+
+
+rule count_table__all:
+    input:
+        "analyses/host/count_table/counts.txt",
+        "analyses/host/count_table/counts.txt.summary"
+        
+rule count_table__count_reads_host:
+    input:
+        expand("mapping/combined/host/{host}.bam", host=config['entries'].keys())
+    output:
+        counts = "analyses/host/count_table/counts.txt",
+        summary = "analyses/host/count_table/counts.txt.summary"
+    priority: 1
+    log:
+        "analyses/host/count_table/logs/featurecounts.log"
+    group:
+        "count_reads_host"
+    conda: "../conda_envs/counts_env.yaml"
+    threads:
+        8
+    resources:
+        mem_mb=1000
+    shell:
+        "featureCounts -T {threads} -s 2 -t 'exon' -g 'gene_id' -a /vol/sfb1021/SFB1021_Virus/genomes/hg38/genes.gtf -o {output.counts} {input} 2>&1 | tee {log}"
+
+            
