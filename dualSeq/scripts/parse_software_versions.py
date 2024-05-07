@@ -3,9 +3,10 @@ import sys
 from pathlib import Path
 
 envs_dir = sys.argv[1]
+output = sys.argv[2]
 software_list = []
 yaml_list = Path(envs_dir).glob("*.yaml")
-file = open('multiqc_config.yaml', 'a')
+file = open(output, 'a')
 file.write('software_versions:\n')
 for conda_env in yaml_list:
     conda = yaml.safe_load(conda_env.open('r'))
