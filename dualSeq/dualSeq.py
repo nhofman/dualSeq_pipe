@@ -39,12 +39,14 @@ def main():
     if args.profile is not None:
         args.profile = Path(args.profile).resolve()
         run_command.extend(['--profile', str(args.profile)])
+    if args.jobs is not None:
+        run_command.extend(['--jobs', str(args.jobs)])
     if args.other is not None:
         for elem in args.other:
             other = '--' + elem
             run_command.append(other)
-    print(' '.join(run_command))
-    #subprocess.run(' '.join(run_command), shell=True) #'--rerun-triggers', 'mtime',
+    #print(' '.join(run_command))
+    subprocess.run(' '.join(run_command), shell=True) #'--rerun-triggers', 'mtime',
             #subprocess.run(['snakemake', '--snakefile', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/Snakefile', '--cores', '4', '--directory', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/'])
     exit(1)
 
@@ -444,8 +446,8 @@ def parse_arguments() -> argparse.Namespace:
                        help="Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. " 
                        "See also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles")
     other.add_argument('-t', '--cores', dest='cores', default=1, type=int,
-                       help="Number of threads/cores (Default: %(default)s). Defines locale cores in cluster mode")
-    other.add_argument('--cluster-nodes', dest='cluster_nodes', default=1, type=int,
+                       help="Number of threads/cores (Default: %(default)s).")
+    other.add_argument('--jobs', dest='jobs', default=1, type=int,
                        help="Maximal number of parallel jobs send to the cluster (Default: %(default)s). Only used in cluster mode.")
     other.add_argument('--use-conda', dest='use_conda', action='store_true',
                        help="Run job in conda environment, if defined in rule.")
