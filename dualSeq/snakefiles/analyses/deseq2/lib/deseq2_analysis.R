@@ -158,7 +158,7 @@ ggsave("PCA.png", plot = plot_PCA, device = "png", path = output_folder, width =
 for(time in unique(conditiontable$Time)) {
   pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("Treatment", "Time"), returnData = TRUE)
   plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Treatment, shape = Time)) + geom_point(size=5) + 
-    labs(color = "Infection", shape = "Time") + ggtitle(main) + 
+    labs(color = "Infection", shape = "Time") + 
     theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5), axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16),  
           legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank()) +
     scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = F) 
@@ -227,7 +227,7 @@ for(n in 1:nrow(comparisons.df)) {
   res <- results(deseq.results, contrast = c("condition", group_1, group_2), parallel = FALSE)
   res.list.raw[[paste(group_1, group_2, sep="_vs_")]] <- res 
   write.table(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.tsv", sep = ""), row.names = TRUE, col.names = NA, sep = "\t")
-  write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.xlsx", sep = ""), row.names = TRUE)
+  write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", group_1, "_vs_", group_2, "_unshrunken.xlsx", sep = ""), row.names = TRUE, overwrite = T)
   
   resLFC <- lfcShrink(deseq.results, contrast = c("condition", group_1, group_2), type = "ashr", res = res)
   
@@ -274,8 +274,8 @@ rownames(padj.df) <- padj.df$SYMBOL
 padj.df <- padj.df[,-1, drop = FALSE]
 padj.df <- padj.df[,mixedorder(colnames(padj.df))]
 write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), row.names = T, overwrite = T)
-write.table(lfc.df, file = paste(output_folder,"deseq2_comparisons_shrunken/LFC_data_all.xlsx", sep = ""), row.names = T, sep = "\t")
-write.table(padj.df, file = paste(output_folder,"deseq2_comparisons_shrunken/padj_data_all.xlsx", sep = ""), row.names = T, sep = "\t")
+write.table(lfc.df, file = paste(output_folder,"deseq2_comparisons_shrunken/LFC_data_all.tsv", sep = ""), row.names = T, sep = "\t")
+write.table(padj.df, file = paste(output_folder,"deseq2_comparisons_shrunken/padj_data_all.tsv", sep = ""), row.names = T, sep = "\t")
 
 lfc.df[is.na(lfc.df)] <- 0
 
@@ -297,7 +297,7 @@ for(sample in names(res.list)) {
 colnames(count.genes) <- c("Sample", "Count", "Direction", "LFC_cutoff")
 count.genes <- as.data.frame(count.genes)
 write.table(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.csv", sep = ""), sep = "\t", row.names = FALSE, col.names = TRUE)
-write.xlsx(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.xlsx", sep = ""), row.names = FALSE, col.names = TRUE)
+write.xlsx(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.xlsx", sep = ""), row.names = FALSE, col.names = TRUE, overwrite = T)
 
 count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_]*_vs_", F), "Mock", c("Control","Time"), "_")
 #count.genes <- separate(count.genes, "Sample", c("Virus","Control"), "_[^_]*_vs_", F)
