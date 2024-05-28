@@ -4,5 +4,5 @@ channels:
 - anaconda
 - defaults
 dependencies:
-- star=2.7.5c
+- star=2.7.11b
 #- samtools=1.10

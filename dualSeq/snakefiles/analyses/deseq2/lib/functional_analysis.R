@@ -1,7 +1,6 @@
 set.seed(123)
 # Parse arguments
 args <- commandArgs(F)
-print(args)
 file.dir <- dirname(sub("--file=","",args[grep("--file=",args)]))
 rdata <- args[match('--rdata', args) + 1]
 threads <- args[match('--threads', args) + 1]
@@ -22,7 +21,6 @@ ont <- strsplit(ont, ",")[[1]]
 
 gsea.list <- list()
 for(n in names(res.list)){
-  print(n)
   res <- res.list[[n]]
   res <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
   res <- res[order(res$log2FoldChange, decreasing = T),]
@@ -40,6 +38,6 @@ for(n in names(res.list)){
   #if(nrow(res) > 0){
   #        try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL), filename = paste0(n, "_top_absolut"), out.dir = paste0(output_folder, "/STRING")))
   #}
-  gc()
+  #gc()
 }
 

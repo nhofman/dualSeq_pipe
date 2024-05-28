@@ -46,8 +46,12 @@ def main():
             other = '--' + elem
             run_command.append(other)
     #print(' '.join(run_command))
-    subprocess.run(' '.join(run_command), shell=True) #'--rerun-triggers', 'mtime',
-            #subprocess.run(['snakemake', '--snakefile', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/Snakefile', '--cores', '4', '--directory', '/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new_test/'])
+    run_return = subprocess.run(run_command, check=False) #'--rerun-triggers', 'mtime',
+    if run_return.returncode == 0:
+        print("Pipeline finished successfully!")
+    #print(run_return)
+    else:
+        print("Pipeline failed with error code", run_return.returncode)
     exit(1)
 
 

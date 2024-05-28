@@ -6,4 +6,4 @@ channels:
 dependencies:
 #- samtools=1.10
 - lofreq=2.1.5
-- picard=2.23.3
+- picard=3.1.1

@@ -52,7 +52,7 @@ rule realign:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "lofreq viterbi -f {input.genome} {input.bam} | samtools sort - > {output} 2>&1 | tee {log}"
+        "lofreq viterbi -f {input.genome} {input.bam} | samtools sort -o {output} 2>&1 | tee {log}"
 		
 # Insert indel qualities
 rule indel_qual:
