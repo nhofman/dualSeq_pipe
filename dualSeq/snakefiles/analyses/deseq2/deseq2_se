@@ -4,7 +4,7 @@ from os.path import isfile
 def getConditions():
     return set([seqRun['deseq2']['condition'] for seqRun in config['entries'].values()])
 
-localrules: deseq2__create_conditions_human
+localrules: deseq2__create_conditions_human, deseq2__functional_analysis
 
 
 rule all:
@@ -35,7 +35,7 @@ rule create_conditions_human:
     priority: 1
     run:
         with(open(output[0], 'w')) as output_file:
-            for name in sorted(config['entries'].keys()):
+            for name in config['entries'].keys():
                 output_file.write('{}\t{}\n'.format(name, config['entries'][name]['deseq2']['condition']))
 
                          
@@ -69,6 +69,7 @@ rule deseq2_human:
 
   
 rule functional_analysis:
+    localrule: True
     input:
         rdata="analyses/host/deseq2/deseq2.RData"
     output:
@@ -84,6 +85,8 @@ rule functional_analysis:
     conda: "../conda_envs/R_env.yaml"
     threads:
         1
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
         "R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --rdata {input.rdata} --db %%DB%% --ont %%ONT%% 2>&1 | tee {log}"
 
