@@ -4,4 +4,4 @@ channels:
 - anaconda
 - defaults
 dependencies:
-- fastqc=0.11.9
+- fastqc=0.12.1
