@@ -23,21 +23,28 @@ required_settings:
     description: 'Path to genome gtf/gff file'
     type: 'file'
 
-  star_sj_overhang:
-    description: 'Length of genomic sequence around annotated junction [best: ReadLength-1]'
-    type: 'integer'
-    
-  star_parent_tag:
-    description: 'Tag name to be used as exons transcript-parent (GTF: transcript_id, GFF: Parent)'
-    type: 'string'
-
     
 optional_settings:
 
-  additional_bowtie2_options:
-    description: "Additional options to use in shell command"
-    type: "string"
-    default: ''
+  star_sj_overhang:
+    description: 'Length of genomic sequence around annotated junction [best: ReadLength-1]'
+    type: 'integer'
+    default: 100
+      
+  star_gene_tag:
+    description: 'Tag name to be used as exons gene-parent (GTF: gene_id, GFF: ID)'
+    type: 'string'
+    default: 'gene_id'
+
+  star_transcript_tag:
+    description: 'Tag name to be used as exons transcript-parent (GTF: transcript_id, GFF: Parent)'
+    type: 'string'
+    default: 'transcript_id'
+
+  star_feature_exon:
+    description: 'Feature type in gtf/gff used to build transcript, e.g., exon or CDS'
+    type: 'string'
+    default: 'exon'
 
   additional_star_options:
     description: 'Additional options to use in shell command'
