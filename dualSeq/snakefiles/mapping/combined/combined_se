@@ -57,12 +57,12 @@ rule star_index:
 	    echo params
         if [[ "{wildcards.virus}" == "None" ]]
 	    then
-		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
 	    else
 		   touch {params.ann_file}    
 		   cat %%HOST_GTF%% > {params.ann_file}
 		   cat {params.filelist[1]} >> {params.ann_file}
-		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFtagExonParentTranscript %%STAR_PARENT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
 	    fi
 	"""
 
