@@ -40,6 +40,6 @@ rule plot_assignment:
         "analyses/host/count_table/logs/plot_featurecounts.log"
     group:
         ""
-    conda: "../conda_envs/R.yaml"
+    conda: "../conda_envs/R_env.yaml"
     shell:
         "R --vanilla --file=lib/plot_assignment.R --args --featurecounts_log {input} 2>&1 | tee {log}"
