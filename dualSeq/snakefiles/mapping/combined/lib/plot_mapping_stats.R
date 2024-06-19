@@ -14,14 +14,14 @@ for (package in c("ggplot2", "tidyr", "gtools", "dplyr", "openxlsx")) {
 }
 
 # read mapping statistics for every file
-stats.df <- Reduce(rbind,lapply(c(list.files(stat_host, ".*_stats.tsv", full.names = T),list.files(stat_virus, ".*_stats.tsv", full.names = T)), function(x){
-  tmp <- read.table(x, header = T, sep = "\t")
+stats.df <- Reduce(rbind,lapply(c(list.files(stat_host, ".*_stats.csv", full.names = T),list.files(stat_virus, ".*_stats.csv", full.names = T)), function(x){
+  tmp <- read.csv(x, header = T)
   tmp$multimapped <- tmp$mapped - tmp$uniquely_mapped - tmp$mapped_to_both
   tmp$mapped <- tmp$mapped - tmp$mapped_to_both
   tmp$mapped_to_both <- sum(tmp$mapped_to_both)
   return(tmp)
 }))
-write.table(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.tsv"), sep = "\t", row.names = F)
+write.table(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.csv"), sep = "\t", row.names = F)
 write.xlsx(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.xlsx"))
 
 # transpose data frame for plotting

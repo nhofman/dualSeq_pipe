@@ -16,7 +16,7 @@ calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = 
       if(nrow(data.frame(ora_go)) > 0){
         plot_go <- dotplot(ora_go, showCategory = 20) + ggtitle(main)
         ggsave(paste(filename,"_",o,"_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
-        write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
+        write.csv(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), row.names = FALSE)
       }
       ora.list[[o]] <- ora_go
     }
@@ -27,7 +27,7 @@ calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = 
       ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
       plot_kegg <- dotplot(ora_kegg, showCategory = 20) + ggtitle(main)
       ggsave(paste(filename,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
-      write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
+      write.csv(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), row.names = FALSE)
     }
     ora.list[["KEGG"]] <- ora_kegg
   }
@@ -36,7 +36,7 @@ calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = 
     if(nrow(data.frame(ora_reactome)) > 0){
       plot_reactome <- dotplot(ora_reactome, showCategory = 20) + ggtitle(main)
       ggsave(paste(filename,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
-      write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
+      write.csv(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), row.names = FALSE)
     }
     ora.list[["REACTOME"]] <- ora_reactome
   }
@@ -61,7 +61,7 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
       ggsave(paste(name,"_KEGG_dotplot.svg", sep = ""), device = "svg", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
       gsea_kegg.df <- data.frame(gsea_kegg)
       gsea_kegg.df$core_enrichment_SYMBOL <- sapply(gsea_kegg.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-      write.table(gsea_kegg.df, file = paste(out.dir, "/", name, "_KEGG.csv", sep = ""), sep = ",", row.names = FALSE)
+      write.csv(gsea_kegg.df, file = paste(out.dir, "/", name, "_KEGG.csv", sep = ""), row.names = FALSE)
       gsea.list[["KEGG"]] <- gsea_kegg
     }
   }
@@ -73,7 +73,7 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
         ggsave(paste(name, "_GO_", o, "_dotplot.svg", sep = ""), device = "svg", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
         gsea_go.df <- data.frame(gsea_go)
         gsea_go.df$core_enrichment_SYMBOL <- sapply(gsea_go.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-        write.table(gsea_go.df, file = paste(out.dir, "/", name, "_GO_", o, ".csv", sep = ""), sep = ",", row.names = FALSE)
+        write.csv(gsea_go.df, file = paste(out.dir, "/", name, "_GO_", o, ".csv", sep = ""), row.names = FALSE)
         gsea.list[[o]] <- gsea_go
         # Problem: Bei gleichem value von by werden alle Pathways mit diesem Wert ausgegeben!
         # Loesung: by = pvalue?
@@ -88,7 +88,7 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
       ggsave(paste(name,"_REACTOME_dotplot.svg", sep = ""), device = "svg", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
       gsea_reactome.df <- data.frame(gsea_reactome)
       gsea_reactome.df$core_enrichment_SYMBOL <- sapply(gsea_reactome.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-      write.table(gsea_reactome.df, file = paste(out.dir, "/", name, "_REACTOME.csv", sep = ""), sep = ",", row.names = FALSE)
+      write.csv(gsea_reactome.df, file = paste(out.dir, "/", name, "_REACTOME.csv", sep = ""), row.names = FALSE)
       gsea.list[["REACTOME"]] <- gsea_reactome
     }
   }

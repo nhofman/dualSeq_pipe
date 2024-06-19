@@ -10,23 +10,10 @@ localrules: deseq2__create_conditions_human, deseq2__functional_analysis
 rule all:
     input:
         #"analyses/host/deseq2/counts.txt",
-        "analyses/host/deseq2/counts_normalized.tsv",
+        "analyses/host/deseq2/counts_normalized.csv",
         "analyses/host/deseq2/deseq2.RData",
         "analyses/host/deseq2/GSEA",
         #"analyses/host/deseq2/STRING/"
-
-#rule summary_tsv_to_xslx:
-#    input:
-#        'analyses/%%DIRECTORY%%/deseq2/summary/{COND}.tsv'
-#    output:
-#        'analyses/%%DIRECTORY%%/deseq2/summary/{COND}.xlsx'
-#    params:
-#        number_conditions = len(getConditions())-1
-#    group:
-#        "deseq2"
-#    shell:
-#        "python3 lib/deseq2_summary_tsv_to_xlsx.py --tsv {input} --conditions {params.number_conditions} --gff '%%GFF_PATH%%' --identifier '%%GFF_FEATURE_NAME%%' "
-#        "--feature '%%GFF_FEATURE_TYPE%%' --attributes %%ATTRIBUTE_COLUMNS%% --output {output}"
 
         
 rule create_conditions_human:
@@ -36,7 +23,7 @@ rule create_conditions_human:
     run:
         with(open(output[0], 'w')) as output_file:
             for name in config['entries'].keys():
-                output_file.write('{}\t{}\n'.format(name, config['entries'][name]['deseq2']['condition']))
+                output_file.write('{},{}\n'.format(name, config['entries'][name]['deseq2']['condition']))
 
                          
 rule deseq2_human:
@@ -46,11 +33,9 @@ rule deseq2_human:
         feature_counts_log = "analyses/host/count_table/counts.txt.summary"
     output:
         rdata="analyses/host/deseq2/deseq2.RData",
-        counts_normalized="analyses/host/deseq2/counts_normalized.tsv",
+        counts_normalized="analyses/host/deseq2/counts_normalized.csv",
         correlation_heatmap="analyses/host/deseq2/correlation_heatmap.pdf",
-        assignment_statistics="analyses/host/deseq2/counts_assignment_relative.pdf",
-        #summary=expand('analyses/host/deseq2/summary/{COND}.tsv', COND=getConditions())
-        #comparisons=directory("analyses/host/deseq2/deseq2_comparisons")
+        assignment_statistics="analyses/host/deseq2/counts_assignment_relative.pdf"
     priority: 1
     group:
         "deseq2"
