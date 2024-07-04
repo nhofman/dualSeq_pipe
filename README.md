@@ -17,14 +17,14 @@ Available analysis modules are:
 	- bamCoverage {bigwig}
 	- multiqc
 - Variant_analyses
-	- Preprocessing
+	- preprocessing
 	- variant_calling
 
 ## Execution
 ```
 usage: dualSeq.py --groups GROUPS_FILE --config CONFIG_FILE --output OUTPUT_FOLDER [--profile PROFILE] [-t CORES] [--cluster-nodes CLUSTER_NODES] [--use-conda] [--conda-frontend {mamba,conda}] [--conda-create-envs-only] [--latency-wait LATENCY] [-v] [--other OTHER] [--verbose] [-h]
 
-Differential gene expression pipeline for dual RNA-Seq analysis
+Dual RNA-Seq analysis pipeline
 
 Required arguments:
   --groups GROUPS_FILE  Path to comma- or tab-separated file that lists all input data.
