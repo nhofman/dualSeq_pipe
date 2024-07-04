@@ -9,14 +9,13 @@ wildcard_constraints:
 
 rule all:
     input:
-        #"mapping/virus/stats/mapping_stats.xlsx",
         expand("mapping/combined/{A}.bam", A=config['entries'].keys()),
         expand("mapping/combined/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
         expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/combined/virus/stats/{sample}_stats.tsv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/combined/host/stats/{sample}_stats.tsv", sample=config['entries'].keys()),
-        "mapping/combined/stats/mapping_statistic.tsv",
-        "mapping/combined/stats/mapping_statistic.pdf"
+        expand("mapping/combined/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/combined/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        multiext("mapping/combined/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/combined/stats/mapping_statistic", ".pdf", ".png")
 
 def virus2genome(wildcards):
 	for sample in config['entries'].keys():
@@ -121,7 +120,7 @@ rule Mock:
         bai = "mapping/combined/{sample}.bam.bai"
     output:
         bam = "mapping/combined/host/{sample}.bam",
-        stat = "mapping/combined/host/stats/{sample}_stats.tsv"
+        stat = "mapping/combined/host/stats/{sample}_stats.csv"
     priority: 1
     wildcard_constraints:
         sample="Mock.*"
@@ -134,8 +133,8 @@ rule Mock:
         mapped_host=$(samtools view -c -F 1284 {input.bam})
         uniquely_host=$(samtools view -c -F 1284 -q 255 {input.bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
-        echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output.stat}
-        echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_host}}'\t'${{uniquely_host}}'\t0\thost' >> {output.stat}
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output.stat}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',0,host' >> {output.stat}
         cp {input.bam} {output.bam}
         """
 
@@ -207,7 +206,7 @@ rule virusNames:
         host="mapping/combined/host/{sample}.bam"
     output:
         names=temp("mapping/combined/virus/{sample}_name.txt"),
-        diff=temp("mapping/combined/virus/{sample}_common.txt")
+        both="mapping/combined/virus/{sample}_both.txt"
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -219,15 +218,15 @@ rule virusNames:
         """
         samtools view {input.virus} | cut -f1 | sort | uniq > {output.names}
         sed -i 's/$/\t/' {output.names}
-        samtools view {input.host} | grep -F -f {output.names} | cut -f1 | sort -u > {output.diff} || true
+        samtools view -N {output.names} {input.host} | cut -f1 | sort -u > {output.both} || true
         """
 
 rule statistics_host:
     input:
-        names="mapping/combined/virus/{sample}_common.txt",
+        both="mapping/combined/virus/{sample}_both.txt",
         host_bam="mapping/combined/host/{sample}.bam",
     output:
-        "mapping/combined/host/stats/{sample}_stats.tsv"
+        "mapping/combined/host/stats/{sample}_stats.csv"
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -240,17 +239,17 @@ rule statistics_host:
         mapped_host=$(samtools view -c -F 1284 {input.host_bam})
         uniquely_host=$(samtools view -c -F 1284 -q 255 {input.host_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
-        both_host=$(samtools view -F 1284 {input.host_bam} | grep -F -f {input.names} | wc -l) || true
-        echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output}
-        echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_host}}'\t'${{uniquely_host}}'\t'${{both_host}}'\thost' >> {output}
+        both_host=$(samtools view -F 1284 -N {input.both} {input.host_bam} | wc -l) || true
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}','${{both_host}}',host' >> {output}
         """
 
 rule statistics_virus:
     input:
-        names="mapping/combined/virus/{sample}_common.txt",
+        both="mapping/combined/virus/{sample}_both.txt",
         virus_bam="mapping/combined/virus/{sample}.bam",
     output:
-        "mapping/combined/virus/stats/{sample}_stats.tsv"
+        "mapping/combined/virus/stats/{sample}_stats.csv"
     priority: 1
     group:
         "bam_process"
@@ -261,19 +260,19 @@ rule statistics_virus:
         mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})
         uniquely_virus=$(samtools view -c -F 1284 -q 255 {input.virus_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
-        both_virus=$(samtools view -F 1284 {input.virus_bam} | grep -F -f {input.names} | wc -l) || true
-        echo $'sample\ttotal_reads\tmapped\tuniquely_mapped\tmapped_to_both\tgroup' > {output}
-        echo {wildcards.sample}'\t'${{total}}'\t'${{mapped_virus}}'\t'${{uniquely_virus}}'\t'${{both_virus}}'\tvirus' >> {output}
+        both_virus=$(samtools view -F 1284 -N {input.both} {input.virus_bam} | wc -l) || true
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}','${{both_virus}}',virus' >> {output}
         """
 
 rule plot_statistics:
     input:
-        stat_host=expand("mapping/combined/host/stats/{sample}_stats.tsv", sample=config['entries'].keys()),
-        stat_virus=expand("mapping/combined/virus/stats/{sample}_stats.tsv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
+        stat_host=expand("mapping/combined/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        stat_virus=expand("mapping/combined/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
     output:
-        "mapping/combined/stats/mapping_statistic.tsv",
-        "mapping/combined/stats/mapping_statistic.pdf",
-        "mapping/combined/stats/mapping_statistic_mock.pdf"
+        multiext("mapping/combined/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/combined/stats/mapping_statistic", ".pdf", ".png"),
+        multiext("mapping/combined/stats/mapping_statistic_mock", ".pdf", ".png")
     params:
         "mapping/combined/"
     priority: 1

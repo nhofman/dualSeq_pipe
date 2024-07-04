@@ -21,7 +21,7 @@ stats.df <- Reduce(rbind,lapply(c(list.files(stat_host, ".*_stats.csv", full.nam
   tmp$mapped_to_both <- sum(tmp$mapped_to_both)
   return(tmp)
 }))
-write.table(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.csv"), sep = "\t", row.names = F)
+write.csv(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.csv"), row.names = F)
 write.xlsx(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.xlsx"))
 
 # transpose data frame for plotting
