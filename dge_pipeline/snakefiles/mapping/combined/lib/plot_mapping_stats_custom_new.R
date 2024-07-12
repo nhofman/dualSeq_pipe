@@ -1,3 +1,6 @@
+library(extrafont)
+loadfonts()
+
 stat_host <- "/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new/mapping/combined/host/stats/" 
 stat_virus <- "/vol/sfb1021/SFB1021_Virus/dge_analyses_antisense_new/mapping/combined/virus/stats/" 
 stat_host <- "Documents/Virus_project/analyses/host/deseq2/mapping/host_stats/" 
@@ -54,7 +57,7 @@ stats.t$Count_percent <- stats.t$Count/stats.t$Total
 stats.t$Category_2 <- paste(stats.t$Organism, stats.t$Category, sep = ":")
 stats.t$Time_Rep <- paste(stats.t$Time, stats.t$Rep, sep=":")
 # calculate mean of Count_percent for all replicates
-stats.t.mean <- stats.t %>% group_by(Virus,Time,Organism,Category) %>% summarise_at("Count_percent", "mean")
+stats.t.mean <- stats.t %>% group_by(Virus,Time,Organism,Category) %>% summarise_at(c("Count_percent", "Count"), "mean")
 stats.t.mean$Category_2 <- paste(stats.t.mean$Organism, stats.t.mean$Category, sep = ":")
 stats.t.mean$Category_new <- NA
 for(i in 1:nrow(stats.t.mean)){
@@ -80,10 +83,10 @@ ggsave("mapping_statistic.pdf", p, "pdf", output_folder, width = 0.6*times*(ncol
 system(paste0("inkscape -l ", output_folder, "mapping_statistic.svg ", output_folder, "mapping_statistic.pdf"))
 
 p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !stats.t.mean$Category_2%in%c("virus:multimapped","host:both") & !grepl("Mock",stats.t.mean$Virus),], 
-            aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, fill=factor(Category_new, levels = c("host:multimapped", "host:uniquely mapped", virus.levels)))) +
+            aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count, fill=factor(Category_new, levels = c("host:multimapped", "host:uniquely mapped", virus.levels)))) +
   geom_bar(stat = "identity", color = "black", linewidth = 0.25) +
   facet_wrap(~ factor(Virus, levels = virus.levels), scales = "free_x", ncol = ncol.facet) + scale_x_discrete(labels=c("3 h", "6 h", "12 h", "24 h", "BPL")) +
-  xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="") + scale_fill_manual(values=color, breaks = c("host:uniquely mapped", "host:multimapped"), labels = c("Host: uniquely mapped", "Host: multimapped")) + 
+  xlab("Time") + ylab("Number of mapped reads") + labs(fill="") + scale_fill_manual(values=color, breaks = c("host:uniquely mapped", "host:multimapped"), labels = c("Host: uniquely mapped", "Host: multimapped")) + 
   theme(text = element_text(family = "Arial", face = "bold"), line = element_line(linewidth = 0.25),
         axis.title = element_text(size = 12), axis.text = element_text(size = 10), 
         axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), 
@@ -94,6 +97,6 @@ p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !stats.t.mean$Categor
         legend.text = element_text(size = 10, face = "plain"), legend.title = element_text(size = 12))
         #panel.background = element_rect(fill = "white"), panel.grid = element_blank(), axis.ticks.x = element_blank())
 #ggsave("mapping_statistic_modified.svg", p, "svg", output_folder, width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
-ggsave("mapping_statistic_modified.pdf", p, "pdf", output_folder, width = 210, height = 120, units = "mm", dpi = 500) #width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
+ggsave("mapping_statistic_modified_counts.pdf", p, "pdf", output_folder, width = 210, height = 120, units = "mm", dpi = 500) #width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 system(paste0("inkscape -l ", output_folder, "mapping_statistic_modified.svg ", output_folder, "mapping_statistic_modified.pdf"))
-system(paste0("inkscape --export-type=svg ", output_folder, "mapping_statistic_modified.pdf"))
+system(paste0("inkscape --export-type=svg ", output_folder, "mapping_statistic_modified_counts.pdf"))

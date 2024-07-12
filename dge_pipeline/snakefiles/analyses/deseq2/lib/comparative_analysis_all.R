@@ -86,7 +86,7 @@ p <- ggplot(count.genes.cut, aes(y=Count, x=factor(Time, levels = c("3h","6h","1
         strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
         legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank(), legend.key.size = unit(3, "mm")) 
   #guides(fill = guide_legend(override.aes = list(size = 0.2)))
-ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 160, height = 120, units = "mm", dpi = 500)
+ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 160, height = 150, units = "mm", dpi = 500)
 system(paste0("inkscape -l ", output_folder, "DEG_count_LFC", LFC.cut,".svg ", output_folder, "DEG_count_LFC", LFC.cut, ".pdf"))
 system(paste0("inkscape --export-type=svg ", output_folder, "DEG_count_LFC", LFC.cut, ".pdf"))
 
