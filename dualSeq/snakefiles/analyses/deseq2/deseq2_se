@@ -30,12 +30,10 @@ rule deseq2_human:
     input:
         counttable = "analyses/host/count_table/counts.txt",
         conditions = "analyses/host/deseq2/conditions.txt",
-        feature_counts_log = "analyses/host/count_table/counts.txt.summary"
     output:
         rdata="analyses/host/deseq2/deseq2.RData",
         counts_normalized="analyses/host/deseq2/counts_normalized.csv",
         correlation_heatmap="analyses/host/deseq2/correlation_heatmap.pdf",
-        assignment_statistics="analyses/host/deseq2/counts_assignment_relative.pdf"
     priority: 1
     group:
         "deseq2"
@@ -50,8 +48,7 @@ rule deseq2_human:
         mem_mb=%%MEM_MB%%
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
-        "--featcounts-log {input.feature_counts_log} --color %%COLOR%% --rRNA %%RRNA%% 2>&1 | tee {log}"
-
+        "--color %%COLOR%% --rRNA %%RRNA%% 2>&1 | tee {log}"
   
 rule functional_analysis:
     localrule: True
