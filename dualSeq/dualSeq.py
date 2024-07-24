@@ -34,6 +34,8 @@ def main():
     if args.use_conda:
         create_conda_lib(args.output_folder)
         run_command.extend(['--use-conda', '--conda-frontend', str(args.conda_frontend)])
+        if args.conda_prefix is not None:
+            run_command.extend(['--conda-prefix', str(args.conda_prefix)])
         if args.conda_create_envs_only:
             run_command.append('--conda-create-envs-only')
     if args.profile is not None:
@@ -179,7 +181,7 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 for module in config["analyses"]["modules"]:
                     modules["analyses"].append(module)
         elif "module" in config["analyses"]:
-            if not isinstance(config["analyses"]["modules"], str):
+            if not isinstance(config["analyses"]["module"], str):
                 raise InvalidConfigFileError('analyses: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["analyses"].append(config["analyses"]["module"])
@@ -193,7 +195,7 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 for module in config["summary"]["modules"]:
                     modules["summary"].append(module)
         elif "module" in config["summary"]:
-            if not isinstance(config["summary"]["modules"], str):
+            if not isinstance(config["summary"]["module"], str):
                 raise InvalidConfigFileError('summary: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["summary"].append(config["summary"]["module"])
@@ -207,7 +209,7 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                 for module in config["variant_analyses"]["modules"]:
                     modules["variant_analyses"].append(module)
         elif "module" in config["variant_analyses"]:
-            if not isinstance(config["variant_analyses"]["modules"], str):
+            if not isinstance(config["variant_analyses"]["module"], str):
                 raise InvalidConfigFileError('variant_analyses: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["variant_analyses"].append(config["variant_analyses"]["module"])
@@ -457,6 +459,8 @@ def parse_arguments() -> argparse.Namespace:
                        help="Run job in conda environment, if defined in rule.")
     other.add_argument('--conda-frontend', dest='conda_frontend', default='mamba', type=str, choices=['mamba','conda'],
                        help="Choose frontend for installing environmnents ['conda', 'mamba']. (Default: %(default)s)")
+    other.add_argument('--conda-prefix', dest='conda_prefix', default=None, type=str,
+                       help='Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.')
     other.add_argument('--conda-create-envs-only', dest='conda_create_envs_only', action='store_true',
                        help="Only create job-specific environments and exit. --use-conda has to be set.")
     other.add_argument('--latency-wait', dest='latency', default=3, type=int,

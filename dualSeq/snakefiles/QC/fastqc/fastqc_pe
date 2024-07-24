@@ -3,17 +3,50 @@ from os.path import isfile, basename, splitext
 
 rule all:
     input:
-        expand("premapping/fastqc/{A}_{B}_fastqc.html", A=sorted(config['entries'].keys()), B=["R1","R2"])
+        expand("QC/fastqc/{A}_{B}_fastqc.html", A=sorted(config['entries'].keys()), B=["R1","R2"])
 
-rule fastqc:
+rule fastqc_fwd:
     input:
-        "preprocessing/{sample}_R{direction}.fastq"
+        lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads']
     output:
-        "premapping/fastqc/{sample}_R{direction}_fastqc.html",
-        "premapping/fastqc/{sample}_R{direction}_fastqc.zip"
+        "QC/fastqc/{sample}_R1_fastqc.html",
+        "QC/fastqc/{sample}_R1_fastqc.zip"
     group:
         "fastqc"
+    conda: "../conda_envs/fastqc_env.yaml"
     threads:
         1
     shell:
-        "fastqc -o premapping/fastqc {input}"
+        """
+        fastqc -o QC/fastqc {input}
+        input_name=`basename {input}`
+        input_name="${{input_name%%.*}}"
+        if [[ "${{input_name}}" != "{wildcards.sample}" ]]
+        then
+            mv QC/fastqc/${{input_name}}_fastqc.html {output[0]}
+            mv QC/fastqc/${{input_name}}_fastqc.zip {output[1]}
+        fi
+        """
+
+rule fastqc_rev:
+    input:
+        lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
+    output:
+        "QC/fastqc/{sample}_R2_fastqc.html",
+        "QC/fastqc/{sample}_R2_fastqc.zip"
+    group:
+        "fastqc"
+    conda: "../conda_envs/fastqc_env.yaml"
+    threads:
+        1
+    shell:
+        """
+        fastqc -o QC/fastqc {input}
+        input_name=`basename {input}`
+        input_name="${{input_name%%.*}}"
+        if [[ "${{input_name}}" != "{wildcards.sample}" ]]
+        then
+            mv QC/fastqc/${{input_name}}_fastqc.html {output[0]}
+            mv QC/fastqc/${{input_name}}_fastqc.zip {output[1]}
+        fi
+        """
