@@ -4,6 +4,7 @@ library(reshape2)
 # Parse arguments
 args <- commandArgs(F)
 feature_counts_log_file <- args[match('--featurecounts-log', args) + 1]
+output_folder <- args[match('--output', args) + 1]
 
 # Bar charts showing the assignment of alignments to genes (featureCounts statistics)
 create_feature_counts_statistics <- function(featureCountsLog) {

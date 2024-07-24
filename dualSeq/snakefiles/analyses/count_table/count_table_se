@@ -6,8 +6,8 @@ rule all:
     input:
         "analyses/host/count_table/counts.txt",
         "analyses/host/count_table/counts.txt.summary",
-        multiext("analyses/host/deseq2/counts_assignment_relative", ".pdf", ".png"),
-        multiext("analyses/host/deseq2/counts_assignment_absolute", ".pdf", ".png")
+        multiext("analyses/host/count_table/counts_assignment_relative", ".pdf", ".png"),
+        multiext("analyses/host/count_table/counts_assignment_absolute", ".pdf", ".png")
         
 rule count_reads_host:
     input:
@@ -16,10 +16,10 @@ rule count_reads_host:
         counts = "analyses/host/count_table/counts.txt",
         summary = "analyses/host/count_table/counts.txt.summary"
     priority: 1
-    log:
-        "analyses/host/count_table/logs/featurecounts.log"
     group:
         "count_reads_host"
+    log:
+        "analyses/host/count_table/logs/featurecounts.log"
     conda: "../conda_envs/counts_env.yaml"
     threads:
         8
@@ -33,13 +33,15 @@ rule plot_assignment:
     input:
         feature_counts_log = "analyses/host/count_table/counts.txt.summary"
     output:
-        multiext("analyses/host/deseq2/counts_assignment_relative", ".pdf", ".png"),
-        multiext("analyses/host/deseq2/counts_assignment_absolute", ".pdf", ".png")
+        multiext("analyses/host/count_table/counts_assignment_relative", ".pdf", ".png"),
+        multiext("analyses/host/count_table/counts_assignment_absolute", ".pdf", ".png")
     priority: 1
+    group:
+        "count_reads_host"
+    params:
+        output_folder="analyses/host/count_table/"
     log:
         "analyses/host/count_table/logs/plot_featurecounts.log"
-    group:
-        ""
     conda: "../conda_envs/R_env.yaml"
     shell:
-        "R --vanilla --file=lib/plot_assignment.R --args --featurecounts_log {input} 2>&1 | tee {log}"
+        "R --vanilla --file=lib/plot_assignment.R --args --featurecounts_log {input} --output {params.output_folder} 2>&1 | tee {log}"
