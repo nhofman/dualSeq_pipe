@@ -33,7 +33,7 @@ annotate <- function(genes, keytype){
 }
 
 # Import count table (featureCounts)
-countdata.raw <- read.csv(counttable_file, header = TRUE, row.names = 1, comment.char = "#")
+countdata.raw <- read.table(counttable_file, header = TRUE, row.names = 1, comment.char = "#")
 countdata <- as.matrix(countdata.raw[, c(6 : length(countdata.raw))])
 colnames(countdata) <- as.vector(sapply(colnames(countdata), function(x) gsub("mapping\\..*\\.(.*)\\.bam", "\\1", x)))
 countdata <- countdata[,mixedorder(colnames(countdata))]
