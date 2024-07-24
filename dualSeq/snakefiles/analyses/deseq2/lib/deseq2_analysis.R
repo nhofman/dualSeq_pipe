@@ -103,8 +103,11 @@ deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
 shape <- if(length(unique(conditiontable$Time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$Time))) }else{ c(1:length(unique(conditiontable$Time)))}
 names(shape) <- unique(conditiontable$Time)
 pca <- plotPCA(deseq.results.vst, intgroup = c("Treatment", "Time"), returnData = TRUE)
+percentVar <- round(100 * attr(pca, "percentVar"))
 plot_PCA <- ggplot(pca, aes(PC1, PC2, color = Treatment, shape = factor(Time, levels = mixedsort(as.character(unique(conditiontable$Time)))))) + 
   geom_point(size=3) + labs(color = "Infection", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
   theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"),  
         legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank())
 if(exists("color")){
@@ -115,8 +118,11 @@ ggsave("PCA.png", plot = plot_PCA, device = "png", path = output_folder, width =
 
 for(time in unique(conditiontable$Time)) {
   pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("Treatment", "Time"), returnData = TRUE)
+  percentVar <- round(100 * attr(pca, "percentVar"))
   plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Treatment, shape = Time)) + geom_point(size=5) + 
     labs(color = "Infection", shape = "Time") + 
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
     theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5), axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16),  
           legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank()) +
     scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = F) 
