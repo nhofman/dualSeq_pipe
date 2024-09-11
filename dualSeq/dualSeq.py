@@ -22,12 +22,12 @@ SNAKEFILES_TARGET_DIRECTORY = 'snakemake_lib'  # type: str
 
 def main():
     args = parse_arguments()
-    used_modules, paired_end = load_config_file(args.config_file)
-    validate_argsfiles(args.groups_file, args.config_file)
-    groups = parse_groups_file(args.groups_file, used_modules, paired_end)
+    used_modules, paired_end = load_pipeline_config(args.pipeline_config)
+    validate_argsfiles(args.data_file, args.pipeline_config)
+    data = parse_data_file(args.data_file, used_modules, paired_end)
     create_output_directory(args.output_folder)
     create_scripts_lib(args.output_folder)
-    snakefile = create_snakefile(args.output_folder, groups, used_modules)
+    snakefile = create_snakefile(args.output_folder, data, used_modules)
     run_command = ['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--latency-wait', str(args.latency)]
     if args.verbose:
         run_command.append('--verbose')
@@ -92,9 +92,9 @@ def check_columns(col_names: List[str], modules: Dict[str, List['Module']], pair
     return col2module
 
 
-def parse_groups_file(groups_file: Path, modules: Dict[str, List['Module']], paired_end: bool) -> Dict[str, Dict[str, Dict[str, str]]]:
+def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_end: bool) -> Dict[str, Dict[str, Dict[str, str]]]:
     table = {}  # type: Dict[str, Dict[str, Dict[str, str]]]
-    with groups_file.open('r') as file:
+    with data_file.open('r') as file:
         col_names = file.readline().strip().replace(',','\t').split('\t')
         col2module = check_columns(col_names, modules, paired_end)
         for line in file:
@@ -108,14 +108,14 @@ def parse_groups_file(groups_file: Path, modules: Dict[str, List['Module']], pai
                 elif col2module[index][0] not in entries:
                     entries[col2module[index][0]] = {}
                 if col2module[index][1] == 'file' and not col.startswith('/'):
-                    entries[col2module[index][0]][col_names[index]] = str((groups_file.parent / col).resolve())
+                    entries[col2module[index][0]][col_names[index]] = str((data_file.parent / col).resolve())
                 else:
                     entries[col2module[index][0]][col_names[index]] = col
             table[columns[0]] = entries
     return table
 
 
-def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool]:
+def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module']], bool]:
     modules = {"preprocessing": [],
                "QC": [],
                "mapping": [],
@@ -129,7 +129,7 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
                     "analyses": [],
                     "summary": [],
                     "variant_analyses": []}
-    config = yaml.safe_load(config_file.open('r'))
+    config = yaml.safe_load(pipeline_config.open('r'))
     #print(config)
     if "preprocessing" in config:
         if "module" in config["preprocessing"]:
@@ -226,12 +226,12 @@ def load_config_file(config_file: Path) -> Tuple[Dict[str, List['Module']], bool
     for category in modules:
         for module_name in modules[category]:
             settings = config[category].get(module_name, {})
-            used_modules[category].append(load_module(category, module_name, settings, config_file, paired_end))
+            used_modules[category].append(load_module(category, module_name, settings, pipeline_config, paired_end))
 
     return used_modules, paired_end
 
 
-def load_module(category: str, module_name: str, settings: Dict[str, str], config_file_path: Path, paired_end: bool) -> 'Module':
+def load_module(category: str, module_name: str, settings: Dict[str, str], pipeline_config_path: Path, paired_end: bool) -> 'Module':
     loaded_module = Module(module_name)
     module_yaml_file = SNAKEFILES_LIBRARY / category / module_name / (module_name + '.yaml')
     if module_yaml_file.is_file():
@@ -242,7 +242,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
                     raise InvalidConfigFileError(category.capitalize() + ': Required setting "' + setting_name + '" is missing')
                 else:
                     if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
-                        loaded_module.add_setting(setting_name, str((config_file_path.parent / settings[setting_name]).resolve()))
+                        loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
                     elif properties['type'] == 'enum':
                         loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
                     else:
@@ -253,7 +253,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
                     loaded_module.add_setting(setting_name, properties['default'])
                 else:
                     if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
-                        loaded_module.add_setting(setting_name, str((config_file_path.parent / settings[setting_name]).resolve()))
+                        loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
                     elif properties['type'] == 'enum':
                         loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
                     else:
@@ -270,7 +270,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
                         raise InvalidConfigFileError(category.capitalize() + ': Required setting "' + setting_name + '" is missing')
                     else:
                         if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
-                            loaded_module.add_setting(setting_name, str((config_file_path.parent / settings[setting_name]).resolve()))
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
                         elif properties['type'] == 'enum':
                             loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
                         else:
@@ -281,7 +281,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
                         loaded_module.add_setting(setting_name, "")
                     else:
                         if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
-                            loaded_module.add_setting(setting_name, str((config_file_path.parent / settings[setting_name]).resolve()))
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
                         elif properties['type'] == 'enum':
                             loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
                         else:
@@ -298,7 +298,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
                         raise InvalidConfigFileError(category.capitalize() + ': Required setting "' + setting_name + '" is missing')
                     else:
                         if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
-                            loaded_module.add_setting(setting_name, str((config_file_path.parent / settings[setting_name]).resolve()))
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
                         elif properties['type'] == 'enum':
                             loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
                         else:
@@ -309,7 +309,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
                         loaded_module.add_setting(setting_name, "")
                     else:
                         if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
-                            loaded_module.add_setting(setting_name, str((config_file_path.parent / settings[setting_name]).resolve()))
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
                         elif properties['type'] == 'enum':
                             loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
                         else:
@@ -324,11 +324,11 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], confi
     return loaded_module
 
 
-def validate_argsfiles(groups_file: Path, config_file: Path):
-    if not groups_file.is_file():
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(groups_file))
-    if not config_file.is_file():
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(config_file))
+def validate_argsfiles(data_file: Path, pipeline_config: Path):
+    if not data_file.is_file():
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(data_file))
+    if not pipeline_config.is_file():
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(pipeline_config))
 
 
 def create_output_directory(output_path: Path):
@@ -344,8 +344,8 @@ def create_output_directory(output_path: Path):
         raise NotADirectoryError(filename=snakefiles_target_directory)
 
 
-def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
-    config_file = create_snakemake_config_file(output_folder, groups)
+def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
+    pipeline_config = create_snakemake_pipeline_config(output_folder, data)
     # find every rule name
     re_rule_name = re.compile('^rule (?P<rule_name>.*):$', re.MULTILINE)
     # find every lib reference
@@ -383,7 +383,7 @@ def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, 
         #snakefile.write('import pandas as pd\n\n')
         #snakefile.write('genomes = pd.read_csv("{}", sep="\t").set_index("virus", drop=False)\n\n'.format(genome))
         snakefile.write(
-            'configfile: "{}"\n\n'.format(os.path.join(SNAKEFILES_TARGET_DIRECTORY, config_file.name)))
+            'configfile: "{}"\n\n'.format(os.path.join(SNAKEFILES_TARGET_DIRECTORY, pipeline_config.name)))
         for path in snakefile_module_paths:
             snakefile.write('include: "{}"\n'.format(os.path.join(SNAKEFILES_TARGET_DIRECTORY, path)))
         snakefile.write('\n')
@@ -395,16 +395,16 @@ def create_snakefile(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, 
     return snakefile_main_path
 
 
-def create_snakemake_config_file(output_folder: Path, groups: Dict[str, Dict[str, Dict[str, Any]]]) -> Path:
+def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]]) -> Path:
     config_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'snakefile_config.yaml'
-    with config_path.open('w') as config_file:
-        config_file.write('entries:\n')
-        for row, modules in groups.items():
-            config_file.write('    "{}":\n'.format(row))
+    with config_path.open('w') as pipeline_config:
+        pipeline_config.write('entries:\n')
+        for row, modules in data.items():
+            pipeline_config.write('    "{}":\n'.format(row))
             for module_name, columns in modules.items():
-                config_file.write('        "{}":\n'.format(module_name))
+                pipeline_config.write('        "{}":\n'.format(module_name))
                 for column, value in columns.items():
-                    config_file.write('            "{}": "{}"\n'.format(column, value))
+                    pipeline_config.write('            "{}": "{}"\n'.format(column, value))
     return config_path
 
 
@@ -443,8 +443,8 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=metadata.__program_name__, add_help=False)
 
     required = parser.add_argument_group('Required arguments')
-    required.add_argument('--groups', dest='groups_file', required=True, help="Path to comma- or tab-separated file that lists all input data.")
-    required.add_argument('--config', dest='config_file', required=True, help="Path to yaml file that defines rules and rule specific parameters.")
+    required.add_argument('--data', dest='data_file', required=True, help="Path to comma- or tab-separated file that lists all input data.")
+    required.add_argument('--pipeline-config', dest='pipeline_config', required=True, help="Path to yaml file that defines rules and rule specific parameters.")
     required.add_argument('--output', dest='output_folder', required=True, help="Path to output folder.")
 
     other = parser.add_argument_group('Other arguments')
@@ -453,7 +453,7 @@ def parse_arguments() -> argparse.Namespace:
                        "See also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles")
     other.add_argument('-t', '--cores', dest='cores', default=1, type=int,
                        help="Number of threads/cores (Default: %(default)s).")
-    other.add_argument('--jobs', dest='jobs', default=1, type=int,
+    other.add_argument('-j', '--jobs', dest='jobs', default=1, type=int,
                        help="Maximal number of parallel jobs send to the cluster (Default: %(default)s). Only used in cluster mode.")
     other.add_argument('--use-conda', dest='use_conda', action='store_true',
                        help="Run job in conda environment, if defined in rule.")
@@ -473,9 +473,9 @@ def parse_arguments() -> argparse.Namespace:
     other.add_argument('-h', '--help', action="help", help="Show this help message and exit")
 
     args = parser.parse_args()
-    args.groups_file = Path(args.groups_file).resolve()
+    args.data_file = Path(args.data_file).resolve()
     args.output_folder = Path(args.output_folder)
-    args.config_file = Path(args.config_file).resolve()
+    args.pipeline_config = Path(args.pipeline_config).resolve()
 
     return args
 
@@ -524,7 +524,7 @@ class ColumnProperties:
 
 
 class InvalidGroupsFileError(Exception):
-    """Exception raised for errors in the groups file.
+    """Exception raised for errors in the data file.
 
         Attributes:
             message -- message displayed
