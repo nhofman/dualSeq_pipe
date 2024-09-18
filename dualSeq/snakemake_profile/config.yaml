@@ -1,3 +1,3 @@
 cluster: sbatch --mem={resources.mem_mb} -c {threads} -p {resources.partition} -o .snakemake/log/%j.slurm.out  -e .snakemake/log/%j.slurm.err
-default-resources: [mem_mb=500, partition=chaos]
+default-resources: [mem_mb=500, partition=bcf]
 printshellcmds: True
