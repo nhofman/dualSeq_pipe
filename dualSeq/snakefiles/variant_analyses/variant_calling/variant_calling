@@ -7,6 +7,7 @@ rule all:
 rule call_variant:
     input:
         bam="variant_analyses/preprocessing/{sample}_indel.bam",
+        bai="variant_analyses/preprocessing/{sample}_indel.bam.bai",
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
     output:
         "variant_analyses/variant_calling/{sample}.vcf"
@@ -15,11 +16,11 @@ rule call_variant:
         "variant_analyses/variant_calling/log/{sample}.log"
     group: "lofreq"
     conda: "../conda_envs/variant_env.yaml"
-    threads: 1
+    threads: 3
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "lofreq call %%ADDITIONAL_LOFREQ_OPTIONS%% -f {input.genome} -o {output} {input.bam} 2>&1 | tee {log}"
+        "lofreq call-parallel %%ADDITIONAL_LOFREQ_OPTIONS%% --pp-threads {threads} -f {input.genome} -o {output} {input.bam} 2>&1 | tee {log}"
 
 
 
