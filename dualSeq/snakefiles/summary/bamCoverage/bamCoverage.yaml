@@ -1,11 +1,31 @@
 name: bamCoverage
 
 required_settings:
-  effectiveGenomeSize:
+  effectiveGenomeSize_host:
     description: "Length of the mappable genome"
-    type: "integer"
+    type: "string"
 
 optional_settings:
+  normMethod_host:
+    description: "Normalization method for the host data (RPKM, CPM, BPM, RPGC, None)"
+    type: "string"
+    default: "None"
+
+  binSize_host:
+    description: "Bin size in bases for the human data"
+    type: "string"
+    default: 50
+
+  normMethod_virus:
+    description: "Normalization method for virus data (RPKM, CPM, BPM, RPGC, None)"
+    type: "string"
+    default: "None"
+
+  binSize_virus:
+    description: "Bin size in bases for virus data"
+    type: "string"
+    default: 50
+
   additional_bamcoverage_options_host:
     description: "Additional options to use in shell command"
     type: "string"
@@ -18,7 +38,7 @@ optional_settings:
 
   mem_mb_host:
     description: "Memory requirement for host"
-    type: "integer"
+    type: "string"
     default: "2000"
 
   mem_mb_virus:

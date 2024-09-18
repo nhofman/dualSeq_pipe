@@ -22,7 +22,7 @@ rule create_bigwig_host:
     resources:
         mem_mb=%%MEM_MB_HOST%%
     shell:
-        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize %%EFFECTIVEGENOMESIZE%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%% 2> {log}"
+        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_HOST%% --effectiveGenomeSize %%EFFECTIVEGENOMESIZE_HOST%% --binSize %%BINSIZE_HOST%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%% 2> {log}"
 
 rule create_bigwig_virus:
     input:
@@ -45,7 +45,7 @@ rule create_bigwig_virus:
         """
         genome=`samtools view -H {input.bam} | awk '$1 ~ /^@SQ/{{split($3,a,/:/);print a[2]}}' | awk '{{s+=$1}} END {{print s}}'`
         echo $genome
-        bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize ${{genome}} %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%% 2>&1 | tee {log}
+        bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_VIRUS%% --effectiveGenomeSize ${{genome}} --binSize %%BINSIZE_VIRUS%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%% 2>&1 | tee {log}
         """
         #for line in shell("samtools view -H  {input.bam} | awk '$1 ~ /^@SQ/{{split($3,a,/:/);print a[2]}}' | awk '{{s+=$1}} END {{print s}}'", iterable=True):
         #        shell("bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --effectiveGenomeSize {line} %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%% 2>&1 | tee {log}")
