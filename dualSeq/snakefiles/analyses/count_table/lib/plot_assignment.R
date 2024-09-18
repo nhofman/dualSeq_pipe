@@ -1,5 +1,7 @@
 library(ggplot2)
 library(reshape2)
+library(gtools)
+library(tidyr)
 
 # Parse arguments
 args <- commandArgs(F)
