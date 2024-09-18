@@ -40,7 +40,7 @@ optional_settings:
     default: "KEGG"
 
   ont:
-    description: "If db=GO, GO ontologies used in functional analysis"
+    description: "If db=GO, GO ontologies used in functional analysis. If multiple, separate by comma"
     type: "string"
     default: "BP"
 

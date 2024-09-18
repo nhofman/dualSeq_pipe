@@ -118,7 +118,7 @@ ggsave("PCA.png", plot = plot_PCA, device = "png", path = output_folder, width =
 
 for(time in unique(conditiontable$Time)) {
   pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("Treatment", "Time"), returnData = TRUE)
-  percentVar <- round(100 * attr(pca, "percentVar"))
+  percentVar <- round(100 * attr(pca_time, "percentVar"))
   plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Treatment, shape = Time)) + geom_point(size=5) + 
     labs(color = "Infection", shape = "Time") + 
     xlab(paste0("PC1: ",percentVar[1],"% variance")) +
@@ -141,6 +141,9 @@ if("pheatmap" %in% rownames(installed.packages())) {
   }else(
     annColor <- NA
   )
+  color_2nd <- RColorBrewer::brewer.pal(length(unique(conditiontable$Time)), "Greys")
+  names(color_2nd) <- unique(conditiontable$Time)
+  annColor[["Time"]] <- color_2nd
   plot.heat <- pheatmap(sample_cor, annotation_col = conditiontable[,-1], annotation_row = conditiontable[,-1], fontsize=8, annotation_colors = annColor, silent = T)
   pdf(paste(output_folder, 'correlation_heatmap.pdf', sep = ""), width = 15, height = 15, onefile = FALSE)
   print(plot.heat)
@@ -172,6 +175,7 @@ if(!dir.exists(paste(output_folder, "plots", sep = ""))) {
 
 res.list.raw <- list()
 res.list <- list()
+padj_cut <- 0.05
 
 for(n in 1:nrow(comparisons.df)) {
   #res.list <- mclapply(1:nrow(comparisons.df), function(n){
@@ -179,7 +183,7 @@ for(n in 1:nrow(comparisons.df)) {
   cond_1 <- comparisons.df[n,1] # e.g. infected
   cond_2 <- comparisons.df[n,2] # e.g. uninfected
   # calculate log2 fold changes for condition cond_1 vs. cond_2
-  res <- results(deseq.results, contrast = c("condition", cond_1, cond_2), parallel = FALSE)
+  res <- results(deseq.results, contrast = c("condition", cond_1, cond_2), parallel = FALSE, alpha = padj_cut)
   res.list.raw[[paste(cond_1, cond_2, sep="_vs_")]] <- res 
   write.csv(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", cond_1, "_vs_", cond_2, "_unshrunken.csv", sep = ""), row.names = TRUE, col.names = NA)
   write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", cond_1, "_vs_", cond_2, "_unshrunken.xlsx", sep = ""), rowNames = TRUE, overwrite = T)
@@ -187,19 +191,20 @@ for(n in 1:nrow(comparisons.df)) {
   resLFC <- lfcShrink(deseq.results, contrast = c("condition", cond_1, cond_2), type = "ashr", res = res)
   
   pdf(paste(output_folder, "plots/MAplot_", cond_1, "_vs_", cond_2, "_shrunk.pdf", sep = ""))
-  plotMA(resLFC, ylim = c(-5, 5), main = paste(cond_1, cond_2, sep = "_vs_"))
+  plotMA(resLFC, ylim = c(-5, 5), main = paste(cond_1, cond_2, sep = " vs "), alpha = padj_cut)
   dev.off()
   
   png(paste(output_folder, "plots/MAplot_", cond_1, "_vs_", cond_2, "_shrunk.png", sep = ""))
-  plotMA(resLFC, ylim = c(-5, 5), main = paste(cond_1, cond_2, sep = "_vs_"))
+  plotMA(resLFC, ylim = c(-5, 5), main = paste(cond_1, cond_2, sep = " vs "), alpha = padj_cut)
   dev.off()
   
   res <- as.data.frame(resLFC)
   res <- cbind(res, `-log10(padj)` = -log10(res$padj))
   
   plot_volcano <- ggplot(res, aes(log2FoldChange, -log10(padj))) + geom_point() + 
-    theme(axis.title = element_text(size=18, face = "bold")) +
-    geom_hline(yintercept = -log10(0.05), color = "red")
+    #theme(axis.title = element_text(size=18, face = "bold")) + 
+    labs(title = paste(cond_1, cond_2, sep = " vs ")) +
+    geom_hline(yintercept = -log10(0.05), color = "blue") + theme_bw()
   ggsave(paste("Volcano_", cond_1, "_vs_", cond_2, "_shrunk.pdf", sep = ""), plot = plot_volcano, device = "pdf", path = paste(output_folder, "plots/", sep = ""))
   ggsave(paste("Volcano_", cond_1, "_vs_", cond_2, "_shrunk.png", sep = ""), plot = plot_volcano, device = "png", path = paste(output_folder, "plots/", sep = ""))
   
@@ -259,11 +264,17 @@ count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_
 count.genes$Count <- as.numeric(count.genes$Count) 
 count.genes <- count.genes[mixedorder(count.genes$Time),]
 for(LFC.cut in unique(count.genes$LFC_cutoff)){
-  p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(paste(Control,Time,sep="_"), levels = unique(paste(Control,Time,sep="_"))), group=Direction, fill=Direction)) + 
+  p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(paste(Control,Time,sep="_"), levels = unique(paste(Control,Time,sep="_"))), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
     geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
     scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
-    geom_hline(yintercept = 0) + scale_fill_manual(values=c(up="red", down="green"))
-  ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "svg", output_folder)
+    geom_hline(yintercept = 0) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) +
+    xlab("Time after infection") + ylab("Number of genes") +
+    theme(axis.title.x = element_text(size = 10, face = "bold"),
+          axis.title.y = element_text(size = 10, face = "bold"),
+          axis.text = element_text(size = 12), axis.text.x = element_text(angle = 0), 
+          strip.text = element_text(size = 12, face = "bold"), strip.background = element_rect(fill = "white"),
+          legend.text = element_text(size = 10), legend.title = element_blank())
+  ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 14, height = 7)
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 14, height = 7)
 }
 

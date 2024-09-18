@@ -4,21 +4,28 @@ from os.path import isfile
 def getConditions():
     return set([seqRun['deseq2']['condition'] for seqRun in config['entries'].values()])
 
-localrules: deseq2__create_conditions_human, deseq2__functional_analysis
+def getComparisons():
+    comparisons = []
+    with(open("%%COMPARISONS_HUMAN%%", 'r')) as input_file:
+        for line in input_file:
+            line = line.strip().replace("\t", "_vs_")
+            comparisons.append(line)
+    return(comparisons)
 
+localrules: deseq2__create_conditions_human, #deseq2__functional_analysis
+
+COMPARISONS=getComparisons()
 
 rule all:
     input:
         #"analyses/host/deseq2/counts.txt",
         "analyses/host/deseq2/counts_normalized.csv",
-        "analyses/host/deseq2/deseq2.RData",
-        "analyses/host/deseq2/GSEA",
-        #"analyses/host/deseq2/STRING/"
+        "analyses/host/deseq2/deseq2.RData"
 
         
 rule create_conditions_human:
     output:
-        temp("analyses/host/deseq2/conditions.txt")
+        "analyses/host/deseq2/conditions.txt"
     priority: 1
     run:
         with(open(output[0], 'w')) as output_file:
@@ -29,11 +36,12 @@ rule create_conditions_human:
 rule deseq2_human:
     input:
         counttable = "analyses/host/count_table/counts.txt",
-        conditions = "analyses/host/deseq2/conditions.txt",
+        conditions = "analyses/host/deseq2/conditions.txt"
     output:
         rdata="analyses/host/deseq2/deseq2.RData",
         counts_normalized="analyses/host/deseq2/counts_normalized.csv",
         correlation_heatmap="analyses/host/deseq2/correlation_heatmap.pdf",
+        deseq2_tab=expand("analyses/host/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv", comp=COMPARISONS)
     priority: 1
     group:
         "deseq2"
@@ -50,25 +58,4 @@ rule deseq2_human:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} "
         "--color %%COLOR%% --rRNA %%RRNA%% 2>&1 | tee {log}"
   
-rule functional_analysis:
-    localrule: True
-    input:
-        rdata="analyses/host/deseq2/deseq2.RData"
-    output:
-        directory("analyses/host/deseq2/GSEA"),
-        #directory("analyses/host/deseq2/STRING")
-    priority: 1
-    group:
-        "gsea"
-    params:
-        output_folder="analyses/host/deseq2/"
-    log:
-        "analyses/host/deseq2/logs/functional_analysis.log"
-    conda: "../conda_envs/R_env.yaml"
-    threads:
-        1
-    resources:
-        mem_mb=%%MEM_MB%%
-    shell:
-        "R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --rdata {input.rdata} --db %%DB%% --ont %%ONT%% 2>&1 | tee {log}"
 

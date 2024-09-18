@@ -2,6 +2,7 @@ library(clusterProfiler)
 library(org.Hs.eg.db)
 library(ReactomePA)
 library(ggplot2)
+library(openxlsx)
 
 # Over-representation analysis for a set of genes
 calc_ora <- function(gene, main = "", filename, out.dir = "ORA", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05){
@@ -65,9 +66,12 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
       ggsave(paste(name,"_KEGG_dotplot.png", sep = ""), device = "png", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
       gsea_kegg.df <- data.frame(gsea_kegg)
       gsea_kegg.df$core_enrichment_SYMBOL <- sapply(gsea_kegg.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-      write.csv(gsea_kegg.df, file = paste(out.dir, "/", name, "_KEGG.csv", sep = ""), row.names = FALSE)
       gsea.list[["KEGG"]] <- gsea_kegg
+    }else{
+      gsea_kegg.df <- data.frame()
     }
+    write.csv(gsea_kegg.df, file = paste(out.dir, "/", name, "_KEGG.csv", sep = ""), row.names = FALSE)
+    write.xlsx(gsea_kegg.df, file = paste(out.dir, "/", name, "_KEGG.xlsx", sep = ""), rowNames = FALSE)
   }
   if(GO){
     for(o in ont){
@@ -78,12 +82,15 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
         ggsave(paste(name, "_GO_", o, "_dotplot.png", sep = ""), device = "png", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
         gsea_go.df <- data.frame(gsea_go)
         gsea_go.df$core_enrichment_SYMBOL <- sapply(gsea_go.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-        write.csv(gsea_go.df, file = paste(out.dir, "/", name, "_GO_", o, ".csv", sep = ""), row.names = FALSE)
         gsea.list[[o]] <- gsea_go
         # Problem: Bei gleichem value von by werden alle Pathways mit diesem Wert ausgegeben!
         # Loesung: by = pvalue?
         #gsea.list[[paste0(o,"_simplify")]] <- simplify(gsea_go, cutoff = 0.5, by = "pvalue")
+      }else{
+        gsea_go.df <- data.frame()
       }
+      write.csv(gsea_go.df, file = paste(out.dir, "/", name, "_GO_", o, ".csv", sep = ""), row.names = FALSE)
+      write.xlsx(gsea_go.df, file = paste(out.dir, "/", name, "_GO_", o, ".xlsx", sep = ""), rowNames = FALSE)
     }
   }
   if(REACTOME){
@@ -94,9 +101,12 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
       ggsave(paste(name,"_REACTOME_dotplot.png", sep = ""), device = "png", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
       gsea_reactome.df <- data.frame(gsea_reactome)
       gsea_reactome.df$core_enrichment_SYMBOL <- sapply(gsea_reactome.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
-      write.csv(gsea_reactome.df, file = paste(out.dir, "/", name, "_REACTOME.csv", sep = ""), row.names = FALSE)
       gsea.list[["REACTOME"]] <- gsea_reactome
+    }else{
+      gsea_reactome.df <- data.frame()
     }
+    write.csv(gsea_reactome.df, file = paste(out.dir, "/", name, "_REACTOME.csv", sep = ""), row.names = FALSE)
+    write.xlsx(gsea_reactome.df, file = paste(out.dir, "/", name, "_REACTOME.xlsx", sep = ""), rowNames = FALSE)
   }
   return(gsea.list)
 }
