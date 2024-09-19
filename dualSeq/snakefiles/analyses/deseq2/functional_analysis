@@ -12,7 +12,7 @@ def getDatabases():
     db="%%DB%%".split(",")
     ont="%%ONT%%".split(",")
     if "GO" in db:
-        go_ont = ["{}_{}".format("GO",i) for i in ont]
+        go_ont = ["{}_{}".format("GO", i) for i in ont]
         db.remove("GO")
         db.extend(go_ont)
     return(db)
