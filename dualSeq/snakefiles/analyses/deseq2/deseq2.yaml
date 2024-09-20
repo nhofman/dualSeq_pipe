@@ -34,16 +34,6 @@ optional_settings:
     type: "file"
     default: "NULL"
 
-  db:
-    description: "Database(s) used for functional analysis, has to be one or more of KEGG, GO and Reactome. Default: KEGG"
-    type: "string"
-    default: "KEGG"
-
-  ont:
-    description: "If db=GO, GO ontologies used in functional analysis. If multiple, separate by comma"
-    type: "string"
-    default: "BP"
-
   mem_mb:
     description: "Memory requirement"
     type: "string"
