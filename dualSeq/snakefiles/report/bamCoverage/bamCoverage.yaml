@@ -7,7 +7,7 @@ required_settings:
 
 optional_settings:
   normMethod_host:
-    description: "Normalization method for the host data (RPKM, CPM, BPM, RPGC, None)"
+    description: "Normalization method for host data (RPKM, CPM, BPM, RPGC, None)"
     type: "string"
     default: "None"
 

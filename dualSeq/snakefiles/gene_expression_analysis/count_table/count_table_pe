@@ -4,17 +4,17 @@ from os.path import isfile
 
 rule all:
     input:
-        "analyses/host/count_table/counts.txt",
-        "analyses/host/count_table/counts.txt.summary"
+        "gene_expression_analysis/count_table/counts.txt",
+        "gene_expression_analysis/count_table/counts.txt.summary"
         
 rule count_reads_host:
     input:
-        expand("mapping/{sample}.bam", sample=config['entries'].keys())
+        expand("mapping/host/{sample}.bam", sample=config['entries'].keys())
     output:
-        counts = "analyses/host/count_table/counts.txt",
-        summary = "analyses/host/count_table/counts.txt.summary"
+        counts = "gene_expression_analysis/count_table/counts.txt",
+        summary = "gene_expression_analysis/count_table/counts.txt.summary"
     log:
-        log="analyses/host/count_table/logs/featurecounts.log"
+        log="gene_expression_analysis/count_table/logs/featurecounts.log"
     group:
         "count_reads_host"
     conda: "../conda_envs/counts_env.yaml"

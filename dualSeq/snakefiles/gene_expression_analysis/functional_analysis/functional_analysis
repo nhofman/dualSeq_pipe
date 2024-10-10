@@ -22,25 +22,25 @@ COMPARISONS=getComparisons()
 
 rule all:
     input:
-        expand("analyses/host/deseq2/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
+        expand("gene_expression_analysis/deseq2/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
 
 rule functional_analysis:
     #localrule: True
     input:
-        #rdata="analyses/host/deseq2/deseq2.RData",
-        "analyses/host/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv"
+        #rdata="gene_expression_analysis/deseq2/deseq2.RData",
+        "gene_expression_analysis/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv"
     output:
-        #touch("analyses/host/deseq2/gsea.done"),
-        expand("analyses/host/deseq2/GSEA/{{comp}}_{db}.csv", db=DATABASE),
-        #directory("analyses/host/deseq2/GSEA"),
-        #directory("analyses/host/deseq2/STRING")
+        #touch("gene_expression_analysis/deseq2/gsea.done"),
+        expand("gene_expression_analysis/deseq2/GSEA/{{comp}}_{db}.csv", db=DATABASE),
+        #directory("gene_expression_analysis/deseq2/GSEA"),
+        #directory("gene_expression_analysis/deseq2/STRING")
     priority: 1
-    #group:
-    #    "gsea"
+    group:
+        "gsea"
     params:
-        output_folder="analyses/host/deseq2/"
+        output_folder="gene_expression_analysis/deseq2/"
     log:
-        "analyses/host/deseq2/logs/functional_analysis_{comp}.log"
+        "gene_expression_analysis/deseq2/logs/functional_analysis_{comp}.log"
     conda: "../conda_envs/R_env.yaml"
     threads:
         1

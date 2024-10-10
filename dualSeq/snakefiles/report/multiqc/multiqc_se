@@ -5,15 +5,15 @@ localrules: all, parse_envs
 
 rule all:
     input:
-        "summary/multiqc/multiqc_report.html"
+        "report/multiqc/multiqc_report.html"
 
 rule parse_envs:
     input:
         "conda_envs"
     output:
-        "summary/multiqc/multiqc_config.yaml"
+        "report/multiqc/multiqc_config.yaml"
     log:
-        "summary/multiqc/log/parse_envs.log"
+        "report/multiqc/log/parse_envs.log"
     shell:
         """
         python scripts/parse_software_versions.py {input} {output} 2>&1 | tee {log}
@@ -23,20 +23,14 @@ rule multiqc:
     input:
         #expand("QC/{A}_fastqc.html", A=sorted(config['entries'].keys()))
         #expand("preprocessing/{A}.fastp.json", A=sorted(config['entries'].keys())),
-        #expand("mapping/combined/{A}Log.final.out", A=sorted(config['entries'].keys())),
-        #"analyses/host/count_table/counts.txt.summary",
+        #expand("mapping/{A}Log.final.out", A=sorted(config['entries'].keys())),
+        #"gene_expression_analysis/host/count_table/counts.txt.report",
         #"multiqc_config.yaml"
         rules.multiqc__parse_envs.output
     output:
-        "summary/multiqc/multiqc_report.html"
-    params:
-        "QC",
-        "preprocessing/",
-        #"mapping/combined/virus/logs",
-        "mapping/combined/",
-        "analyses/host/count_table"
+        "report/multiqc/multiqc_report.html"
     log:
-        "summary/multiqc/log/multiqc.log"
+        "report/multiqc/log/multiqc.log"
     group:
         "multiqc"
     conda: "../conda_envs/multiqc_env.yaml"
@@ -45,4 +39,4 @@ rule multiqc:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --ignore .snakemake --config {input} --outdir summary/multiqc . 2>&1 | tee {log}"
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --ignore .snakemake --config {input} --outdir report/multiqc . 2>&1 | tee {log}"

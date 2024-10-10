@@ -61,9 +61,11 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
   if(KEGG){
     gsea_kegg <- try(gseKEGG(geneList = geneset_num, organism = "hsa", pvalueCutoff = p.cut, seed = T))
     if(class(gsea_kegg) != "try-error" & nrow(data.frame(gsea_kegg)) > 0){
-      plot_kegg <- dotplot(gsea_kegg, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
-      ggsave(paste(name,"_KEGG_dotplot.pdf", sep = ""), device = "pdf", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
-      ggsave(paste(name,"_KEGG_dotplot.png", sep = ""), device = "png", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 15)
+      plot_kegg <- dotplot(gsea_kegg, showCategory = 20, split = ".sign", font.size=10, label_format = function(x) stringr::str_wrap(x, width=30)) + 
+        facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=10, face = "plain"),
+                                    strip.text.x = element_text(size = 18, face = "bold"))
+      ggsave(paste(name,"_KEGG_dotplot.pdf", sep = ""), device = "pdf", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 18)
+      ggsave(paste(name,"_KEGG_dotplot.png", sep = ""), device = "png", plot = plot_kegg, path = paste(out.dir, sep = ""), width = 18, height = 18)
       gsea_kegg.df <- data.frame(gsea_kegg)
       gsea_kegg.df$core_enrichment_SYMBOL <- sapply(gsea_kegg.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
       gsea.list[["KEGG"]] <- gsea_kegg

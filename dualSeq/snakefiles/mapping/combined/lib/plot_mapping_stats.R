@@ -49,14 +49,20 @@ times <- ifelse(times<3, 3, times)
 # plot mapping statistic for host + virus samples
 # color each virus differently? What about virus multimapped?
 p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", color = "black") +
   facet_wrap(~ Virus, scales = "free_x", ncol = ncol.facet) +
   xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="Category") +
   scale_fill_manual(labels = c("Mapped to Both", "Host: Multimapped", "Host: Uniquely mapped", "Virus: Multimapped", "Virus: Uniquely mapped"), 
                     values = c("red", "peachpuff2", "darkorange", "lightblue", "darkblue")) + 
-  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 15), strip.text = element_text(size = 15, face = "bold", vjust = 0.3),
-        legend.text = element_text(size = 15), legend.title = element_text(size = 18), strip.background = element_rect(fill = "white"),
-        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+  theme(text = element_text(face = "bold"), line = element_line(linewidth = 0.25),
+        axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
+        axis.line.y.right = element_blank(), axis.line.y.left = element_line(color = "black", linewidth = 0.25),
+        panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray58"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
+        axis.title.x = element_text(size = 12, margin = margin(t=1,r=0,b=0,l=0)), 
+        axis.title.y = element_text(size = 12, margin = margin(t=0,r=1,b=0,l=0)),
+        axis.text = element_text(size = 10), axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
+        legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
 ggsave("mapping_statistic.pdf", p, "pdf", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 ggsave("mapping_statistic.png", p, "png", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 
@@ -67,13 +73,19 @@ nrow.facet <- ifelse(nrow.facet==1, 2, nrow.facet)
 
 # plot mapping statistic for control samples
 p <- ggplot(stats.t.mean[!stats.t.mean$Category%in%c("mapped","both") & grepl("Mock",stats.t.mean$Virus),], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", color = "black") +
   facet_wrap(~ Virus, scales = "free_x") +
   xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="Category") +
   scale_fill_manual(labels = c("Host: Multimapped", "Host: Uniquely mapped"), 
                     values = c("peachpuff2", "darkorange")) + 
-  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 15), strip.text = element_text(size = 15, face = "bold", vjust = 0.3),
-        legend.text = element_text(size = 15), legend.title = element_text(size = 18), strip.background = element_rect(fill = "white"),
-        panel.background = element_rect(fill = NA), panel.grid = element_line(colour = "grey"))
+  theme(text = element_text(face = "bold"), line = element_line(linewidth = 0.25),
+        axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
+        axis.line.y.right = element_blank(), axis.line.y.left = element_line(color = "black", linewidth = 0.25),
+        panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray58"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
+        axis.title.x = element_text(size = 12, margin = margin(t=1,r=0,b=0,l=0)), 
+        axis.title.y = element_text(size = 12, margin = margin(t=0,r=1,b=0,l=0)),
+        axis.text = element_text(size = 10), axis.text.x = element_text(angle = 90), 
+        strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
+        legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
 ggsave("mapping_statistic_mock.pdf", p, "pdf", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 ggsave("mapping_statistic_mock.png", p, "png", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))

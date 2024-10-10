@@ -128,15 +128,15 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                "QC": [],
                "mapping": [],
                "analyses": [],
-               "summary": [],
-               "variant_analyses": []}
+               "report": [],
+               "variant_analysis": []}
 
     used_modules = {"preprocessing": [],
                     "QC": [],
                     "mapping": [],
                     "analyses": [],
-                    "summary": [],
-                    "variant_analyses": []}
+                    "report": [],
+                    "variant_analysis": []}
     config = yaml.safe_load(pipeline_config.open('r'))
     #print(config)
     if "preprocessing" in config:
@@ -193,34 +193,34 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                 raise InvalidConfigFileError('analyses: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["analyses"].append(config["analyses"]["module"])
-    if "summary" in config:
-        if "modules" in config["summary"]:
-            if "module" in config["summary"]:
-                raise InvalidConfigFileError('summary: Please use either "module" or "modules"')
-            if not isinstance(config["summary"]["modules"], list):
-                raise InvalidConfigFileError("summary: modules must be a LIST of modules")
+    if "report" in config:
+        if "modules" in config["report"]:
+            if "module" in config["report"]:
+                raise InvalidConfigFileError('report: Please use either "module" or "modules"')
+            if not isinstance(config["report"]["modules"], list):
+                raise InvalidConfigFileError("report: modules must be a LIST of modules")
             else:
-                for module in config["summary"]["modules"]:
-                    modules["summary"].append(module)
-        elif "module" in config["summary"]:
-            if not isinstance(config["summary"]["module"], str):
-                raise InvalidConfigFileError('summary: Only one module as a string is allowed. For multiple modules use "modules"')
+                for module in config["report"]["modules"]:
+                    modules["report"].append(module)
+        elif "module" in config["report"]:
+            if not isinstance(config["report"]["module"], str):
+                raise InvalidConfigFileError('report: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
-                modules["summary"].append(config["summary"]["module"])
-    if "variant_analyses" in config:
-        if "modules" in config["variant_analyses"]:
-            if "module" in config["variant_analyses"]:
-                raise InvalidConfigFileError('variant_analyses: Please use either "module" or "modules"')
-            if not isinstance(config["variant_analyses"]["modules"], list):
-                raise InvalidConfigFileError("variant_analyses: modules must be a LIST of modules")
+                modules["report"].append(config["report"]["module"])
+    if "variant_analysis" in config:
+        if "modules" in config["variant_analysis"]:
+            if "module" in config["variant_analysis"]:
+                raise InvalidConfigFileError('variant_analysis: Please use either "module" or "modules"')
+            if not isinstance(config["variant_analysis"]["modules"], list):
+                raise InvalidConfigFileError("variant_analysis: modules must be a LIST of modules")
             else:
-                for module in config["variant_analyses"]["modules"]:
-                    modules["variant_analyses"].append(module)
-        elif "module" in config["variant_analyses"]:
-            if not isinstance(config["variant_analyses"]["module"], str):
-                raise InvalidConfigFileError('variant_analyses: Only one module as a string is allowed. For multiple modules use "modules"')
+                for module in config["variant_analysis"]["modules"]:
+                    modules["variant_analysis"].append(module)
+        elif "module" in config["variant_analysis"]:
+            if not isinstance(config["variant_analysis"]["module"], str):
+                raise InvalidConfigFileError('variant_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
-                modules["variant_analyses"].append(config["variant_analyses"]["module"])
+                modules["variant_analysis"].append(config["variant_analysis"]["module"])
     if "pipeline" in config:
         if "paired_end" in config["pipeline"]:
             if not isinstance(config["pipeline"]["paired_end"], bool) and not (
@@ -397,7 +397,7 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'analyses', 'mapping', 'summary', 'variant_analyses')]:
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'analyses', 'mapping', 'report', 'variant_analysis')]:
             snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-', '_')))
 
     return snakefile_main_path
@@ -453,7 +453,7 @@ def parse_arguments() -> argparse.Namespace:
     required = parser.add_argument_group('Required arguments')
     required.add_argument('--data', dest='data_file', required=True, help="Path to comma- or tab-separated file that lists all input data.")
     required.add_argument('--pipeline-config', dest='pipeline_config', required=True, help="Path to yaml file that defines rules and rule specific parameters.")
-    required.add_argument('--output', dest='output_folder', required=True, help="Path to output folder.")
+    required.add_argument('--outdir', '-o', dest='output_folder', required=True, help="Path to output folder.")
 
     other = parser.add_argument_group('Other arguments')
     other.add_argument('--profile', dest='profile', default=None, type=str,
