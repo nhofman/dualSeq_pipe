@@ -79,9 +79,11 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
     for(o in ont){
       gsea_go <- try(gseGO(geneset_num, ont = o, OrgDb = org.Hs.eg.db, keyType = "ENTREZID", pvalueCutoff = p.cut, seed = T))
       if(class(gsea_go) != "try-error" & nrow(data.frame(gsea_go)) > 0){
-        plot_go <- dotplot(gsea_go, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
-        ggsave(paste(name, "_GO_", o, "_dotplot.pdf", sep = ""), device = "pdf", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
-        ggsave(paste(name, "_GO_", o, "_dotplot.png", sep = ""), device = "png", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 15)
+        plot_go <- dotplot(gsea_go, showCategory = 20, split = ".sign", font.size=10, label_format = function(x) stringr::str_wrap(x, width=30)) + 
+          facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15), 
+                                      strip.text.x = element_text(size = 18, face = "bold"))
+        ggsave(paste(name, "_GO_", o, "_dotplot.pdf", sep = ""), device = "pdf", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 18)
+        ggsave(paste(name, "_GO_", o, "_dotplot.png", sep = ""), device = "png", plot = plot_go, path = paste(out.dir, sep = ""), width = 18, height = 18)
         gsea_go.df <- data.frame(gsea_go)
         gsea_go.df$core_enrichment_SYMBOL <- sapply(gsea_go.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
         gsea.list[[o]] <- gsea_go
@@ -98,9 +100,11 @@ calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T,
   if(REACTOME){
     gsea_reactome <- try(gsePathway(geneset_num, pvalueCutoff = p.cut, seed = T))
     if(class(gsea_reactome) != "try-error" & nrow(data.frame(gsea_reactome)) > 0){
-      plot_reactome <- dotplot(gsea_reactome, showCategory = 20, split = ".sign") + facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15, face = "bold"), strip.text.x = element_text(size = 18, face = "bold"))
-      ggsave(paste(name,"_REACTOME_dotplot.pdf", sep = ""), device = "pdf", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
-      ggsave(paste(name,"_REACTOME_dotplot.png", sep = ""), device = "png", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 15)
+      plot_reactome <- dotplot(gsea_reactome, showCategory = 20, split = ".sign", font.size=10, label_format = function(x) stringr::str_wrap(x, width=30)) + 
+        facet_grid(.~.sign) + theme(axis.title = element_text(size=18, face = "bold"), axis.text = element_text(size=15), 
+                                    strip.text.x = element_text(size = 18, face = "bold"))
+      ggsave(paste(name,"_REACTOME_dotplot.pdf", sep = ""), device = "pdf", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 18)
+      ggsave(paste(name,"_REACTOME_dotplot.png", sep = ""), device = "png", plot = plot_reactome, path = paste(out.dir, sep = ""), width = 18, height = 18)
       gsea_reactome.df <- data.frame(gsea_reactome)
       gsea_reactome.df$core_enrichment_SYMBOL <- sapply(gsea_reactome.df$core_enrichment, function(x){ x.split <- unlist(strsplit(x,"/")); return(paste(bitr(x.split, "ENTREZID", "SYMBOL", "org.Hs.eg.db")[["SYMBOL"]], collapse = "/"))})
       gsea.list[["REACTOME"]] <- gsea_reactome
