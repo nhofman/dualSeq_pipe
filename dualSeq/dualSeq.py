@@ -127,14 +127,14 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
     modules = {"preprocessing": [],
                "QC": [],
                "mapping": [],
-               "analyses": [],
+               "gene_expression_analysis": [],
                "report": [],
                "variant_analysis": []}
 
     used_modules = {"preprocessing": [],
                     "QC": [],
                     "mapping": [],
-                    "analyses": [],
+                    "gene_expression_analysis": [],
                     "report": [],
                     "variant_analysis": []}
     config = yaml.safe_load(pipeline_config.open('r'))
@@ -179,20 +179,20 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
             else:
                 for module in config["mapping"]["modules"]:
                     modules["mapping"].append(module)
-    if "analyses" in config:
-        if "modules" in config["analyses"]:
-            if "module" in config["analyses"]:
-                raise InvalidConfigFileError('analyses: Please use either "module" or "modules"')
-            if not isinstance(config["analyses"]["modules"], list):
-                raise InvalidConfigFileError("analyses: modules must be a LIST of modules")
+    if "gene_expression_analysis" in config:
+        if "modules" in config["gene_expression_analysis"]:
+            if "module" in config["gene_expression_analysis"]:
+                raise InvalidConfigFileError('gene_expression_analysis: Please use either "module" or "modules"')
+            if not isinstance(config["gene_expression_analysis"]["modules"], list):
+                raise InvalidConfigFileError("gene_expression_analysis: modules must be a LIST of modules")
             else:
-                for module in config["analyses"]["modules"]:
-                    modules["analyses"].append(module)
-        elif "module" in config["analyses"]:
-            if not isinstance(config["analyses"]["module"], str):
-                raise InvalidConfigFileError('analyses: Only one module as a string is allowed. For multiple modules use "modules"')
+                for module in config["gene_expression_analysis"]["modules"]:
+                    modules["gene_expression_analysis"].append(module)
+        elif "module" in config["gene_expression_analysis"]:
+            if not isinstance(config["gene_expression_analysis"]["module"], str):
+                raise InvalidConfigFileError('gene_expression_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
-                modules["analyses"].append(config["analyses"]["module"])
+                modules["gene_expression_analysis"].append(config["gene_expression_analysis"]["module"])
     if "report" in config:
         if "modules" in config["report"]:
             if "module" in config["report"]:
@@ -397,7 +397,7 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'analyses', 'mapping', 'report', 'variant_analysis')]:
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'gene_expression_analysis', 'mapping', 'report', 'variant_analysis')]:
             snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-', '_')))
 
     return snakefile_main_path
