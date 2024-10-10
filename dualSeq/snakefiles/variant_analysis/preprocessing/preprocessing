@@ -1,14 +1,14 @@
 rule all:
   input:
-    expand("variant_analyses/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-    expand("variant_analyses/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-    expand("variant_analyses/preprocessing/{sample}_dedup.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+    expand("variant_analysis/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+    expand("variant_analysis/preprocessing/{sample}_dedup.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
 
 rule remove_spliced:
   input:
-    "mapping/combined/virus/{sample}.bam"
+    "mapping/virus/{sample}.bam"
   output:
-    "variant_analyses/preprocessing/{sample}_noSplice.bam"
+    "variant_analysis/preprocessing/{sample}_noSplice.bam"
   priority: 1
   conda: "../conda_envs/samtools_env.yaml"
   resources:
@@ -25,13 +25,13 @@ rule remove_spliced:
 # correct for mapping errors
 rule realign:
     input:
-        bam="variant_analyses/preprocessing/{sample}_noSplice.bam",
+        bam="variant_analysis/preprocessing/{sample}_noSplice.bam",
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
     output:
-        "variant_analyses/preprocessing/{sample}_realign.bam"
+        "variant_analysis/preprocessing/{sample}_realign.bam"
     priority: 1
     log:
-        "variant_analyses/preprocessing/log/{sample}.realign.log"
+        "variant_analysis/preprocessing/log/{sample}.realign.log"
     group: "realign"
     conda: "../conda_envs/variant_env.yaml"
     threads: 1
@@ -43,13 +43,13 @@ rule realign:
 # Insert indel qualities
 rule indel_qual:
     input:
-        bam="variant_analyses/preprocessing/{sample}_realign.bam",
+        bam="variant_analysis/preprocessing/{sample}_realign.bam",
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
     output:
-        "variant_analyses/preprocessing/{sample}_indel.bam"
+        "variant_analysis/preprocessing/{sample}_indel.bam"
     priority: 1
     log:
-        "variant_analyses/preprocessing/log/{sample}.indelQual.log"
+        "variant_analysis/preprocessing/log/{sample}.indelQual.log"
     group: "indel_qual"
     conda: "../conda_envs/variant_env.yaml"
     threads: 1
@@ -62,9 +62,9 @@ rule indel_qual:
 
 rule index:
     input:
-        "variant_analyses/preprocessing/{sample}_indel.bam"
+        "variant_analysis/preprocessing/{sample}_indel.bam"
     output:
-        "variant_analyses/preprocessing/{sample}_indel.bam.bai"
+        "variant_analysis/preprocessing/{sample}_indel.bam.bai"
     priority: 1
     group: "indel_qual"
     conda: "../conda_envs/samtools_env.yaml"

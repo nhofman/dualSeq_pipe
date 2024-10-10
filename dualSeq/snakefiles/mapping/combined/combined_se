@@ -9,13 +9,13 @@ wildcard_constraints:
 
 rule all:
     input:
-        expand("mapping/combined/{A}.bam", A=config['entries'].keys()),
-        expand("mapping/combined/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/combined/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/combined/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/combined/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
-        multiext("mapping/combined/stats/mapping_statistic", ".csv", ".xlsx"),
-        multiext("mapping/combined/stats/mapping_statistic", ".pdf", ".png")
+        expand("mapping/{A}.bam", A=config['entries'].keys()),
+        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
 
 def virus2genome(wildcards):
 	for sample in config['entries'].keys():
@@ -42,7 +42,7 @@ rule star_index:
         ann_file=annotation_name
     priority: 1
     log:
-        "mapping/combined/logs/star_index_"+"{virus}"+".log"
+        "mapping/logs/star_index_"+"{virus}"+".log"
     group:
         "star_index"
     conda: "../conda_envs/star_env.yaml"
@@ -80,14 +80,14 @@ rule star_mapping:
         #index_dir=lambda wildcards: os.path.splitext(config['entries'][wildcards.sample]['combined']['virus_genome'])[0]
         #reads=lambda wildcards: os.path.join('preprocessing', os.path.basename(config['entries'][wildcards.sample]['main']['reads']))
     output:
-        bam="mapping/combined/{sample}.bam",
-        summary="mapping/combined/{sample}Log.final.out",
-        fasta="mapping/combined/{sample}Unmapped.out.mate1"
+        bam="mapping/{sample}.bam",
+        summary="mapping/{sample}Log.final.out",
+        fasta="mapping/{sample}Unmapped.out.mate1"
     params:
-        prefix="mapping/combined/{sample}"
+        prefix="mapping/{sample}"
     priority: 1
     log:
-        "mapping/combined/logs/star_mapping.{sample}.log"
+        "mapping/logs/star_mapping.{sample}.log"
     group:
         "star_mapping"
     conda: "../conda_envs/star_env.yaml"
@@ -101,12 +101,12 @@ rule star_mapping:
 
 rule index_bam:
     input:
-        "mapping/combined/{sample}.bam"
+        "mapping/{sample}.bam"
     output:
-        "mapping/combined/{sample}.bam.bai"
+        "mapping/{sample}.bam.bai"
     priority: 1
     log:
-        "mapping/combined/logs/index.{sample}.log"
+        "mapping/logs/index.{sample}.log"
     group:
         "star_mapping"
     conda: "../conda_envs/samtools_env.yaml"
@@ -116,11 +116,11 @@ rule index_bam:
 
 rule Mock:
     input:
-        bam = "mapping/combined/{sample}.bam",
-        bai = "mapping/combined/{sample}.bam.bai"
+        bam = "mapping/{sample}.bam",
+        bai = "mapping/{sample}.bam.bai"
     output:
-        bam = "mapping/combined/host/{sample}.bam",
-        stat = "mapping/combined/host/stats/{sample}_stats.csv"
+        bam = "mapping/host/{sample}.bam",
+        stat = "mapping/host/stats/{sample}_stats.csv"
     priority: 1
     wildcard_constraints:
         sample="Mock.*"
@@ -132,7 +132,7 @@ rule Mock:
         """
         mapped_host=$(samtools view -c -F 1284 {input.bam})
         uniquely_host=$(samtools view -c -F 1284 -q 255 {input.bam})
-        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output.stat}
         echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',0,host' >> {output.stat}
         cp {input.bam} {output.bam}
@@ -140,12 +140,12 @@ rule Mock:
 
 rule split_bam_virus:
     input:
-        bam="mapping/combined/{sample}.bam",
-        idx="mapping/combined/{sample}.bam.bai"
+        bam="mapping/{sample}.bam",
+        idx="mapping/{sample}.bam.bai"
     output:
-        bam="mapping/combined/virus/{sample}.bam",
-        bai="mapping/combined/virus/{sample}.bam.bai",
-        sam=temp("mapping/combined/virus/{sample}.sam")
+        bam="mapping/virus/{sample}.bam",
+        bai="mapping/virus/{sample}.bam.bai",
+        sam=temp("mapping/virus/{sample}.sam")
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     priority: 1
@@ -166,11 +166,11 @@ rule split_bam_virus:
 
 rule split_bam_host:
     input:
-        bam="mapping/combined/{sample}.bam",
-        idx="mapping/combined/{sample}.bam.bai"
+        bam="mapping/{sample}.bam",
+        idx="mapping/{sample}.bam.bai"
     output:
-        "mapping/combined/host/{sample}.bam",
-        #temp("mapping/combined/host/{sample}.sam")
+        "mapping/host/{sample}.bam",
+        #temp("mapping/host/{sample}.sam")
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
     priority: 1
@@ -189,12 +189,12 @@ rule split_bam_host:
 
 rule index_bam_host:
     input:
-        "mapping/combined/host/{sample}.bam"
+        "mapping/host/{sample}.bam"
     output:
-        "mapping/combined/host/{sample}.bam.bai"
+        "mapping/host/{sample}.bam.bai"
     priority: 1
     log:
-        "mapping/combined/host/logs/index.{sample}.log"
+        "mapping/host/logs/index.{sample}.log"
     conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
@@ -202,11 +202,11 @@ rule index_bam_host:
 
 rule virusNames:
     input:
-        virus="mapping/combined/virus/{sample}.bam",
-        host="mapping/combined/host/{sample}.bam"
+        virus="mapping/virus/{sample}.bam",
+        host="mapping/host/{sample}.bam"
     output:
-        names=temp("mapping/combined/virus/{sample}_name.txt"),
-        both="mapping/combined/virus/{sample}_both.txt"
+        names=temp("mapping/virus/{sample}_name.txt"),
+        both="mapping/virus/{sample}_both.txt"
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -223,10 +223,10 @@ rule virusNames:
 
 rule statistics_host:
     input:
-        both="mapping/combined/virus/{sample}_both.txt",
-        host_bam="mapping/combined/host/{sample}.bam",
+        both="mapping/virus/{sample}_both.txt",
+        host_bam="mapping/host/{sample}.bam",
     output:
-        "mapping/combined/host/stats/{sample}_stats.csv"
+        "mapping/host/stats/{sample}_stats.csv"
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -238,7 +238,7 @@ rule statistics_host:
         """
         mapped_host=$(samtools view -c -F 1284 {input.host_bam})
         uniquely_host=$(samtools view -c -F 1284 -q 255 {input.host_bam})
-        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_host=$(samtools view -F 1284 -N {input.both} {input.host_bam} | wc -l) || true
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}','${{both_host}}',host' >> {output}
@@ -246,10 +246,10 @@ rule statistics_host:
 
 rule statistics_virus:
     input:
-        both="mapping/combined/virus/{sample}_both.txt",
-        virus_bam="mapping/combined/virus/{sample}.bam",
+        both="mapping/virus/{sample}_both.txt",
+        virus_bam="mapping/virus/{sample}.bam",
     output:
-        "mapping/combined/virus/stats/{sample}_stats.csv"
+        "mapping/virus/stats/{sample}_stats.csv"
     priority: 1
     group:
         "bam_process"
@@ -259,7 +259,7 @@ rule statistics_virus:
         """
         mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})
         uniquely_virus=$(samtools view -c -F 1284 -q 255 {input.virus_bam})
-        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/combined/{wildcards.sample}Log.final.out`
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_virus=$(samtools view -F 1284 -N {input.both} {input.virus_bam} | wc -l) || true
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}','${{both_virus}}',virus' >> {output}
@@ -267,17 +267,17 @@ rule statistics_virus:
 
 rule plot_statistics:
     input:
-        stat_host=expand("mapping/combined/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
-        stat_virus=expand("mapping/combined/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
+        stat_host=expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
     output:
-        multiext("mapping/combined/stats/mapping_statistic", ".csv", ".xlsx"),
-        multiext("mapping/combined/stats/mapping_statistic", ".pdf", ".png"),
-        multiext("mapping/combined/stats/mapping_statistic_mock", ".pdf", ".png")
+        multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
+        multiext("mapping/stats/mapping_statistic_mock", ".pdf", ".png")
     params:
-        "mapping/combined/"
+        "mapping/"
     priority: 1
     conda: "../conda_envs/R_env.yaml"
     shell:
         """
-        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/combined/host/stats/ --stat-virus mapping/combined/virus/stats/ --output {params}
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params}
         """

@@ -252,7 +252,6 @@ for(sample in names(res.list)) {
     count.genes <- rbind(count.genes,c(sample,count_fc_up,"up",LFC.cut), stringsAsFactors = F)
     count.genes <- rbind(count.genes,c(sample,-count_fc_down,"down",LFC.cut), stringsAsFactors = F)
   }
-  
 }
 colnames(count.genes) <- c("Sample", "Count", "Direction", "LFC_cutoff")
 count.genes <- as.data.frame(count.genes)
@@ -265,16 +264,20 @@ count.genes$Count <- as.numeric(count.genes$Count)
 count.genes <- count.genes[mixedorder(count.genes$Time),]
 for(LFC.cut in unique(count.genes$LFC_cutoff)){
   p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(paste(Control,Time,sep="_"), levels = unique(paste(Control,Time,sep="_"))), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
-    geom_bar(stat = "identity", position = "stack", color = "black") + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
-    scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=10))) + 
-    geom_hline(yintercept = 0) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) +
+    geom_bar(stat = "identity", position = "stack", color = "black", linewidth = 0.25) + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
+    scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5))) + 
+    geom_hline(yintercept = 0, linewidth = 0.25) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) +
     xlab("Time after infection") + ylab("Number of genes") +
-    theme(axis.title.x = element_text(size = 10, face = "bold"),
-          axis.title.y = element_text(size = 10, face = "bold"),
-          axis.text = element_text(size = 12), axis.text.x = element_text(angle = 0), 
-          strip.text = element_text(size = 12, face = "bold"), strip.background = element_rect(fill = "white"),
-          legend.text = element_text(size = 10), legend.title = element_blank())
-  ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 14, height = 7)
+    theme(text = element_text(face = "bold"), line = element_line(linewidth = 0.25),
+          axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
+          axis.line.y.right = element_blank(), axis.line.y.left = element_line(color = "black", linewidth = 0.25),
+          panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray58"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
+          axis.title.x = element_text(size = 12, margin = margin(t=1,r=0,b=0,l=0)), 
+          axis.title.y = element_text(size = 12, margin = margin(t=0,r=1,b=0,l=0)),
+          axis.text = element_text(size = 10), axis.text.x = element_text(angle = 0), 
+          strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
+          legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
+  ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 16, height = 7)
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 14, height = 7)
 }
 

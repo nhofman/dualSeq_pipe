@@ -3,20 +3,19 @@ from os.path import isfile, basename, splitext
 
 rule all:
     input:
-        "summary/multiqc/multiqc_report.html"
+        "report/multiqc/multiqc_report.html"
 
 rule parse_envs:
     input:
         "conda_envs"
     output:
-        "summary/multiqc/multiqc_config.yaml"
+        "report/multiqc/multiqc_config.yaml"
     log:
-        "summary/multiqc/log/parse_envs.log"
+        "report/multiqc/log/parse_envs.log"
     shell:
         """
         python scripts/parse_software_versions.py {input} {output} 2>&1 | tee {log}
         """
-
 
 rule multiqc:
     input:
@@ -24,12 +23,12 @@ rule multiqc:
         expand("QC/fastqc/{A}_R{B}_fastqc.html", A=config['entries'].keys(), B=["1","2"]),
         expand("preprocessing/{sample}_R{B}.fastq.gz", sample=config['entries'].keys(), B=["1","2"])
     output:
-        "summary/multiqc/multiqc_report.html"
+        "report/multiqc/multiqc_report.html"
     params:
         "QC/fastqc",
         "preprocessing/"
     log:
-        "summary/multiqc/log/multiqc.log"
+        "report/multiqc/log/multiqc.log"
     group:
         "multiqc"
     conda: "../conda_envs/multiqc_env.yaml"
@@ -38,5 +37,5 @@ rule multiqc:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --force --ignore .snakemake --config {input[0]} --outdir summary/multiqc . 2>&1 | tee {log}"
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --force --ignore .snakemake --config {input[0]} --outdir report/multiqc . 2>&1 | tee {log}"
 

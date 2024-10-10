@@ -38,10 +38,10 @@ columns:
 
 
 single_end:
-  snakefile: "deseq2_se"
+  snakefile: "deseq2"
 
 
 paired_end:
-  snakefile: "deseq2_pe"
+  snakefile: "deseq2"
 
 
