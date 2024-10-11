@@ -60,7 +60,7 @@ p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & !grepl("Mock",stats.t
         panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray58"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
         axis.title.x = element_text(size = 12, margin = margin(t=8,r=0,b=0,l=0)), 
         axis.title.y = element_text(size = 12, margin = margin(t=0,r=8,b=0,l=0)),
-        axis.text = element_text(size = 10), face = "plain", axis.text.x = element_text(angle = 0), 
+        axis.text = element_text(size = 10, face = "plain"), axis.text.x = element_text(angle = 0), 
         strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
         legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
 ggsave("mapping_statistic.pdf", p, "pdf", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
@@ -85,7 +85,7 @@ p <- ggplot(stats.t.mean[!stats.t.mean$Category%in%c("mapped","both") & grepl("M
         axis.title.x = element_text(size = 12, margin = margin(t=8,r=0,b=0,l=0)), 
         axis.title.y = element_text(size = 12, margin = margin(t=0,r=8,b=0,l=0)),
         axis.text = element_text(size = 10, face = "plain"), axis.text.x = element_text(angle = 0), 
-        strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
+        strip.text = element_blank(), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
         legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
 ggsave("mapping_statistic_mock.pdf", p, "pdf", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
 ggsave("mapping_statistic_mock.png", p, "png", paste0(output_folder,"stats/"), width = 0.6*times*(ncol.facet+1), height = 2.5*(nrow.facet+1))
