@@ -125,7 +125,7 @@ for(time in unique(conditiontable$Time)) {
     ylab(paste0("PC2: ",percentVar[2],"% variance")) + theme_bw() +
     theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5), axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16),  
           legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank()) +
-    scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = F) 
+    scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = "none") 
   if(exists("color")){
     plot_PCA <- plot_PCA + scale_colour_manual(values=color)
   }
