@@ -107,7 +107,7 @@ percentVar <- round(100 * attr(pca, "percentVar"))
 plot_PCA <- ggplot(pca, aes(PC1, PC2, color = Treatment, shape = factor(Time, levels = mixedsort(as.character(unique(conditiontable$Time)))))) + 
   geom_point(size=3) + labs(color = "Infection", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + theme_bw() +
   theme(axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16, face = "bold"),  
         legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank())
 if(exists("color")){
@@ -122,7 +122,7 @@ for(time in unique(conditiontable$Time)) {
   plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Treatment, shape = Time)) + geom_point(size=5) + 
     labs(color = "Infection", shape = "Time") + 
     xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-    ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) + theme_bw() +
     theme(plot.title = element_text(size = 20, face = "bold", hjust = 0.5), axis.title = element_text(size = 20, face = "bold"), axis.text = element_text(size = 16),  
           legend.text = element_text(size = 16), legend.title = element_text(size = 20, face = "bold"), legend.key=element_blank()) +
     scale_shape_manual(values=shape) + guides(color = guide_legend(order = 2), shape = F) 
@@ -246,7 +246,7 @@ for(sample in names(res.list)) {
   res <- res.list[[sample]]
   #expr_genes <- res[which(res$log2FoldChange!=0 & !is.na(res$padj)),]
   count_padj <- length(which(res$padj<padj_cut))
-  for(LFC.cut in c(0,1,1.5,2,3)){
+  for(LFC.cut in c(0,1,2,3)){
     count_fc_up <- length(which(res$padj<padj_cut & res$log2FoldChange> LFC.cut & apply(res[,grep("normalized", colnames(res))],1,max) >= 10))
     count_fc_down <- length(which(res$padj<padj_cut & res$log2FoldChange< -LFC.cut & apply(res[,grep("normalized", colnames(res))],1,max) >= 10))
     count.genes <- rbind(count.genes,c(sample,count_fc_up,"up",LFC.cut), stringsAsFactors = F)
@@ -264,18 +264,18 @@ count.genes$Count <- as.numeric(count.genes$Count)
 count.genes <- count.genes[mixedorder(count.genes$Time),]
 for(LFC.cut in unique(count.genes$LFC_cutoff)){
   p <- ggplot(count.genes[count.genes$LFC_cutoff==LFC.cut,], aes(y=Count, x=factor(paste(Control,Time,sep="_"), levels = unique(paste(Control,Time,sep="_"))), group=Direction, fill=factor(Direction, labels = c("Down","Up")))) + 
-    geom_bar(stat = "identity", position = "stack", color = "black", linewidth = 0.25) + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
+    geom_bar(stat = "identity", position = "stack", color = "black", linewidth = 0.25, width = 0.8) + facet_wrap(~Virus, scales = "free_x") + xlab("Time") + 
     scale_y_continuous(breaks = pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5), labels = abs(pretty(count.genes$Count[count.genes$LFC_cutoff==LFC.cut], n=5))) + 
     geom_hline(yintercept = 0, linewidth = 0.25) + scale_fill_manual(values=c(Up="red", Down="blue"), guide = guide_legend(reverse=T)) +
     xlab("Time after infection") + ylab("Number of genes") +
-    theme(text = element_text(face = "bold"), line = element_line(linewidth = 0.25),
+    theme(text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
           axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
           axis.line.y.right = element_blank(), axis.line.y.left = element_line(color = "black", linewidth = 0.25),
           panel.background = element_rect(fill = "white"), panel.grid.major = element_line(color = "gray58"), panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank(),
-          axis.title.x = element_text(size = 12, margin = margin(t=1,r=0,b=0,l=0)), 
-          axis.title.y = element_text(size = 12, margin = margin(t=0,r=1,b=0,l=0)),
+          axis.title.x = element_text(size = 12, face = "bold", margin = margin(t=8,r=0,b=0,l=0)), 
+          axis.title.y = element_text(size = 12, face = "bold", margin = margin(t=0,r=8,b=0,l=0)),
           axis.text = element_text(size = 10), axis.text.x = element_text(angle = 0), 
-          strip.text = element_text(size = 12), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
+          strip.text = element_text(size = 12, face = "bold"), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
           legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
   ggsave(paste0("DEG_count_LFC",LFC.cut,".pdf"), p, "pdf", output_folder, width = 16, height = 7)
   ggsave(paste0("DEG_count_LFC",LFC.cut,".png"), p, "png", output_folder, width = 14, height = 7)
