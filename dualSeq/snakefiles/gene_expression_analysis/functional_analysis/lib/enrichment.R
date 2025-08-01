@@ -31,13 +31,13 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
         if(categories > 0){
           height <- ifelse(categories > 20, 20, categories)
           #plot_go <- dotplot(ora_go, showCategory = 20, font.size = label.size, orderBy = "GeneRatio") + ggtitle(main) +
-          plot_go <- barplot(ora_go, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
+          plot_go <- dotplot(ora_go, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
             scale_fill_gradient(limits = legendlimit, low = "red", high = "blue") + theme_plot
-          ggsave(paste(filename,"_",o,"_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
+          ggsave(paste(filename,"_",o,"_dotplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                  plot = egg::set_panel_size(plot_go, width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
-          #ggsave(paste(filename,"_",o,"_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
-          #system(paste0("inkscape ",ink, out.dir, "/", filename, "_", o, "_barplot.svg ", out.dir, "/", filename, "_", o, "_barplot.pdf"))
-          write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_",o,".csv", sep = ""), sep = "\t", row.names = FALSE)
+          #ggsave(paste(filename,"_",o,"_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_go, path = paste(out.dir, sep = ""), width = width, height = height)
+          #system(paste0("inkscape ",ink, out.dir, "/", filename, "_", o, "_dotplot.svg ", out.dir, "/", filename, "_", o, "_dotplot.pdf"))
+          write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_", o, ".csv", sep = ""), sep = "\t", row.names = FALSE)
         }
         ora.list[[o]] <- ora_go
       }
@@ -51,12 +51,12 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
         height <- ifelse(categories > 20, 20, categories)
         ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
         #plot_kegg <- dotplot(ora_kegg, showCategory = 20, font.size = label.size,  orderBy = "GeneRatio") + ggtitle(main) +
-        plot_kegg <- barplot(ora_kegg, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
+        plot_kegg <- dotplot(ora_kegg, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
           scale_fill_gradient(limits = legendlimit, low = "red", high = "blue") + theme_plot
-        ggsave(paste(filename,"_KEGG_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
+        ggsave(paste(filename,"_KEGG_dotplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                plot = egg::set_panel_size(plot_kegg,width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
-        #ggsave(paste(filename,"_KEGG_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
-        #system(paste0("inkscape -l ", out.dir, "/", filename, "_KEGG_barplot.svg ", out.dir, "/", filename, "_KEGG_barplot.pdf"))
+        #ggsave(paste(filename,"_KEGG_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_kegg, path = paste(out.dir, sep = ""), width = width, height = height)
+        #system(paste0("inkscape -l ", out.dir, "/", filename, "_KEGG_dotplot.svg ", out.dir, "/", filename, "_KEGG_dotplot.pdf"))
         write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["KEGG"]] <- ora_kegg
@@ -69,12 +69,12 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
       if(categories > 0){
         height <- ifelse(categories > 20, 20, categories)
         #plot_reactome <- dotplot(ora_reactome, showCategory = 20, font.size = label.size,  orderBy = "GeneRatio") + ggtitle(main) +
-        plot_reactome <- barplot(ora_reactome, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
+        plot_reactome <- dotplot(ora_reactome, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
           scale_fill_gradient(limits = legendlimit, low = "red", high = "blue") + theme_plot
-        ggsave(paste(filename,"_REACTOME_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
+        ggsave(paste(filename,"_REACTOME_dotplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                plot = egg::set_panel_size(plot_reactome, width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
-        #ggsave(paste(filename,"_REACTOME_barplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)
-        #system(paste0("inkscape -l ", out.dir, "/", filename, "_REACTOME_barplot.svg ", out.dir, "/", filename, "_REACTOME_barplot.pdf"))
+        #ggsave(paste(filename,"_REACTOME_dotplot.", imagetype, sep = ""), device = imagetype, plot = plot_reactome, path = paste(out.dir, sep = ""), width = width, height = height)
+        #system(paste0("inkscape -l ", out.dir, "/", filename, "_REACTOME_dotplot.svg ", out.dir, "/", filename, "_REACTOME_dotplot.pdf"))
         write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = "\t", row.names = FALSE)
       }
       ora.list[["REACTOME"]] <- ora_reactome

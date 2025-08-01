@@ -10,57 +10,49 @@ Available analysis modules are:
 	- fastp
 - Mapping
 	- combined {STAR}
-- Analyses
+- Gene_expression_analysis
 	- count_table {featureCounts}
 	- deseq2
-- Summary
+- Report
 	- bamCoverage {bigwig}
 	- multiqc
-- Variant_analyses
+- Variant_analysis
 	- preprocessing
 	- variant_calling
 
 ## Execution
 ```
-usage: dualSeq.py --groups GROUPS_FILE --config CONFIG_FILE --output OUTPUT_FOLDER [--profile PROFILE] [-t CORES] [--cluster-nodes CLUSTER_NODES] [--use-conda] [--conda-frontend {mamba,conda}] [--conda-create-envs-only] [--latency-wait LATENCY] [-v] [--other OTHER] [--verbose] [-h]
+usage: dualSeq.py --data DATA_FILE --pipeline-config PIPELINE_CONFIG --outdir OUTPUT_FOLDER [--profile PROFILE] [-t CORES] [-j JOBS] [--use-conda] [--conda-frontend {mamba,conda}]
+                  [--conda-prefix CONDA_PREFIX] [--conda-create-envs-only] [--latency-wait LATENCY] [--other [OTHER ...]] [-v] [--verbose] [-h]
 
 Dual RNA-Seq analysis pipeline
 
 Required arguments:
-  --groups GROUPS_FILE  Path to comma- or tab-separated file that lists all input data.
-  --config CONFIG_FILE  Path to yaml file that defines rules and rule specific parameters.
-  --output OUTPUT_FOLDER
+  --data DATA_FILE      Path to comma- or tab-separated file that lists all input data.
+  --pipeline-config PIPELINE_CONFIG
+                        Path to yaml file that defines rules and rule specific parameters.
+  --outdir OUTPUT_FOLDER, -o OUTPUT_FOLDER
                         Path to output folder.
 
 Other arguments:
-  --profile PROFILE     Path to folder containing profile 'config.yaml' for
-                        snakemake configuration. Can be used to set default
-                        values for command line options, e.g. cluster
-                        submission command. See also: https://snakemake.readth
-                        edocs.io/en/stable/executing/cli.html#profiles
+  --profile PROFILE     Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. See
+                        also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles
   -t CORES, --cores CORES
-                        Number of threads/cores (Default: 1). Defines locale
-                        cores in cluster mode
-  --cluster-nodes CLUSTER_NODES
-                        Maximal number of parallel jobs send to the cluster
-                        (Default: 1). Only used in cluster mode.
+                        Number of threads/cores (Default: 1).
+  -j JOBS, --jobs JOBS  Maximal number of parallel jobs send to the cluster (Default: 1). Only used in cluster mode.
   --use-conda           Run job in conda environment, if defined in rule.
   --conda-frontend {mamba,conda}
-                        Choose frontend for installing environmnents ['conda',
-                        'mamba']. (Default: mamba)
+                        Choose frontend for installing environmnents ['conda', 'mamba']. (Default: mamba)
+  --conda-prefix CONDA_PREFIX
+                        Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.
   --conda-create-envs-only
-                        Only create job-specific environments and exit. --use-
-                        conda has to be set.
+                        Only create job-specific environments and exit. --use-conda has to be set.
   --latency-wait LATENCY
-                        Seconds to wait before checking if all files of a rule
-                        were created (Default: 3). Should be increased if
-                        using cluster mode.
+                        Seconds to wait before checking if all files of a rule were created (Default: 3). Should be increased if using cluster mode.
+  --other [OTHER ...]   Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.)
   -v, --version         Show program's version number and exit
-  --other OTHER         Add additional snakemake command line options, e.g.
-                        'dry-run'. '--' is automatically placed in front.
   --verbose             Print debugging output
   -h, --help            Show this help message and exit
-
 
 ```
 
@@ -74,7 +66,7 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 ## Input
 
 #### Required:
-- **groups file**: A comma- or tab-separated file that describes all input data. The samples are listed line by line.
+- **data file**: A comma- or tab-separated file that describes all input data. The samples are listed line by line.
 
 | Column names | Description |
 |--------------|--------------|
@@ -86,7 +78,7 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 | virus_genome | path to virus genome file (fasta) |
 | virus_genome_annotation | path to virus annotation file (gff/gtf) |
 
-- **config file**: A yaml file that defines the rules that will be executed and the rule specific parameters. An example pipeline_config.yaml can be found in the test folder.
+- **pipeline config file**: A yaml file that defines the rules that will be executed and the rule specific parameters. An example pipeline_config.yaml can be found in the test folder.
 	- **comparisons file**: A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
 	- **host genome**: Host reference genome {fasta}. File path needs to be specified in config file.
 	- **host annotation**: Host reference annotation {gff/gtf}. File path needs to be specified in config file.
@@ -109,7 +101,7 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 	- Mapping statistics
 		- table (tsv)
 		- plot (svg, png)
-- **Analyses**
+- **Gene expression analysis**
 	- Count table (.txt)
 	- DESeq2 result tables (csv, xlsx)
 	- Sample correlation heatmap (pdf)
@@ -118,7 +110,7 @@ The pipeline uses the Snakemake conda integration to provide the necessary softw
 	- Volcano plot / MAplot (pdf)
 	- Summary of differentially expressed genes (tsv, png, svg)
 	- GSEA (csv, pdf, svg)
-- **Summary**
+- **Report**
 	- MultiQC (html)
 	- bamCoverage files (bigwig)
 - **Variant analysis**
