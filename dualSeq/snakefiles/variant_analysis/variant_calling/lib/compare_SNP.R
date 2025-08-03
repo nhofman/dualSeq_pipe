@@ -3,6 +3,8 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(gtools)
+library(gggenomes)
+library(egg)
 
 vcf.files <- list.files("~/Documents/Virus_project/variant_calling_new/vcf", ".*[1|2].vcf", full.names = T)
 vcf.list <- sapply(vcf.files, function(f){
@@ -52,6 +54,9 @@ df.SNP <- Reduce(rbind, sapply(names(vcf.list), function(n){
 df.SNP <- separate(df.SNP, "Sample", c("Virus", "Time"), "_", F, extra = "merge")
 df.SNP$Time <- factor(df.SNP$Time, levels = gtools::mixedsort(unique(df.SNP$Time)))
 #df.SNP$INDEL <- ifelse(df.SNP$INDEL, "INDEL", "SNP")
+df.SNP$mutation <- paste(df.SNP$CHROM, df.SNP$POS, df.SNP$REF, df.SNP$ALT, sep = "_")
+
+out.dir <- "Documents/Virus_project/variant_calling_new/plots/"
 
 plot_theme <- theme(text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
                     axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
@@ -64,7 +69,17 @@ plot_theme <- theme(text = element_text(face = "plain"), line = element_line(lin
                     strip.text = element_text(size = 12, face = "bold"), strip.background = element_rect(fill = NA, color = NA), #panel.spacing = unit(2, "lines"),
                     legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
 
-ggplot(df.SNP, aes(x=Time, y=AF)) + geom_violin() + facet_wrap(~Virus)
+df.SNP.total <- df.SNP %>% group_by(Sample) %>% summarise("Count" = n())
+df.SNP.total <- merge(df.SNP.total, counts_noSplice.total)
+df.SNP.total$perc <- df.SNP.total$Count/df.SNP.total$count_noSplice
+df.SNP.total <- separate(df.SNP.total, "Sample", c("Virus", "Time_Rep"), "_", F, extra = "merge")
+plot_SNP <- ggplot(df.SNP.total, aes(x=factor(Time_Rep, levels = mixedsort(unique(Time_Rep))), y=perc)) + geom_col() + 
+  facet_wrap(~Virus) + xlab("Time_Rep") + ylab("# of SNP/# of viral Reads") + plot_theme
+ggsave("Count_SNP_perc.pdf", plot_SNP, "pdf", "Documents/Virus_project/variant_calling_new/plots/", width = 14, height = 8)
+
+ggplot(df.SNP, aes(x=Time, y=AF, group=mutation)) + 
+  geom_point(show.legend = F) + geom_line() + ylim(c(0,0.01)) +
+  facet_wrap(~Virus, scales = "free_x") + plot_theme
 ggplot(df.SNP, aes(x=Time, y=DP)) + geom_boxplot() + facet_wrap(~Virus)
 ggplot(df.SNP, aes(x=Time, y=AF)) + geom_violin() + facet_wrap(~Virus) + ylim(c(0,0.01))
 plot_AF <- ggplot(df.SNP, aes(color=Time, x=AF)) + geom_freqpoly(binwidth=0.00025) + facet_wrap(~Virus) + xlim(c(0,0.01)) + 
@@ -73,7 +88,7 @@ ggplot2::ggsave("Frequency_density_zoom.pdf", plot_AF, "pdf", out.dir, width = 1
 plot_count <- ggplot(df.SNP, aes(Time, group = INDEL, fill = INDEL)) + geom_bar(position = "stack", color = "black") + 
   facet_wrap(~Virus) + xlab("Time_Replicate") + ylab("Number of SNP/INDEL") +
   scale_fill_manual(values = c("SNP" = "darkblue", "Insertion" = "grey70", "Deletion" = "lightblue")) + plot_theme
-ggplot2::ggsave("Count_SNP.pdf", plot_count, "pdf", out.dir, width = 14, height = 8)
+ggplot2::ggsave("Count_SNP.pdf", plot_count, "pdf", out.dir, width = 16, height = 8)
 
 sapply(unique(df.SNP$Virus), function(x){
   #tmp <- as.data.frame(df.SNP[df.SNP$Virus==x,] %>% dplyr::select(Time, SNP) %>% dplyr::count(SNP, Time) %>% 
@@ -105,7 +120,7 @@ for(virus in virus.levels){
   #gbk <- gbk[rep(seq_len(nrow(gbk)), 5),]
   #gbk$seq_id <- rep(unique(df.SNP.filter$seq_id), each = nrow(gbk)/5)
   
-  df.SNP.filter <- df.SNP[df.SNP$Virus==virus & df.SNP$AF>0.005,] # & df.SNP$AF>0.01
+  df.SNP.filter <- df.SNP[df.SNP$Virus==virus,] # & df.SNP$AF>0.01
   df.SNP.filter <- separate(df.SNP.filter, "Time", c("Time_point", "Rep"), "_", F)
   df.SNP.filter$Rep <- paste("Rep", df.SNP.filter$Rep)
   df.SNP.filter$POS <- as.numeric(df.SNP.filter$POS)
@@ -130,7 +145,7 @@ for(virus in virus.levels){
     gff.seq$seq_id <- gff.seq$chrom
     
     gg.snp.manual <- ggplot(df.SNP.filter[df.SNP.filter$CHROM==chrom,], aes(x = POS, y = AF)) + 
-      geom_point(aes(alpha = 1, color = Rep, shape = type), size = 2, alpha = 0.7) + 
+      geom_point(aes(alpha = 1, color = Rep, shape = type), size = 1, alpha = 0.7) + 
       facet_grid(rows = vars(factor(seq_id, levels = mixedsort(unique(df.SNP.filter$seq_id)))), 
                  cols = vars(CHROM), scales = "free_x") + #scale_shape_discrete(na.translate = FALSE) +
       ylim(c(0,1)) + scale_x_continuous(expand = c(0.01,0.01), limits = c(0, max(gff.seq$end))) + 
@@ -155,10 +170,11 @@ for(virus in virus.levels){
             text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
             axis.title.y = element_blank(), 
             axis.text.x = element_text(size = 10))
-    
-    pdf(paste0(out.dir, "SNP_Pos_", virus, "_", chrom, "_gene_filterAF005.pdf"), width = 8, height = 10)
+    SNP_filename <- paste0(out.dir, virus, "_", chrom, ".pdf")
+    pdf(SNP_filename, width = 8, height = 10, bg = "white")
     ggarrange(gg.snp.manual, gg.genome, heights = c(10,1), widths = c(1,1), newpage = F)
     dev.off()
+    system(paste0("inkscape -lo ", SNP_filename, ".svg ", SNP_filename))
   }
 }
 
