@@ -1,0 +1,49 @@
+library("STRINGdb")
+
+# besser cairo_pdf, funktioniert auf Laptop nicht...
+string_ppi <- function(stringdb, gene.df, filename, top = 400, cluster = FALSE, cluster.algorithm = "fastgreedy", link = TRUE, out.dir = "", 
+                            min.clust = 5, required_score = 0){
+  if(!dir.exists(out.dir)){
+    dir.create(out.dir, recursive = T)
+  }
+  gene.df <- string_db$map(gene.df, "SYMBOL", removeUnmappedRows = T)
+  if(length(gene.df$STRING_id) > 0){
+    if(length(gene.df$STRING_id) > top){
+      hits <- gene.df$STRING_id[1:top]
+    }else{
+      hits <- gene.df$STRING_id
+    }
+    pdf(paste(out.dir, "/", filename, ".pdf", sep = ""))
+    string_db$plot_network(hits, add_link = link, required_score = required_score)
+    dev.off()
+    if(cluster){
+      string.clust <- stringdb$get_clusters(hits, algorithm = cluster.algorithm)
+      pdf(paste(out.dir, "/", filename, "_Cluster.pdf", sep = ""), onefile = T)
+      for(i in 1:length(string.clust)){
+        if(length(string.clust[[i]]) > min.clust){
+          string_db$plot_network(string.clust[[i]], add_link = link, required_score = required_score)
+        }
+      }
+      dev.off()
+    }
+    #enrichmentGO <- string_db$get_enrichment(gene.df$STRING_ID, category = "Process", methodMT = "fdr", iea = FALSE)
+    #enrichmentKEGG <- string_db$get_enrichment(gene.df$STRING_ID, category = "KEGG", methodMT = "fdr", iea = FALSE)
+    #return(list(GO=enrichmentGO, KEGG=enrichmentKEGG, DF=gene.df))
+  }
+}
+
+if(!dir.exists(paste(output_folder, "STRINGdb", sep = ""))){
+  dir.create(paste(output_folder, "STRINGdb", sep = ""))
+}
+
+if(R.Version()$major<"4"){
+  version.db <- "10"
+}else{
+  version.db <- "11"
+}
+
+string_db <- STRINGdb$new(version=version.db, species=9606, input_directory=paste0(output_folder,"STRINGdb/"))
+
+
+
+  

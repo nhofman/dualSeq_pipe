@@ -1,0 +1,18 @@
+name: "variant_calling"
+
+optional_settings:
+  additional_lofreq_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+    default: ""
+
+  mem_mb:
+    description: "Memory requirement"
+    type: "string"
+    default: "500"
+
+single_end:
+  snakefile: "variant_calling"
+
+paired_end:
+  snakefile: "variant_calling"

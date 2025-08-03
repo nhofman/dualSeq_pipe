@@ -1,0 +1,47 @@
+name: "deseq2"
+
+required_settings:
+  comparisons_human:
+    description: "File path to comparisons file for host"
+    type: "file"
+  
+  
+optional_settings:
+  additional_featcounts_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+    default: ""
+
+  color:
+    description: "File path to table assigning a color to each virus"
+    type: "file"
+    default: "NULL"
+
+  rRNA:
+    description: "Path to list of rRNA genes"
+    type: "file"
+    default: "NULL"
+
+  mem_mb:
+    description: "Memory requirement"
+    type: "string"
+    default: "2000"
+
+
+columns:
+  condition:
+    description: "Condition name of sequencing run"
+    type: "string"
+  #color:
+  #  description: "Virus color for plots"
+  #  type: "string"
+
+
+single_end:
+  snakefile: "deseq2"
+
+
+paired_end:
+  snakefile: "deseq2"
+
+

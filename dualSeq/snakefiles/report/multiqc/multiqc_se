@@ -1,0 +1,42 @@
+from os import listdir
+from os.path import isfile, basename, splitext
+
+localrules: all, parse_envs
+
+rule all:
+    input:
+        "report/multiqc/multiqc_report.html"
+
+rule parse_envs:
+    input:
+        "conda_envs"
+    output:
+        "report/multiqc/multiqc_config.yaml"
+    log:
+        "report/multiqc/log/parse_envs.log"
+    shell:
+        """
+        python scripts/parse_software_versions.py {input} {output} 2>&1 | tee {log}
+        """
+
+rule multiqc:
+    input:
+        #expand("QC/{A}_fastqc.html", A=sorted(config['entries'].keys()))
+        #expand("preprocessing/{A}.fastp.json", A=sorted(config['entries'].keys())),
+        #expand("mapping/{A}Log.final.out", A=sorted(config['entries'].keys())),
+        #"gene_expression_analysis/host/count_table/counts.txt.report",
+        #"multiqc_config.yaml"
+        rules.multiqc__parse_envs.output
+    output:
+        "report/multiqc/multiqc_report.html"
+    log:
+        "report/multiqc/log/multiqc.log"
+    group:
+        "multiqc"
+    conda: "../conda_envs/multiqc_env.yaml"
+    threads:
+        1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --ignore .snakemake --config {input} --outdir report/multiqc . 2>&1 | tee {log}"

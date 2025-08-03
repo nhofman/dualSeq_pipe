@@ -1,0 +1,15 @@
+from os import listdir
+from os.path import isfile, dirname
+
+localrules: none__create_symlink
+
+rule create_symlink:
+    input:
+        lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
+    output:
+        "preprocessing/{sample}.fq.gz"
+    priority: 1
+    threads:
+        1
+    shell:
+        "ln `readlink -f {input}` {output}"

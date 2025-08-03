@@ -1,5 +1,0 @@
-name: "virus_expression"
-
-single_end:
-  snakefile: "virus_expression_se"
-  

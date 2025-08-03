@@ -1,0 +1,25 @@
+from os import listdir
+from os.path import isfile, splitext
+
+rule fastp__all:
+    input:
+        expand("preprocessing/{A}.fq.gz", A=sorted(config['entries'].keys()))
+
+rule fastp__trim_reads:
+    input:
+        lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
+    output:
+        "preprocessing/{sample}.fq.gz",
+        "preprocessing/fastp/{sample}_fastp.json"
+    priority: 1
+    log:
+        "preprocessing/fastp/log/{sample}.log"
+    group:
+        "fastp"
+    conda: "../conda_envs/fastp_env.yaml"
+    threads:
+        2
+    resources:
+        mem_mb=3000
+    shell:
+        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/fastp/{wildcards.sample}_fastp.html -j preprocessing/fastp/{wildcards.sample}_fastp.json  2>&1 | tee {log}"

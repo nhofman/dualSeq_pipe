@@ -1,0 +1,283 @@
+from os import listdir
+from os.path import isfile, splitext
+import csv, glob
+
+localrules: plot_statistics
+
+wildcard_constraints:
+  sample="[^/]+"
+
+rule all:
+    input:
+        expand("mapping/{A}.bam", A=config['entries'].keys()),
+        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
+
+def virus2genome(wildcards):
+	for sample in config['entries'].keys():
+		if 'Mock' in sample:
+			if wildcards.virus == "None":
+				return("None","None")
+		elif wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
+			files = [config['entries'][sample]['combined']['virus_genome'], config['entries'][sample]['combined']['virus_genome_annotation']]
+			return files
+
+def annotation_name(wildcards):
+	filename, file_extension = os.path.splitext("%%HOST_GTF%%")
+	anno_file = filename+"_"+wildcards.virus+file_extension
+	return anno_file
+
+rule star_index:
+    input:
+        genome_host="%%HOST_GENOME%%"
+    output:
+        directory("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}")
+    params:
+        filelist=virus2genome,
+        tmp=temp("%%STAR_INDEX_DIR%%".rstrip("/")+"_"+"{virus}"+"_tmp"),
+        ann_file=annotation_name
+    priority: 1
+    log:
+        "mapping/logs/star_index_"+"{virus}"+".log"
+    group:
+        "star_index"
+    conda: "../conda_envs/star_env.yaml"
+    threads:
+        4
+    resources:
+        mem_mb=%%MEM_MB_STAR%%
+    shell:
+        """
+        echo {wildcards.virus}
+	    echo params
+        if [[ "{wildcards.virus}" == "None" ]]
+	    then
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+	    else
+		   touch {params.ann_file}    
+		   cat %%HOST_GTF%% > {params.ann_file}
+		   cat {params.filelist[1]} >> {params.ann_file}
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+	    fi
+	"""
+
+def get_genome(wildcards):
+	host = "%%STAR_INDEX_DIR%%".rstrip("/")
+	if 'Mock' in wildcards.sample:
+		return(host+"_None")
+	else:
+		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['combined']['virus_genome']))[0]
+		return(host+"_"+virus)
+
+rule star_mapping:
+    input:
+        index_dir=get_genome, #"%%STAR_INDEX_DIR%%",
+        reads="preprocessing/{sample}.fq.gz",
+        #index_dir=lambda wildcards: os.path.splitext(config['entries'][wildcards.sample]['combined']['virus_genome'])[0]
+        #reads=lambda wildcards: os.path.join('preprocessing', os.path.basename(config['entries'][wildcards.sample]['main']['reads']))
+    output:
+        bam="mapping/{sample}.bam",
+        summary="mapping/{sample}Log.final.out",
+        fasta="mapping/{sample}Unmapped.out.mate1"
+    params:
+        prefix="mapping/{sample}"
+    priority: 1
+    log:
+        "mapping/logs/star_mapping.{sample}.log"
+    group:
+        "star_mapping"
+    conda: "../conda_envs/star_env.yaml"
+    threads:
+        2
+    resources:
+        mem_mb=%%MEM_MB_STAR%%
+    shell:
+        "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx %%ADDITIONAL_STAR_OPTIONS%% 2>&1 |"
+        " tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"
+
+rule index_bam:
+    input:
+        "mapping/{sample}.bam"
+    output:
+        "mapping/{sample}.bam.bai"
+    priority: 1
+    log:
+        "mapping/logs/index.{sample}.log"
+    group:
+        "star_mapping"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        "samtools index {input} 2>&1 | tee {log}"
+
+rule Mock:
+    input:
+        bam = "mapping/{sample}.bam",
+        bai = "mapping/{sample}.bam.bai"
+    output:
+        bam = "mapping/host/{sample}.bam",
+        stat = "mapping/host/stats/{sample}_stats.csv"
+    priority: 1
+    wildcard_constraints:
+        sample="Mock.*"
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        """
+        mapped_host=$(samtools view -c -F 1284 {input.bam})
+        uniquely_host=$(samtools view -c -F 1284 -q 255 {input.bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output.stat}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',0,host' >> {output.stat}
+        cp {input.bam} {output.bam}
+        """
+
+rule split_bam_virus:
+    input:
+        bam="mapping/{sample}.bam",
+        idx="mapping/{sample}.bam.bai"
+    output:
+        bam="mapping/virus/{sample}.bam",
+        bai="mapping/virus/{sample}.bam.bai",
+        sam=temp("mapping/virus/{sample}.sam")
+    params:
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+    priority: 1
+    wildcard_constraints:
+        sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        """
+        id=`cut -sf 1 {params.genome} | uniq`
+        samtools view -H {input.bam} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.sam}
+        samtools view {input.bam} $id >> {output.sam}
+        samtools view -hb {output.sam} > {output.bam}
+        samtools index {output.bam}
+        """
+
+rule split_bam_host:
+    input:
+        bam="mapping/{sample}.bam",
+        idx="mapping/{sample}.bam.bai"
+    output:
+        "mapping/host/{sample}.bam",
+        #temp("mapping/host/{sample}.sam")
+    params:
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+    priority: 1
+    wildcard_constraints:
+        sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        """
+        id=`cut -sf 1 {params.genome} | uniq`
+        id=`echo $id | sed -e 's/ /\\\\\\|/g'`
+        samtools idxstats {input.bam} | cut -f 1 | grep -v $id | xargs samtools view -b {input.bam} > {output}
+        """
+
+rule index_bam_host:
+    input:
+        "mapping/host/{sample}.bam"
+    output:
+        "mapping/host/{sample}.bam.bai"
+    priority: 1
+    log:
+        "mapping/host/logs/index.{sample}.log"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        "samtools index {input} 2>&1 | tee {log}"
+
+rule virusNames:
+    input:
+        virus="mapping/virus/{sample}.bam",
+        host="mapping/host/{sample}.bam"
+    output:
+        names=temp("mapping/virus/{sample}_name.txt"),
+        both="mapping/virus/{sample}_both.txt"
+    priority: 1
+    wildcard_constraints:
+        sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        """
+        samtools view {input.virus} | cut -f1 | sort | uniq > {output.names}
+        sed -i 's/$/\t/' {output.names}
+        samtools view -N {output.names} {input.host} | cut -f1 | sort -u > {output.both} || true
+        """
+
+rule statistics_host:
+    input:
+        both="mapping/virus/{sample}_both.txt",
+        host_bam="mapping/host/{sample}.bam",
+    output:
+        "mapping/host/stats/{sample}_stats.csv"
+    priority: 1
+    wildcard_constraints:
+        sample="(?!Mock).*"
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=4000
+    shell:
+        """
+        mapped_host=$(samtools view -c -F 1284 {input.host_bam})
+        uniquely_host=$(samtools view -c -F 1284 -q 255 {input.host_bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
+        both_host=$(samtools view -F 1284 -N {input.both} {input.host_bam} | wc -l) || true
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}','${{both_host}}',host' >> {output}
+        """
+
+rule statistics_virus:
+    input:
+        both="mapping/virus/{sample}_both.txt",
+        virus_bam="mapping/virus/{sample}.bam",
+    output:
+        "mapping/virus/stats/{sample}_stats.csv"
+    priority: 1
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    #resources: cpus=1, mem_mb=2000
+    shell:
+        """
+        mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})
+        uniquely_virus=$(samtools view -c -F 1284 -q 255 {input.virus_bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
+        both_virus=$(samtools view -F 1284 -N {input.both} {input.virus_bam} | wc -l) || true
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}','${{both_virus}}',virus' >> {output}
+        """
+
+rule plot_statistics:
+    input:
+        stat_host=expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
+    output:
+        multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
+        multiext("mapping/stats/mapping_statistic_mock", ".pdf", ".png")
+    params:
+        "mapping/"
+    priority: 1
+    conda: "../conda_envs/R_env.yaml"
+    shell:
+        """
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params}
+        """
