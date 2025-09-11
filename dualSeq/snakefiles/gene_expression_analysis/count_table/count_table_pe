@@ -1,0 +1,26 @@
+from os import listdir
+from os.path import isfile
+
+
+rule all:
+    input:
+        "gene_expression_analysis/count_table/counts.txt",
+        "gene_expression_analysis/count_table/counts.txt.summary"
+        
+rule count_reads_host:
+    input:
+        expand("mapping/host/{sample}.bam", sample=config['entries'].keys())
+    output:
+        counts = "gene_expression_analysis/count_table/counts.txt",
+        summary = "gene_expression_analysis/count_table/counts.txt.summary"
+    log:
+        log="gene_expression_analysis/count_table/logs/featurecounts.log"
+    group:
+        "count_reads_host"
+    conda: "../conda_envs/counts_env.yaml"
+    threads:
+        8
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -p --countReadPairs -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 | tee {log}"

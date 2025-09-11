@@ -1,0 +1,18 @@
+name: "fastp"
+
+optional_settings:
+  additional_fastp_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+    default: ""
+
+  mem_mb:
+    description: "Memory requirement"
+    type: "string"
+    default: "3000"
+
+single_end:
+  snakefile: "fastp_se"
+
+paired_end:
+  snakefile: "fastp_pe"

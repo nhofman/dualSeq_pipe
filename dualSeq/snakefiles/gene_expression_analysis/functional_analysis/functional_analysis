@@ -1,0 +1,54 @@
+def getComparisons():
+    comparisons = []
+    with(open("%%COMPARISONS_HUMAN%%", 'r')) as input_file:
+        for line in input_file:
+            line = line.strip().replace("\t", "_vs_")
+            comparisons.append(line)
+    return(comparisons)
+
+def getDatabases():
+    #print(type(%%DB%%))
+    #print(type(%%ONT%%))
+    db="%%DB%%".split(",")
+    ont="%%ONT%%".split(",")
+    if "GO" in db:
+        go_ont = ["{}_{}".format("GO", i) for i in ont]
+        db.remove("GO")
+        db.extend(go_ont)
+    return(db)
+
+DATABASE=getDatabases()
+COMPARISONS=getComparisons()
+
+rule all:
+    input:
+        expand("gene_expression_analysis/deseq2/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
+
+rule functional_analysis:
+    #localrule: True
+    input:
+        #rdata="gene_expression_analysis/deseq2/deseq2.RData",
+        "gene_expression_analysis/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv"
+    output:
+        #touch("gene_expression_analysis/deseq2/gsea.done"),
+        expand("gene_expression_analysis/deseq2/GSEA/{{comp}}_{db}.csv", db=DATABASE),
+        #directory("gene_expression_analysis/deseq2/GSEA"),
+        #directory("gene_expression_analysis/deseq2/STRING")
+    priority: 1
+    group:
+        "gsea"
+    params:
+        output_folder="gene_expression_analysis/deseq2/"
+    log:
+        "gene_expression_analysis/deseq2/logs/functional_analysis_{comp}.log"
+    conda: "../conda_envs/R_env.yaml"
+    threads:
+        1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        """
+        export {{http,https,ftp}}_proxy='http://proxy.computational.bio.uni-giessen.de:3128'
+        R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --datatable {input} --db %%DB%% --ont %%ONT%% --output_folder {params.output_folder} 2>&1 | tee {log}
+        """
+
