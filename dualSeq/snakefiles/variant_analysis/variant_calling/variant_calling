@@ -31,17 +31,23 @@ rule sample2gff:
     run:
         with(open(output[0], 'w')) as output_file:
             for name in config['entries'].keys():
-                output_file.write('{},{}\n'.format(name, config['entries'][name]['combined']['virus_genome_annotation']))
+                if 'combined' in config['entries'][name]:
+                    output_file.write('{},{},{}\n'.format(name, config['entries'][name]['combined']['virus_genome_annotation'], config['entries'][name]['combined']['virus_genome']))
 
 rule plot_snp:
     input:
         gff="variant_analysis/variant_analysis/sample2gff.txt",
-        vcf="variant_analysis/variant_analysis"
+        vcf=expand("variant_analysis/variant_analysis/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
     output:
         "variant_analysis/variant_analysis/plots/Count_SNP.pdf",
         "variant_analysis/variant_analysis/plots/Frequency_density.pdf"
     params:
-        output_folder="variant_analysis/variant_analysis/plots"
+        output_folder="variant_analysis/variant_analysis/plots",
+        vcf_folder="variant_analysis/variant_analysis/"
     priority: 1
+    group: "lofreq"
+    conda: "../conda_envs/R_env.yaml"
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
-        "R --vanilla --file=lib/compare_SNP.R --args --vcf {input.vcf} --gff {input.gff} --output {params.output_folder}"
+        "R --vanilla --file=lib/compare_SNP.R --args --vcf {params.vcf_folder} --gff {input.gff} --output {params.output_folder}"

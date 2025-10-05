@@ -16,6 +16,7 @@ out.dir <- args[match('--output', args) + 1]
 vcf.dir <- args[match('--vcf', args) + 1]
 sample2gff.file <- args[match('--gff', args) + 1]
   
+# Read vcf files
 vcf.files <- list.files(vcf.dir, ".*[1|2].vcf", full.names = T)
 vcf.list <- sapply(vcf.files, function(f){
   vcf <- read.vcfR(f)
@@ -27,8 +28,7 @@ vcf.list <- sapply(vcf.files, function(f){
 })
 names(vcf.list) <-  gsub("\\..*","",basename(names(vcf.list)))
 
-#vcf <- readVcf("Documents/Virus_project/variant_calling_new/vcf/EBOV_24h_1.vcf")
-
+# Create data frame of variants
 df.SNP <- Reduce(rbind, sapply(names(vcf.list), function(n){
   print(n)
   tmp.df <- Reduce(rbind, sapply(names(vcf.list[[n]]), function(x){
@@ -52,12 +52,12 @@ df.SNP$mutation <- paste(df.SNP$CHROM, df.SNP$POS, df.SNP$REF, df.SNP$ALT, sep =
 
 # Assign sample to gff
 sample2gff <- read.table(sample2gff.file, header = F, sep = ",")
-colnames(sample2gff) <- c("Sample", "GFF")
+colnames(sample2gff) <- c("Sample", "GFF", "FASTA")
 sample2gff$Sample <- sub("_*", "", sample2gff$Sample)
 #sample2gff <- separate(sample2gff, "Sample", c("Virus", "Time"), "_", F, extra = "merge")
 sample2gff <- unique(sample2gff)
 
-# plot theme for all plots
+# Plot theme for all plots
 plot_theme <- theme(text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
                     axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
                     axis.line.y.right = element_blank(), axis.line.y.left = element_line(color = "black", linewidth = 0.25),
@@ -80,18 +80,41 @@ plot_count <- ggplot(df.SNP, aes(Time, group = INDEL, fill = INDEL)) + geom_bar(
   facet_wrap(~Virus) + xlab("Time_Replicate") + ylab("Number of SNP/INDEL") +
   scale_fill_manual(values = c("SNP" = "darkblue", "Insertion" = "grey70", "Deletion" = "lightblue")) + plot_theme
 ggplot2::ggsave("Count_SNP.pdf", plot_count, "pdf", out.dir, width = 16, height = 8)
+save.image(paste0(out.dir, "/variant.RData"))
 
-# Positional plots of virus-specific variants 
+# Function to assign different tracks to overlapping features
+assign_tracks <- function(feat.data, track.y, base){
+  tracks <- c()
+  ends <- c()
+  for (i in 1:nrow(feat.data)) {
+    pos.start <- feat.data[[i, "start"]]
+    pos.end <- feat.data[[i, "end"]]
+    placed <- FALSE
+    for(e in seq_along(ends)){
+      if(pos.start < ends[e]){
+        tracks[i] <- tracks[i-1]+track.y
+        placed <- TRUE
+        break
+      }
+    }
+    if(!placed){
+      tracks[i] <- base
+      ends <- c(ends, pos.end)
+    }
+  }
+  tracks
+}
+
+# Plot positions of virus-specific variants 
 for(virus in unique(df.SNP$Virus)){
   # gggenomes package
   #gbk <- read_gbk(paste0("Documents/Virus_project/gff/feature_viewer/genbank_mod/", virus, ".gb"))
-  gff.df <- read_gff3(sample2gff[virus, "GFF"])
+  gff.df <- read_gff3(sample2gff[grep(virus, sample2gff$Sample), "GFF"][1], is_gff2 = T)
   gff.df$length <- gff.df$end - gff.df$start + 1 
   colnames(gff.df)[1] <- "chrom"
-  gff.df$seq_id <- "ann"
-  #gff.df <- gff.df[rep(seq_len(nrow(gff.df)), 5),]
-  #gff.df$seq_id <- rep(unique(df.SNP.filter$seq_id), each = nrow(gff.df)/5)
-  
+  gff.df$seq_id <- gff.df$chrom
+  fa.seqs <- read_seqs(sample2gff[grep(virus, sample2gff$Sample), "FASTA"][1])
+
   df.SNP.filter <- df.SNP[df.SNP$Virus==virus,] # & df.SNP$AF>0.01
   df.SNP.filter <- separate(df.SNP.filter, "Time", c("Time_point", "Rep"), "_", F)
   df.SNP.filter$Rep <- paste("Rep", df.SNP.filter$Rep)
@@ -102,24 +125,22 @@ for(virus in unique(df.SNP$Virus)){
   df.SNP.filter$start <- df.SNP.filter$POS
   df.SNP.filter$end <- df.SNP.filter$POS + nchar(df.SNP.filter$ALT) - 1 
   df.SNP.filter$length <- nchar(df.SNP.filter$ALT)
-  df.SNP.filter$CHROM <- sub("\\..*", "", df.SNP.filter$CHROM)
+  #df.SNP.filter$CHROM <- sub("\\..*", "", df.SNP.filter$CHROM)
   for(chrom in unique(df.SNP.filter$CHROM)){
-    gff.genes <- gff.df[gff.df$type %in% c("gene") & gff.df$chrom == chrom,]
-    gff.genes$seq_id <- gff.genes$chrom
-    i <- sapply(gff.genes$introns, function(x){0 %in% x}, simplify = T)
-    if(TRUE %in% i){
-      for(j in which(i)){
-        gff.genes[[j,"introns"]] <- list(NULL)
-      }
-    }
-    gff.seq <- gff.df[gff.df$type == "region" & gff.df$start == 1 & gff.df$chrom == chrom,]
-    gff.seq$seq_id <- gff.seq$chrom
+    gff.chrom <- gff.df[gff.df$chrom == chrom,]
+    gff.chrom$seq_id <- gff.chrom$chrom
+    gff.genes <- gff.chrom[gff.chrom$type == "gene",]
+    gff.cds <- gff.chrom[gff.chrom$type == "CDS",]
+    gff.genes$track <- assign_tracks(gff.genes, 0.3, 1)
+    gff.cds$track <- assign_tracks(gff.cds, 0.3, max(gff.genes$track)+0.3)
     
+    gff.seq <- fa.seqs[fa.seqs$seq_id == chrom,]
+
     gg.snp.manual <- ggplot(df.SNP.filter[df.SNP.filter$CHROM==chrom,], aes(x = POS, y = AF)) + 
       geom_point(aes(alpha = 1, color = Rep, shape = type), size = 1, alpha = 0.7) + 
       facet_grid(rows = vars(factor(seq_id, levels = mixedsort(unique(df.SNP.filter$seq_id)))), 
                  cols = vars(CHROM), scales = "free_x") + #scale_shape_discrete(na.translate = FALSE) +
-      ylim(c(0,1)) + scale_x_continuous(expand = c(0.01,0.01), limits = c(0, max(gff.seq$end))) + 
+      ylim(c(0,1)) + scale_x_continuous(expand = c(0.01,0.01), limits = c(0, max(gff.seq$length))) + 
       scale_color_manual(values = c("darkorchid4", "gold2"), na.translate = FALSE) +
       scale_shape_manual(values = c(15, 17, 19)) + ylab("Frequency") +
       theme(text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
@@ -133,18 +154,20 @@ for(virus in unique(df.SNP$Virus)){
             strip.text = element_text(size = 12, face = "bold"), strip.background = element_rect(fill = NA, color = NA), 
             panel.spacing = unit(2, "lines"),
             legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
-    
-    gg.genome <- gggenomes(genes = gff.genes, seqs = gff.seq) + geom_gene(data = genes(.gene_types = c("gene")), aes(fill = name), position = "pile") + 
-      geom_gene_text(data = genes(.gene_types = c("gene")), aes(label = name), size = 3, vjust = -0.75, hjust = 0.5, angle = 0, position = "pile", nudge_y = 0) + 
-      geom_seq(arrow = 1) + scale_x_bp(accuracy = NULL, expand = c(0.01,0.01), limits = c(0, max(gff.seq$end))) + 
-      theme(legend.position = "none",
-            text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
+   
+    gg.genome <- gggenomes(genes = rbind(gff.genes, gff.cds), seqs = gff.seq) + geom_seq(arrow = 1) +
+      geom_gene(data = genes(.gene_types = "gene"), aes(y = track, fill = type)) + 
+      geom_gene_text(data = genes(.gene_types = "gene"), aes(y = track, label = name), size = 2.5, vjust = -1, hjust = 0.5, angle = 0, nudge_y = 0, check_overlap = F) + 
+      geom_gene(data = genes(.gene_types = "CDS"), aes(y = track, fill = type)) + 
+      geom_gene_text(data = genes(.gene_types = "CDS"), aes(y = track, label = name), size = 2.5, vjust = -1, hjust = 0.5, angle = 0, nudge_y = 0, check_overlap = F) + 
+      scale_x_bp(accuracy = NULL, expand = c(0.01,0.01), limits = c(0, max(gff.seq$length))) + 
+      theme(text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
             axis.title.y = element_blank(), 
             axis.text.x = element_text(size = 10))
-    SNP_filename <- paste0(out.dir, virus, "_", chrom, ".pdf")
-    pdf(SNP_filename, width = 8, height = 10, bg = "white")
-    ggarrange(gg.snp.manual, gg.genome, heights = c(10,1), widths = c(1,1), newpage = F)
+    SNP_filename <- paste0(out.dir, "/", virus, "_", chrom, ".pdf")
+    pdf(SNP_filename, width = 10, height = 12, bg = "white")
+    ggarrange(gg.snp.manual, gg.genome, heights = c(10,3), widths = c(1,1), newpage = F)
     dev.off()
-    system(paste0("inkscape -lo ", SNP_filename, ".svg ", SNP_filename))
+    #system(paste0("inkscape -lo ", SNP_filename, ".svg ", SNP_filename))
   }
 }
