@@ -12,6 +12,9 @@ dependencies:
 - r-openxlsx=4.2.5.2
 - r-ashr=2.2-54
 - r-svglite
+- r-egg
+- r-vcfr
+- r-gggenomes
 - bioconductor-biocparallel
 - bioconductor-deseq2=1.42.0
 - bioconductor-clusterprofiler=4.10.0
