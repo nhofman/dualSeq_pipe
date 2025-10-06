@@ -45,6 +45,7 @@ def main():
         run_command.extend(['--jobs', str(args.jobs)])
     if args.other is not None:
         for elem in args.other:
+            elem = ' '.join(elem)
             other = '--' + elem
             run_command.append(other)
     #print(' '.join(run_command))
@@ -473,7 +474,7 @@ def parse_arguments() -> argparse.Namespace:
                        help="Only create job-specific environments and exit. --use-conda has to be set.")
     other.add_argument('--latency-wait', dest='latency', default=3, type=int,
                        help="Seconds to wait before checking if all files of a rule were created (Default: %(default)s). Should be increased if using cluster mode.")
-    other.add_argument('--other', dest='other', default=None, type=str, nargs="*",
+    other.add_argument('--other', dest='other', default=None, type=str, nargs="*", action="append",
                        help="Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.)")
     other.add_argument('-v', '--version', action='version', version='%(prog)s \nVersion: {}'.format(metadata.__version__),
                        help="Show program's version number and exit")

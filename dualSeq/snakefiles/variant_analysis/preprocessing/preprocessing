@@ -1,8 +1,8 @@
 rule all:
   input:
     expand("variant_analysis/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-    expand("variant_analysis/preprocessing/{sample}_dedup.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+    
 
 rule remove_spliced:
   input:
