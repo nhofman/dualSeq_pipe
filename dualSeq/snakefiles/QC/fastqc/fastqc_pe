@@ -11,11 +11,14 @@ rule fastqc_fwd:
     output:
         "QC/fastqc/{sample}_R1_fastqc.html",
         "QC/fastqc/{sample}_R1_fastqc.zip"
+    priority: 1
     group:
         "fastqc"
     conda: "../conda_envs/fastqc_env.yaml"
     threads:
         1
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
         """
         fastqc -o QC/fastqc {input}
@@ -34,11 +37,14 @@ rule fastqc_rev:
     output:
         "QC/fastqc/{sample}_R2_fastqc.html",
         "QC/fastqc/{sample}_R2_fastqc.zip"
+    priority: 1
     group:
         "fastqc"
     conda: "../conda_envs/fastqc_env.yaml"
     threads:
         1
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
         """
         fastqc -o QC/fastqc {input}

@@ -20,8 +20,8 @@ rule trim_reads:
         #reads_forward=lambda wildcards: getFilePath(wildcards.sample, True),
         #reads_reverse=lambda wildcards: getFilePath(wildcards.sample, False)
     output:
-        fwd="preprocessing/{sample}_R1.fastq.gz",
-        rev="preprocessing/{sample}_R2.fastq.gz",
+        fwd="preprocessing/{sample}_R1.fq.gz",
+        rev="preprocessing/{sample}_R2.fq.gz",
         json="preprocessing/{sample}.fastp.json",
         html="preprocessing/{sample}.fastp.html"
     group:

@@ -82,7 +82,7 @@ rule star_mapping:
     output:
         bam="mapping/{sample}.bam",
         summary="mapping/{sample}Log.final.out",
-        fasta="mapping/{sample}Unmapped.out.mate1"
+        unmap="mapping/{sample}Unmapped.out.mate1"
     params:
         prefix="mapping/{sample}"
     priority: 1

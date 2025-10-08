@@ -131,9 +131,20 @@ for(virus in unique(df.SNP$Virus)){
     gff.chrom$seq_id <- gff.chrom$chrom
     gff.genes <- gff.chrom[gff.chrom$type == "gene",]
     gff.cds <- gff.chrom[gff.chrom$type == "CDS",]
-    gff.genes$track <- assign_tracks(gff.genes, 0.3, 1)
-    gff.cds$track <- assign_tracks(gff.cds, 0.3, max(gff.genes$track)+0.3)
-    
+    gene.track <- 1
+    if(nrow(gff.genes)>0){
+      gff.genes$track <- assign_tracks(gff.genes, 0.3, 1)
+      gene.track <- max(gff.genes$track)
+      if(!"name" %in% colnames(gff.genes)){
+        gff.genes$name <- NA
+      }
+    }
+    if(nrow(gff.cds)>0){
+      gff.cds$track <- assign_tracks(gff.cds, 0.3, gene.track+0.3)
+      if(!"name" %in% colnames(gff.cds)){
+        gff.cds$name <- NA
+      }
+    }
     gff.seq <- fa.seqs[fa.seqs$seq_id == chrom,]
 
     gg.snp.manual <- ggplot(df.SNP.filter[df.SNP.filter$CHROM==chrom,], aes(x = POS, y = AF)) + 
