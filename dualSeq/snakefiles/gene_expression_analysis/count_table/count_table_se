@@ -11,7 +11,7 @@ rule all:
         
 rule count_reads_host:
     input:
-        expand("mapping/host/{host}.bam", host=config['entries'].keys())
+        expand("mapping/host/{sample}.bam", sample=config['entries'].keys())
     output:
         counts = "gene_expression_analysis/count_table/counts.txt",
         summary = "gene_expression_analysis/count_table/counts.txt.summary"
