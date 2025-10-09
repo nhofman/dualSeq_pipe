@@ -1,13 +1,13 @@
 name: 'combined'
 
-columns:
-  virus_genome:
-    description: "Path to virus reference genome"
-    type: "file"
+  #columns:
+  #virus_genome:
+  #description: "Path to virus reference genome"
+  # type: "file"
   
-  virus_genome_annotation:
-    description: "Path to virus reference genome annotation"
-    type: "file"
+  #virus_genome_annotation:
+  # description: "Path to virus reference genome annotation"
+  # type: "file"
 
 required_settings:
 

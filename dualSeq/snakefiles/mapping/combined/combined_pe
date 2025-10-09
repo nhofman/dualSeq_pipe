@@ -11,19 +11,19 @@ rule all:
     input:
         expand("mapping/{A}.bam", A=config['entries'].keys()),
         expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
+        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
         expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
 
 def virus2genome(wildcards):
 	for sample in config['entries'].keys():
-		if 'Mock' in sample:
+		if 'virus_genome' not in config['entries'][sample]['main'].keys(): #if 'Mock' in sample:
 			if wildcards.virus == "None":
 				return("None","None")
-		elif wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
-			files = [config['entries'][sample]['combined']['virus_genome'], config['entries'][sample]['combined']['virus_genome_annotation']]
+		elif wildcards.virus in config['entries'][sample]['main']['virus_genome']:
+			files = [config['entries'][sample]['main']['virus_genome'], config['entries'][sample]['main']['virus_genome_annotation']]
 			return files
 
 def annotation_name(wildcards):
@@ -70,7 +70,7 @@ def get_genome(wildcards):
 	if 'Mock' in wildcards.sample:
 		return(host+"_None")
 	else:
-		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['combined']['virus_genome']))[0]
+		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['main']['virus_genome']))[0]
 		return(host+"_"+virus)
 
 rule star_mapping:
@@ -131,9 +131,9 @@ rule Mock:
     shell:
         """
         mapped_host=$(samtools view -c -F 3340 {input.bam})
-        proper_pairs=$(( mapped_host / 2 ))
+        proper_pairs=`awk "BEGIN {{print ${{mapped_host}}/2}}"`
         uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.bam})
-        proper_pairs_uniq=$(( uniquely_host / 2 ))
+        proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output.stat}
         echo {wildcards.sample}','${{total}}','${{proper_pairs}}','${{proper_pairs_uniq}}',0,host' >> {output.stat}
@@ -149,7 +149,7 @@ rule split_bam_virus:
         bai="mapping/virus/{sample}.bam.bai",
         sam=temp("mapping/virus/{sample}.sam")
     params:
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -174,7 +174,7 @@ rule split_bam_host:
         "mapping/host/{sample}.bam",
         #temp("mapping/host/{sample}.sam")
     params:
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -239,9 +239,9 @@ rule statistics_host:
     shell:
         """
         mapped_host=$(samtools view -c -F 3340 {input.host_bam})
-        proper_pairs=$(( mapped_host / 2 ))
+        proper_pairs=`awk "BEGIN {{print ${{mapped_host}}/2}}"`
         uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.host_bam})
-        proper_pairs_uniq=$(( uniquely_host / 2 ))
+        proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_host=$(samtools view -F 3340 -N {input.both} {input.host_bam} | wc -l) || true
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
@@ -262,9 +262,9 @@ rule statistics_virus:
     shell:
         """
         mapped_virus=$(samtools view -c -F 3340 {input.virus_bam})
-        proper_pairs=$(( mapped_host / 2 ))
+        proper_pairs=`awk "BEGIN {{print ${{mapped_virus}}/2}}"`
         uniquely_virus=$(samtools view -c -F 3340 -f 2 -q 255 {input.virus_bam})
-        proper_pairs_uniq=$(( uniquely_host / 2 ))
+        proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_virus}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_virus=$(samtools view -F 3340 -N {input.both} {input.virus_bam} | wc -l) || true
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
