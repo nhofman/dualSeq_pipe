@@ -10,20 +10,20 @@ wildcard_constraints:
 rule all:
     input:
         expand("mapping/{A}.bam", A=config['entries'].keys()),
-        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
+        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() 'virus_genome' in config['entries'][entry]['main'].keys()]),
+        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
+        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
         expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
 
 def virus2genome(wildcards):
 	for sample in config['entries'].keys():
-		if 'Mock' in sample:
+		if 'virus_genome' not in config['entries'][sample]['main'].keys(): #if 'Mock' in sample:
 			if wildcards.virus == "None":
 				return("None","None")
-		elif wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
-			files = [config['entries'][sample]['combined']['virus_genome'], config['entries'][sample]['combined']['virus_genome_annotation']]
+		elif wildcards.virus in config['entries'][sample]['main']['virus_genome']:
+			files = [config['entries'][sample]['main']['virus_genome'], config['entries'][sample]['main']['virus_genome_annotation']]
 			return files
 
 def annotation_name(wildcards):
@@ -70,7 +70,7 @@ def get_genome(wildcards):
 	if 'Mock' in wildcards.sample:
 		return(host+"_None")
 	else:
-		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['combined']['virus_genome']))[0]
+		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['main']['virus_genome']))[0]
 		return(host+"_"+virus)
 
 rule star_mapping:
@@ -149,7 +149,7 @@ rule split_bam_virus:
         bai="mapping/virus/{sample}.bam.bai",
         sam=temp("mapping/virus/{sample}.sam")
     params:
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"
@@ -174,7 +174,7 @@ rule split_bam_host:
         "mapping/host/{sample}.bam",
         #temp("mapping/host/{sample}.sam")
     params:
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
     priority: 1
     wildcard_constraints:
         sample="(?!Mock).*"

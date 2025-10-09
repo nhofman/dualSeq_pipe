@@ -40,7 +40,6 @@ columns:
 single_end:
   snakefile: "deseq2"
 
-
 paired_end:
   snakefile: "deseq2"
 
