@@ -358,15 +358,15 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
     # find every rule name
     re_rule_name = re.compile('^rule (?P<rule_name>.*):$', re.MULTILINE)
     # find every lib reference
-    re_lib_folder = re.compile('lib/(?P<file_name>[^\s]*)', re.MULTILINE)
+    re_lib_folder = re.compile(r'lib/(?P<file_name>[^\s]*)', re.MULTILINE)
     snakefile_module_paths = []
     # for every Module in modules
     for module in [module for module_list in modules.values() for module in module_list]:
         with module.snakefile.open('r') as module_file:
             module_content = module_file.read()
             # change rule name from <rule name> to <module name>__<rule name>
-            module_content = re_rule_name.sub('rule {}__\g<rule_name>:'.format(module.name.lower().replace('-', '_')), module_content)
-            module_content = re_lib_folder.sub('{}/{}_lib/\g<file_name>'.format(SNAKEFILES_TARGET_DIRECTORY, module.name.lower()), module_content)
+            module_content = re_rule_name.sub(r'rule {}__\g<rule_name>:'.format(module.name.lower().replace('-', '_')), module_content)
+            module_content = re_lib_folder.sub(r'{}/{}_lib/\g<file_name>'.format(SNAKEFILES_TARGET_DIRECTORY, module.name.lower()), module_content)
             for (wildcard, value) in module.settings.items():
                 module_content = module_content.replace("%%{}%%".format(wildcard.upper()), ','.join(value) if type(value) is list else value)
             module_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / (module.name.lower() + '.sm')

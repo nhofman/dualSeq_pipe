@@ -1,7 +1,7 @@
 
 rule all:
-	input:
-		expand("variant_analysis/variant_analysis/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
+    input:
+        expand("variant_analysis/variant_analysis/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
         #expand("variant_analysis/variant_analysis/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
         "variant_analysis/variant_analysis/plots/Count_SNP.pdf",
         "variant_analysis/variant_analysis/plots/Frequency_density.pdf"

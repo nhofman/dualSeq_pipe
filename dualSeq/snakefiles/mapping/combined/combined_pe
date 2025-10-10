@@ -7,13 +7,16 @@ localrules: plot_statistics
 wildcard_constraints:
   sample="[^/]+"
 
+MOCK_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' not in config['entries'][entry]['main'].keys()]
+INFECTED_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]
+
 rule all:
     input:
-        expand("mapping/{A}.bam", A=config['entries'].keys()),
-        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
-        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
-        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
-        expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        expand("mapping/{A}.bam", A=MOCK_SAMPLES + INFECTED_SAMPLES),
+        expand("mapping/host/{A}.bam", A=MOCK_SAMPLES + INFECTED_SAMPLES),
+        expand("mapping/virus/{A}.bam", A=INFECTED_SAMPLES),
+        expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
+        expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
 
@@ -66,12 +69,12 @@ rule star_index:
 	"""
 
 def get_genome(wildcards):
-	host = "%%STAR_INDEX_DIR%%".rstrip("/")
-	if 'Mock' in wildcards.sample:
-		return(host+"_None")
-	else:
-		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['main']['virus_genome']))[0]
-		return(host+"_"+virus)
+    host = "%%STAR_INDEX_DIR%%".rstrip("/")
+    if 'virus_genome' not in config['entries'][wildcards.sample]['main'].keys():
+        return(host+"_None")
+    else:
+        virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['main']['virus_genome']))[0]
+        return(host+"_"+virus)
 
 rule star_mapping:
     input:
@@ -116,14 +119,14 @@ rule index_bam:
 
 rule Mock:
     input:
-        bam = "mapping/{sample}.bam",
-        bai = "mapping/{sample}.bam.bai"
+        bam = expand("mapping/{sample}.bam", sample = MOCK_SAMPLES),
+        bai = expand("mapping/{sample}.bam.bai", sample = MOCK_SAMPLES)
     output:
         bam = "mapping/host/{sample}.bam",
         stat = "mapping/host/stats/{sample}_stats.csv"
     priority: 1
-    wildcard_constraints:
-        sample="Mock.*"
+    #wildcard_constraints:
+    #    sample="Mock.*"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
@@ -145,48 +148,32 @@ rule split_bam_virus:
         bam="mapping/{sample}.bam",
         idx="mapping/{sample}.bam.bai"
     output:
-        bam="mapping/virus/{sample}.bam",
-        bai="mapping/virus/{sample}.bam.bai",
-        sam=temp("mapping/virus/{sample}.sam")
+        bam_virus = "mapping/virus/{sample}.bam",
+        bai_virus = "mapping/virus/{sample}.bam.bai",
+        sam_virus = temp("mapping/virus/{sample}.sam"),
+        bam_host = "mapping/host/{sample}.bam"
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
     priority: 1
-    wildcard_constraints:
-        sample="(?!Mock).*"
+    #wildcard_constraints:
+    #    sample="(?!Mock).*"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
-        id=`cut -sf 1 {params.genome} | uniq`
-        samtools view -H {input.bam} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.sam}
-        samtools view {input.bam} $id >> {output.sam}
-        samtools view -hb {output.sam} > {output.bam}
-        samtools index {output.bam}
-        """
-
-rule split_bam_host:
-    input:
-        bam="mapping/{sample}.bam",
-        idx="mapping/{sample}.bam.bai"
-    output:
-        "mapping/host/{sample}.bam",
-        #temp("mapping/host/{sample}.sam")
-    params:
-        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
-    priority: 1
-    wildcard_constraints:
-        sample="(?!Mock).*"
-    group:
-        "bam_process"
-    conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
-    shell:
-        """
-        id=`cut -sf 1 {params.genome} | uniq`
-        id=`echo $id | sed -e 's/ /\\\\\\|/g'`
-        samtools idxstats {input.bam} | cut -f 1 | grep -v $id | xargs samtools view -b {input.bam} > {output}
+        if [[ 'virus_genome_annotation' in config['entries'][{wildcards.sample}]['main'].keys() ]]
+        then
+            id=`cut -sf 1 {params.genome} | uniq`
+            samtools view -H {input.bam} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.sam_virus}
+            samtools view {input.bam} $id >> {output.sam_virus}
+            samtools view -hb {output.sam_virus} > {output.bam_virus}
+            samtools index {output.bam_virus}
+            id="${id// /\n}"
+            samtools view -h {input.bam} | grep -v "$id" - | samtools view -hb - > {output.bam_host}
+            samtools index {output.bam_host} 
+        fi
         """
 
 rule index_bam_host:
@@ -274,7 +261,7 @@ rule statistics_virus:
 rule plot_statistics:
     input:
         stat_host=expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
-        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
+        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES)
     output:
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
