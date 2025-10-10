@@ -48,7 +48,6 @@ rule functional_analysis:
         mem_mb=%%MEM_MB%%
     shell:
         """
-        export {{http,https,ftp}}_proxy='http://proxy.computational.bio.uni-giessen.de:3128'
         R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --datatable {input} --db %%DB%% --ont %%ONT%% --output_folder {params.output_folder} 2>&1 | tee {log}
         """
 

@@ -10,7 +10,7 @@ wildcard_constraints:
 rule all:
     input:
         expand("mapping/{A}.bam", A=config['entries'].keys()),
-        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() 'virus_genome' in config['entries'][entry]['main'].keys()]),
+        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
         expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
         expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
         expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),

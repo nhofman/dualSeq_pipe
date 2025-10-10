@@ -17,15 +17,20 @@ vcf.dir <- args[match('--vcf', args) + 1]
 sample2gff.file <- args[match('--gff', args) + 1]
   
 # Read vcf files
-vcf.files <- list.files(vcf.dir, ".*[1|2].vcf", full.names = T)
+vcf.files <- list.files(vcf.dir, ".*.vcf", full.names = T)
+print(vcf.files)
 vcf.list <- sapply(vcf.files, function(f){
+  print(f)
   vcf <- read.vcfR(f)
   vcf.df <- cbind((vcf@fix),data.frame(extract_info_tidy(vcf)))
+  print(vcf.df)
   #vcf.filter.df <- vcf.df[vcf.df$AF>0.01,]
   vcf.split <- vcf.df %>% group_split(CHROM)
   names(vcf.split) <- sapply(vcf.split, function(x) x[[1,"CHROM"]])
+  print(vcf.split)
   return(vcf.split)
-})
+}, simplify = F)
+print(names(vcf.list))
 names(vcf.list) <-  gsub("\\..*","",basename(names(vcf.list)))
 
 # Create data frame of variants
@@ -152,7 +157,8 @@ for(virus in unique(df.SNP$Virus)){
       facet_grid(rows = vars(factor(seq_id, levels = mixedsort(unique(df.SNP.filter$seq_id)))), 
                  cols = vars(CHROM), scales = "free_x") + #scale_shape_discrete(na.translate = FALSE) +
       ylim(c(0,1)) + scale_x_continuous(expand = c(0.01,0.01), limits = c(0, max(gff.seq$length))) + 
-      scale_color_manual(values = c("darkorchid4", "gold2"), na.translate = FALSE) +
+      #scale_color_manual(values = c("darkorchid4", "gold2"), na.translate = FALSE) +
+      scale_color_manual(values = viridis::viridis_pal()(length(unique(df.SNP.filter$Rep))), na.translate = FALSE) +
       scale_shape_manual(values = c(15, 17, 19)) + ylab("Frequency") +
       theme(text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
             axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),

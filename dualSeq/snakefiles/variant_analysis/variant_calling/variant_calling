@@ -10,7 +10,7 @@ rule call_variant:
     input:
         bam="variant_analysis/preprocessing/{sample}_indel.bam",
         bai="variant_analysis/preprocessing/{sample}_indel.bam.bai",
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome']
     output:
         "variant_analysis/variant_analysis/{sample}.vcf"
     priority: 1
@@ -31,8 +31,8 @@ rule sample2gff:
     run:
         with(open(output[0], 'w')) as output_file:
             for name in config['entries'].keys():
-                if 'combined' in config['entries'][name]:
-                    output_file.write('{},{},{}\n'.format(name, config['entries'][name]['combined']['virus_genome_annotation'], config['entries'][name]['combined']['virus_genome']))
+                if 'virus_genome' in config['entries'][name]['main'].keys():
+                    output_file.write('{},{},{}\n'.format(name, config['entries'][name]['main']['virus_genome_annotation'], config['entries'][name]['main']['virus_genome']))
 
 rule plot_snp:
     input:
@@ -45,7 +45,7 @@ rule plot_snp:
         output_folder="variant_analysis/variant_analysis/plots",
         vcf_folder="variant_analysis/variant_analysis/"
     priority: 1
-    group: "lofreq"
+    group: "lofreq_plot"
     conda: "../conda_envs/R_env.yaml"
     resources:
         mem_mb=%%MEM_MB%%

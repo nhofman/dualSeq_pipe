@@ -26,7 +26,7 @@ rule remove_spliced:
 rule realign:
     input:
         bam="variant_analysis/preprocessing/{sample}_noSplice.bam",
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome']
     output:
         "variant_analysis/preprocessing/{sample}_realign.bam"
     priority: 1
@@ -44,7 +44,7 @@ rule realign:
 rule indel_qual:
     input:
         bam="variant_analysis/preprocessing/{sample}_realign.bam",
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome']
     output:
         "variant_analysis/preprocessing/{sample}_indel.bam"
     priority: 1

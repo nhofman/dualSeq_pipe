@@ -11,7 +11,7 @@ color_file <- args[match('--color', args) + 1]
 rRNA_file <- args[match('--rRNA', args) + 1]
 
 # required packages
-for(package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr", "openxlsx", "org.Hs.eg.db")) {
+for(package in c("BiocParallel", "DESeq2", "pheatmap", "ggplot2", "reshape2", "gplots", "tidyr", "gtools", "dplyr", "openxlsx", "org.Hs.eg.db", "scales")) {
   if(!(package %in% rownames(installed.packages()))) {
     stop(paste('Package "', package, '" not installed', sep=""))
   } else {
@@ -75,7 +75,8 @@ if(color_file != "NULL"){
 # Set color for column names of countdata
 colnames.col <- c()
 for(x in names(color)){
-  i <- grep(x, colnames(countdata.normalized))
+  #i <- grep(x, colnames(countdata.normalized))
+  i <- grep(x, conditiontable$Treatment)
   colnames.col[i] <- color[x]
 }
 
@@ -88,19 +89,19 @@ dev.off()
 
 pdf(paste(output_folder, "/counts_norm_legend.pdf", sep = ""), width = 60, height = 15)
 par(mar=c(5, 5, 5, 2) + 0.1, lwd = 2, cex.lab = 1.5, cex = 3, xpd = T)
-boxplot(countdata.normalized.na, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata.normalized.na)))
+boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata.normalized)))
 legend("top", legend = names(color), fill = color, horiz = T, inset = c(-0.2))
 dev.off()
 
 png(paste(output_folder, "/counts_raw.png", sep = ""), width = 60, height = 15, units = "in", res = 300)
 par(mar=c(5, 5, 5, 2) + 0.1, lwd = 2, cex.lab = 1.5, cex = 3, xpd = T)
+boxplot(countdata, outline = FALSE, las = 2, ylab = "Raw reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata)))
 legend("top", legend = names(color), fill = color, horiz = T, inset = c(-0.2))
-boxplot(countdata, outline = FALSE, las = 2, ylab = "Raw reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata.normalized.na)))
 dev.off()
 
 png(paste(output_folder, "/counts_norm.png", sep = ""), width = 60, height = 15, units = "in", res = 300)
 par(mar=c(5, 5, 5, 2) + 0.1, lwd = 2, cex.lab = 1.5, cex = 3, xpd = T)
-boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata.normalized.na)))
+boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata.normalized)))
 legend("top", legend = names(color), fill = color, horiz = T, inset = c(-0.2))
 dev.off()
 
