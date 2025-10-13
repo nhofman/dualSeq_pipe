@@ -21,15 +21,15 @@ stats.df <- Reduce(rbind,lapply(c(list.files(stat_host, ".*_stats.csv", full.nam
   tmp$mapped_to_both <- sum(tmp$mapped_to_both)
   return(tmp)
 }))
-write.csv(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.csv"), row.names = F)
-write.xlsx(stats.df[,c(1,2,3,4,7,5,6)], paste0(output_folder, "stats/mapping_statistic.xlsx"))
+write.csv(stats.df[,c(1,2,3,4,8,5,6)], paste0(output_folder, "stats/mapping_statistic.csv"), row.names = F)
+write.xlsx(stats.df[,c(1,2,3,4,8,5,6)], paste0(output_folder, "stats/mapping_statistic.xlsx"))
 
 # transpose data frame for plotting
 stats.t <- data.frame("Sample"=character(), "Total"=integer(), "Count"=integer(), "Organism"=character(), "Class"=character(), "Category"=character())
-stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,3,6,8)], "mapped")))
-stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,4,6,8)], "uniquely mapped")))
-stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,7,6,8)], "multimapped")))
-stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[stats.df$group=="host",c(1,2,5,6,8)], "both")))
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,3,6,7)], "mapped")))
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,4,6,7)], "uniquely mapped")))
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,8,6,7)], "multimapped")))
+stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[stats.df$group=="host",c(1,2,5,6,7)], "both")))
 
 stats.t <- separate(stats.t, "Sample", c("Virus","Time", "Rep"),"_",F,extra = "merge")
 stats.t$Count_percent <- stats.t$Count/stats.t$Total
@@ -39,16 +39,16 @@ stats.t$Time_Rep <- paste(stats.t$Time, stats.t$Rep, sep=":")
 stats.t.mean <- stats.t %>% group_by(Virus,Time,Organism,Category,Class) %>% summarise_at("Count_percent", "mean")
 stats.t.mean$Category_2 <- paste(stats.t.mean$Organism, stats.t.mean$Category, sep = ":")
 
-ncol.facet <- ceiling(sqrt(length(unique(stats.t.mean$Virus[stats.t.mean$Class=="Infected"]))))
+ncol.facet <- ceiling(sqrt(length(unique(stats.t.mean$Virus[stats.t.mean$Class=="infected"]))))
 ncol.facet <- ifelse(ncol.facet==1, 2, ncol.facet)
-nrow.facet <- ceiling(length(unique(stats.t.mean$Virus[stats.t.mean$Class=="Infected"]))/ncol.facet)
+nrow.facet <- ceiling(length(unique(stats.t.mean$Virus[stats.t.mean$Class=="infected"]))/ncol.facet)
 nrow.facet <- ifelse(nrow.facet==1, 2, nrow.facet)
 times <- length(unique(stats.t.mean$Time[stats.t.mean$Virus==stats.t.mean$Virus[1]]))
 times <- ifelse(times<3, 3, times)
 
 # plot mapping statistic for host + virus samples
 # color each virus differently? What about virus multimapped?
-p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & stats.t.mean$Class=="Infected",], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
+p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & stats.t.mean$Class=="infected",], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
   geom_bar(stat = "identity", color = "black") +
   facet_wrap(~ Virus, scales = "free_x", ncol = ncol.facet) +
   xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="Category") +
