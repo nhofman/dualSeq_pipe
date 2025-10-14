@@ -1,3 +1,38 @@
+#!/usr/bin/env python3
+"""
+Dual RNA-Seq analysis pipeline
+
+usage: dualSeq.py --data DATA_FILE --pipeline-config PIPELINE_CONFIG --outdir OUTPUT_FOLDER [--profile PROFILE] [-t CORES] [-j JOBS] [--use-conda] [--conda-frontend {mamba,conda}]
+                  [--conda-prefix CONDA_PREFIX] [--conda-create-envs-only] [--latency-wait LATENCY] [--other [OTHER ...]] [-v] [--verbose] [-h]
+
+Required arguments:
+  --data DATA_FILE      Path to comma- or tab-separated file that lists all input data.
+  --pipeline-config PIPELINE_CONFIG
+                        Path to YAML file that defines rules and rule-specific parameters.
+  --outdir OUTPUT_FOLDER, -o OUTPUT_FOLDER
+                        Path to output folder.
+
+Other arguments:
+  --profile PROFILE     Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. See
+                        also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles
+  -t CORES, --cores CORES
+                        Number of threads/cores (Default: 1).
+  -j JOBS, --jobs JOBS  Maximal number of parallel jobs send to the cluster (Default: 1). Only used in cluster mode.
+  --use-conda           Run job in conda environment, if defined in rule.
+  --conda-frontend {mamba,conda}
+                        Choose frontend for installing environmnents ['conda', 'mamba']. (Default: mamba)
+  --conda-prefix CONDA_PREFIX
+                        Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.
+  --conda-create-envs-only
+                        Only create job-specific environments and exit. --use-conda has to be set.
+  --latency-wait LATENCY
+                        Seconds to wait before checking if all files of a rule were created (Default: 3). Should be increased if using cluster mode.
+  --other [OTHER ...]   Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.). Can be used multiple times.
+  -v, --version         Show program's version number and exit
+  --verbose             Print debugging output
+  -h, --help            Show this help message and exit
+
+"""
 import argparse
 import errno
 import os
@@ -7,10 +42,7 @@ import filecmp
 import re
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
-
 import yaml
-#from snakemake import snakemake
-
 import metadata
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
@@ -153,8 +185,6 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                 modules["preprocessing"].append(config["preprocessing"]["module"])
         else:
             modules["preprocessing"].append('none')
-    #else:
-    #    modules["preprocessing"].append('none')
     if "QC" in config:
         if "modules" in config["QC"]:
             if "module" in config["QC"]:
@@ -426,7 +456,7 @@ def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[s
 
 
 def create_conda_lib(output_folder: Path):
-    """Create directory of conda yaml files."""
+    """Create directory of conda YAML files."""
     lib_src = CURRENT_DIRECTORY / 'conda_envs'
     lib_dest = output_folder / 'conda_envs'
     if lib_dest.is_dir():
@@ -465,7 +495,7 @@ def parse_arguments() -> argparse.Namespace:
 
     required = parser.add_argument_group('Required arguments')
     required.add_argument('--data', dest='data_file', required=True, help="Path to comma- or tab-separated file that lists all input data.")
-    required.add_argument('--pipeline-config', dest='pipeline_config', required=True, help="Path to yaml file that defines rules and rule specific parameters.")
+    required.add_argument('--pipeline-config', dest='pipeline_config', required=True, help="Path to YAML file that defines rules and rule specific parameters.")
     required.add_argument('--outdir', '-o', dest='output_folder', required=True, help="Path to output folder.")
 
     other = parser.add_argument_group('Other arguments')
@@ -481,13 +511,13 @@ def parse_arguments() -> argparse.Namespace:
     other.add_argument('--conda-frontend', dest='conda_frontend', default='mamba', type=str, choices=['mamba','conda'],
                        help="Choose frontend for installing environmnents ['conda', 'mamba']. (Default: %(default)s)")
     other.add_argument('--conda-prefix', dest='conda_prefix', default=None, type=str,
-                       help='Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.')
+                       help="Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.")
     other.add_argument('--conda-create-envs-only', dest='conda_create_envs_only', action='store_true',
                        help="Only create job-specific environments and exit. --use-conda has to be set.")
     other.add_argument('--latency-wait', dest='latency', default=3, type=int,
                        help="Seconds to wait before checking if all files of a rule were created (Default: %(default)s). Should be increased if using cluster mode.")
     other.add_argument('--other', dest='other', default=None, type=str, nargs="*", action="append",
-                       help="Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.)")
+                       help="Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.). Can be used multiple times.")
     other.add_argument('-v', '--version', action='version', version='%(prog)s \nVersion: {}'.format(metadata.__version__),
                        help="Show program's version number and exit")
     other.add_argument('--verbose', dest='verbose', action="store_true", help="Print debugging output")

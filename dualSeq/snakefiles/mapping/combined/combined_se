@@ -18,20 +18,22 @@ rule all:
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
 
 def virus2genome(wildcards):
-	for sample in config['entries'].keys():
-		if 'Mock' in sample:
-			if wildcards.virus == "None":
-				return("None","None")
-		elif wildcards.virus in config['entries'][sample]['combined']['virus_genome']:
-			files = [config['entries'][sample]['combined']['virus_genome'], config['entries'][sample]['combined']['virus_genome_annotation']]
-			return files
+    """Function to get viral genome and annotation files for a sample."""
+	#for sample in config['entries'].keys():
+	if 'virus_genome' in config['entries'][wildcards.sample]['main'].keys():
+        files = [config['entries'][wildcards.sample]['combined']['virus_genome'], config['entries'][wildcards.sample]['combined']['virus_genome_annotation']]
+		return files
+	elif wildcards.virus == "None":
+		return("None","None")			
 
 def annotation_name(wildcards):
+    """Function to combine host annotation name with virus name."""
 	filename, file_extension = os.path.splitext("%%HOST_GTF%%")
 	anno_file = filename+"_"+wildcards.virus+file_extension
 	return anno_file
 
 rule star_index:
+    """Create STAR index for host + virus reference"""
     input:
         genome_host="%%HOST_GENOME%%"
     output:
@@ -66,11 +68,12 @@ rule star_index:
 	"""
 
 def get_genome(wildcards):
+    """Get name of STAR index for sample."""
 	host = "%%STAR_INDEX_DIR%%".rstrip("/")
-	if 'Mock' in wildcards.sample:
+	if 'virus_genome' not in config['entries'][wildcards.sample]['main'].keys():
 		return(host+"_None")
 	else:
-		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['combined']['virus_genome']))[0]
+		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['main']['virus_genome']))[0]
 		return(host+"_"+virus)
 
 rule star_mapping:

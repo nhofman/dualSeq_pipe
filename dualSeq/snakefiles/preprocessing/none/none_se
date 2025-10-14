@@ -1,9 +1,7 @@
-from os import listdir
-from os.path import isfile, dirname
 
-localrules: none__create_symlink
+localrules: none__create_link
 
-rule create_symlink:
+rule create_link:
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
@@ -12,4 +10,10 @@ rule create_symlink:
     threads:
         1
     shell:
-        "ln `readlink -f {input}` {output}"
+        """
+        if gzip -t {input} 2>/dev/null; then
+            ln `readlink -f {input}` {output}
+        else
+            gzip -c {input} > {output}
+        fi
+        """

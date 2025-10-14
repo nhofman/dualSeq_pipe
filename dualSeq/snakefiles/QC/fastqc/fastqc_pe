@@ -1,19 +1,19 @@
-from os import listdir
-from os.path import isfile, basename, splitext
 
 rule all:
     input:
-        expand("QC/fastqc/{A}_{B}_fastqc.html", A=sorted(config['entries'].keys()), B=["R1","R2"])
+        expand("QC/fastqc/{sample}_{read}_fastqc.html", sample=sorted(config['entries'].keys()), read=["R1","R2"])
 
 rule fastqc_fwd:
+    """Run FastQC with forward reads and rename the output files to {sample_name}_R1_*."""
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads']
     output:
         "QC/fastqc/{sample}_R1_fastqc.html",
         "QC/fastqc/{sample}_R1_fastqc.zip"
     priority: 1
-    group:
-        "fastqc"
+    log:
+        "QC/fastqc/log/{sample}_fwd.log"
+    group: "fastqc"
     conda: "../conda_envs/fastqc_env.yaml"
     threads:
         1
@@ -32,14 +32,16 @@ rule fastqc_fwd:
         """
 
 rule fastqc_rev:
+    """Run FastQC with reverse reads and rename the output files to {sample_name}_R2_*."""
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
     output:
         "QC/fastqc/{sample}_R2_fastqc.html",
         "QC/fastqc/{sample}_R2_fastqc.zip"
     priority: 1
-    group:
-        "fastqc"
+    log:
+        "QC/fastqc/log/{sample}_rev.log"
+    group: "fastqc"
     conda: "../conda_envs/fastqc_env.yaml"
     threads:
         1

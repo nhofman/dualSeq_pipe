@@ -1,31 +1,22 @@
-from os import listdir
-from os.path import isfile, splitext
-
-
-def getFilePath(sample_name, forward):
-    if forward:
-        path = config['entries'][sample_name]['main']['forward_reads']
-    else:
-        path = config['entries'][sample_name]['main']['reverse_reads']
-    return path
 
 rule all:
     input:
-        expand("preprocessing/{sample}_R{B}.fastq.gz", sample=sorted(config['entries'].keys()), B=["1","2"])
+        expand("preprocessing/{sample}_{read}.fastq.gz", sample=sorted(config['entries'].keys()), read=["R1","R2"])
 
 rule trim_reads:
+    """Trim paired-end reads with fastp."""
     input:
         reads_forward=lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads'],
         reads_reverse=lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
-        #reads_forward=lambda wildcards: getFilePath(wildcards.sample, True),
-        #reads_reverse=lambda wildcards: getFilePath(wildcards.sample, False)
     output:
         fwd="preprocessing/{sample}_R1.fq.gz",
         rev="preprocessing/{sample}_R2.fq.gz",
-        json="preprocessing/{sample}.fastp.json",
-        html="preprocessing/{sample}.fastp.html"
-    group:
-        "fastp"
+        json="preprocessing/fastp/{sample}.fastp.json",
+        html="preprocessing/fastp/{sample}.fastp.html"
+    priority: 1
+    log:
+        "preprocessing/fastp/log/{sample}.log"
+    group: "fastp"
     conda: "../conda_envs/fastp_env.yaml"
     threads:
         2

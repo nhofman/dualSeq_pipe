@@ -1,11 +1,10 @@
-from os import listdir
-from os.path import isfile, splitext
 
 rule all:
     input:
-        expand("preprocessing/{A}.fq.gz", A=sorted(config['entries'].keys()))
+        expand("preprocessing/{sample}.fq.gz", sample=sorted(config['entries'].keys()))
 
 rule trim_reads:
+    """Trim reads with fastp."""
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
@@ -14,8 +13,7 @@ rule trim_reads:
     priority: 1
     log:
         "preprocessing/fastp/log/{sample}.log"
-    group:
-        "fastp"
+    group: "fastp"
     conda: "../conda_envs/fastp_env.yaml"
     threads:
         2

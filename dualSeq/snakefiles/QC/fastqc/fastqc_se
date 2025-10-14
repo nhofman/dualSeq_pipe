@@ -1,11 +1,10 @@
-#from os import listdir
-#from os.path import isfile, basename, splitext
 
 rule all:
     input:
-        expand("QC/fastqc/{A}_fastqc.html", A=sorted(config['entries'].keys()))
+        expand("QC/fastqc/{sample}_fastqc.html", sample=sorted(config['entries'].keys()))
 
 rule fastqc:
+    """Run FastQC with reads and rename the output files to {sample_name}_*."""
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
