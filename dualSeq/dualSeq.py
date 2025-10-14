@@ -21,6 +21,7 @@ SNAKEFILES_TARGET_DIRECTORY = 'snakemake_lib'  # type: str
 
 
 def main():
+    """Main function to parse input files and create and execute the snakemake command."""
     args = parse_arguments()
     used_modules, paired_end = load_pipeline_config(args.pipeline_config)
     validate_argsfiles(args.data_file, args.pipeline_config)
@@ -59,6 +60,7 @@ def main():
 
 
 def check_columns(col_names: List[str], modules: Dict[str, List['Module']], paired_end: bool) -> List[Tuple[str, str]]:
+    """Function to check the validity of the data file columns."""
     col2module = [('', '') for _ in col_names]  # type: List[Tuple[str, str]]
     if 'name' not in col_names:
         raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('name'))
@@ -102,6 +104,7 @@ def check_columns(col_names: List[str], modules: Dict[str, List['Module']], pair
 
 
 def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_end: bool) -> Dict[str, Dict[str, Dict[str, str]]]:
+    """Function to parse the data file."""
     table = {}  # type: Dict[str, Dict[str, Dict[str, str]]]
     with data_file.open('r') as file:
         col_names = file.readline().strip().replace(',','\t').split('\t')
@@ -125,6 +128,7 @@ def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_
 
 
 def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module']], bool]:
+    """Parse pipeline config file."""
     modules = {"preprocessing": [],
                "QC": [],
                "mapping": [],
@@ -139,7 +143,6 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                     "report": [],
                     "variant_analysis": []}
     config = yaml.safe_load(pipeline_config.open('r'))
-    #print(config)
     if "preprocessing" in config:
         if "module" in config["preprocessing"]:
             if not isinstance(config["preprocessing"]["module"], str):
@@ -241,6 +244,7 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
 
 
 def load_module(category: str, module_name: str, settings: Dict[str, str], pipeline_config_path: Path, paired_end: bool) -> 'Module':
+    """Parse module parameters given in the pipeline config file and compare them with specifications defined in module yaml file."""
     loaded_module = Module(module_name)
     module_yaml_file = SNAKEFILES_LIBRARY / category / module_name / (module_name + '.yaml')
     if module_yaml_file.is_file():
@@ -334,6 +338,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], pipel
 
 
 def validate_argsfiles(data_file: Path, pipeline_config: Path):
+    """Validate the data file and pipeline config file."""
     if not data_file.is_file():
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(data_file))
     if not pipeline_config.is_file():
@@ -341,6 +346,7 @@ def validate_argsfiles(data_file: Path, pipeline_config: Path):
 
 
 def create_output_directory(output_path: Path):
+    """Create the given output directory."""
     if not output_path.exists():
         output_path.mkdir(parents=True)
     elif not output_path.is_dir():
@@ -354,6 +360,7 @@ def create_output_directory(output_path: Path):
 
 
 def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
+    """Function to create the snakemake files and related scripts for every module in the snakemake target directory."""
     pipeline_config = create_snakemake_pipeline_config(output_folder, data)
     # find every rule name
     re_rule_name = re.compile('^rule (?P<rule_name>.*):$', re.MULTILINE)
@@ -405,6 +412,7 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
 
 
 def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]]) -> Path:
+    """Create snakemake config file that contains a dictionary of all input data."""
     config_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'snakefile_config.yaml'
     with config_path.open('w') as pipeline_config:
         pipeline_config.write('entries:\n')
@@ -418,6 +426,7 @@ def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[s
 
 
 def create_conda_lib(output_folder: Path):
+    """Create directory of conda yaml files."""
     lib_src = CURRENT_DIRECTORY / 'conda_envs'
     lib_dest = output_folder / 'conda_envs'
     if lib_dest.is_dir():
@@ -429,6 +438,7 @@ def create_conda_lib(output_folder: Path):
 
 
 def create_scripts_lib(output_folder: Path):
+    """Create directory of miscellaneous scripts."""
     lib_src = CURRENT_DIRECTORY / 'scripts'
     lib_dest = output_folder / 'scripts'
     if lib_dest.is_dir():
@@ -440,6 +450,7 @@ def create_scripts_lib(output_folder: Path):
 
 
 def copy_lib(src_folder: Path, dest_folder: Path):
+    """Copy source directory to output folder."""
     try:
         if dest_folder.is_dir():
             shutil.rmtree(str(dest_folder))
@@ -449,6 +460,7 @@ def copy_lib(src_folder: Path, dest_folder: Path):
 
 
 def parse_arguments() -> argparse.Namespace:
+    """Parse required and optional command line arguments."""
     parser = argparse.ArgumentParser(description=metadata.__program_name__, add_help=False)
 
     required = parser.add_argument_group('Required arguments')
