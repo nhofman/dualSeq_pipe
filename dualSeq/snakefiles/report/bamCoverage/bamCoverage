@@ -3,10 +3,11 @@ from os.path import isfile
 
 rule all:
     input:
-        expand("report/bigwig/host/{A}.bigWig", A=sorted(config['entries'].keys())),
-        expand("report/bigwig/virus/{A}.bigWig", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+        expand("report/bigwig/host/{sample}.bigWig", sample=sorted(config['entries'].keys())),
+        expand("report/bigwig/virus/{sample}.bigWig", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()])
 
 rule create_bigwig_host:
+    """Create bigwig file from host bam file."""
     input:
         bam = "mapping/host/{sample}.bam",
         bai = "mapping/host/{sample}.bam.bai"
@@ -25,6 +26,7 @@ rule create_bigwig_host:
         "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_HOST%% --effectiveGenomeSize %%EFFECTIVEGENOMESIZE_HOST%% --binSize %%BINSIZE_HOST%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%% 2> {log}"
 
 rule create_bigwig_virus:
+    """Create bigwig file from virus bam file."""
     input:
         bam = "mapping/virus/{sample}.bam",
         bai = "mapping/virus/{sample}.bam.bai"

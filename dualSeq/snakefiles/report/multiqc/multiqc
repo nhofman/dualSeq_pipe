@@ -8,6 +8,7 @@ rule all:
         "report/multiqc/multiqc_report.html"
 
 rule parse_envs:
+    """Parse conda environment files to read the defined software versions."""
     input:
         "conda_envs"
     output:
@@ -20,12 +21,8 @@ rule parse_envs:
         """
 
 rule multiqc:
+    """Generate MultiQC report by scanning the working directory for usable files."""
     input:
-        #expand("QC/{A}_fastqc.html", A=sorted(config['entries'].keys()))
-        #expand("preprocessing/{A}.fastp.json", A=sorted(config['entries'].keys())),
-        #expand("mapping/{A}Log.final.out", A=sorted(config['entries'].keys())),
-        #"gene_expression_analysis/host/count_table/counts.txt.report",
-        #"multiqc_config.yaml"
         rules.multiqc__parse_envs.output
     output:
         "report/multiqc/multiqc_report.html"

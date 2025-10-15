@@ -41,7 +41,7 @@ countdata <- countdata[,mixedorder(colnames(countdata))]
 if(rRNA_file != "NULL"){
   rRNA <- read.table(rRNA_file, header = FALSE, stringsAsFactors = FALSE)
   rRNA <- rRNA$V1
-  countdata <- countdata[!rownames(countdata) %in% rRNA,] #countdata[-grep("RNA[0-9-]+S", rownames(countdata)),]
+  countdata <- countdata[!rownames(countdata) %in% rRNA,] 
 }
 
 # Import condition file
@@ -68,14 +68,12 @@ if(color_file != "NULL"){
   color <- color.df[,2]
   names(color) <- color.df[,1]
 }else{
-  #colnames.col <- "lightgrey"
   color <- hue_pal()(length(unique(conditiontable$Treatment)))
   names(color) <- unique(conditiontable$Treatment)
 }
 # Set color for column names of countdata
 colnames.col <- c()
 for(x in names(color)){
-  #i <- grep(x, colnames(countdata.normalized))
   i <- grep(x, conditiontable$Treatment)
   colnames.col[i] <- color[x]
 }
@@ -109,9 +107,9 @@ dev.off()
 deseq.results <- DESeq(object = deseqDataset, parallel = FALSE)
 
 # Calculate variance-stabilized read counts
-deseq.results.vst <- vst(deseq.results, blind = FALSE) # or vst()
+deseq.results.vst <- vst(deseq.results, blind = FALSE)
 
-#deseq.results[ rowSums(counts(deseq.results)) == 0, ] <- 1 # replace rows that have no reads with pseudocount
+#deseq.results[rowSums(counts(deseq.results)) == 0, ] <- 1 # replace rows that have no reads with pseudocount
 
 # Plot PCA
 shape <- if(length(unique(conditiontable$Time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$Time))) }else{ c(1:length(unique(conditiontable$Time)))}

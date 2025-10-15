@@ -6,10 +6,6 @@ library(gtools)
 library(gggenomes)
 library(egg)
 
-#out.dir <- "Documents/Virus_project/variant_calling_new/plots/"
-#vcf.dir <- "~/Documents/Virus_project/variant_calling_new/vcf"
-#gff.file <- paste0("Documents/Virus_project/gff/", virus, ".gff")
-
 # Parse arguments
 args <- commandArgs(F)
 out.dir <- args[match('--output', args) + 1] 

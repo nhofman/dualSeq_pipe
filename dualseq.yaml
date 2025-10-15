@@ -1,0 +1,11 @@
+name: dualSeq
+channels:
+- conda-forge
+- bioconda
+- anaconda
+- defaults
+dependencies:
+- ncurses
+- snakemake>=7
+- python>=3.10
+- pyyaml

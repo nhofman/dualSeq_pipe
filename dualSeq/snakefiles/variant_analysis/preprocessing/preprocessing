@@ -1,29 +1,30 @@
+INFECTED_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]
+
 rule all:
   input:
-    expand("variant_analysis/preprocessing/{sample}_indel.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+    expand("variant_analysis/preprocessing/{sample}_indel.bam", sample=INFECTED_SAMPLES),
+    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=INFECTED_SAMPLES)
     
 
 rule remove_spliced:
-  input:
-    "mapping/virus/{sample}.bam"
-  output:
-    "variant_analysis/preprocessing/{sample}_noSplice.bam"
-  priority: 1
-  conda: "../conda_envs/samtools_env.yaml"
-  resources:
+    """Remove spliced reads using the CIGAR string."""
+    input:
+        "mapping/virus/{sample}.bam"
+    output:
+        "variant_analysis/preprocessing/{sample}_noSplice.bam"
+    priority: 1
+    conda: "../conda_envs/samtools_env.yaml"
+    resources:
         mem_mb=%%MEM_MB%%
-  shell:
-    """
-    samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
-    samtools sort -O bam -o {output} {output}.sam
-    #samtools view -h -b {output}.sam > {output}
-    rm {output}.sam
-    """
+    shell:
+        """
+        samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
+        samtools sort -O bam -o {output} {output}.sam
+        rm {output}.sam
+        """
 
-# (Probabilistic) realignment
-# correct for mapping errors
 rule realign:
+    """Realign reads to correct for mapping errors using the LoFreq's viterbi algorithm."""
     input:
         bam="variant_analysis/preprocessing/{sample}_noSplice.bam",
         genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome']
@@ -40,8 +41,8 @@ rule realign:
     shell:
         "lofreq viterbi -f {input.genome} {input.bam} | samtools sort -o {output} 2>&1 | tee {log}"
 		
-# Insert indel qualities
 rule indel_qual:
+    """Insert indel qualities with LoFreq's Dindel algorithm."""
     input:
         bam="variant_analysis/preprocessing/{sample}_realign.bam",
         genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome']
@@ -61,6 +62,7 @@ rule indel_qual:
         """
 
 rule index:
+    """Create index for indel bam file."""
     input:
         "variant_analysis/preprocessing/{sample}_indel.bam"
     output:

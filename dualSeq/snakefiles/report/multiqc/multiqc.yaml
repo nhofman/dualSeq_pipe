@@ -13,9 +13,9 @@ optional_settings:
     default: "2000"
 
 single_end:
-  snakefile: "multiqc_se"
+  snakefile: "multiqc"
 
 paired_end:
-  snakefile: "multiqc_pe"
+  snakefile: "multiqc"
 
 
