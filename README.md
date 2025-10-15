@@ -84,7 +84,9 @@ Other arguments:
 | virus_genome_annotation | path to virus annotation file (gff/gtf) |
 
 Example:
+
 name | reads | condition | virus_genome | virus_genome_annotation
+-----|-------|-----------|--------------|------------------------
 EBOV_12h_1 | /path/to/reads.fq | EBOV_12h | /path/to/EBOV.fasta | /path/to/EBOV.gtf
 H1N1_24h_1 | /path/to/reads.fq | H1N1_24h | /path/to/H1N1.fasta | /path/to/H1N1.gtf
 Mock_12h_1 | /path/to/reads.fq | Mock_12h | | 
@@ -127,8 +129,11 @@ gene_expression_analysis:
 
 ```
 **comparisons file**: A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
+
 **host genome**: Host reference genome {fasta}. File path needs to be specified in config file.
+
 **host annotation**: Host reference annotation {gff/gtf}. File path needs to be specified in config file.
+
 **color file**: A tab-separated file that is used to specify custom colors for each pathogen (pathogen	color). The file pah is set for the deseq2 module in the config file.
 
 #### Optional:
