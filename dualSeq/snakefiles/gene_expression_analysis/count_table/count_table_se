@@ -10,14 +10,14 @@ rule all:
         multiext("gene_expression_analysis/count_table/counts_assignment_absolute", ".pdf", ".png")
         
 rule count_reads_host:
+    """Count features for read pairs mapped to host genome."""
     input:
         expand("mapping/host/{sample}.bam", sample=config['entries'].keys())
     output:
         counts = "gene_expression_analysis/count_table/counts.txt",
         summary = "gene_expression_analysis/count_table/counts.txt.summary"
     priority: 1
-    group:
-        "count_reads_host"
+    group: "count_reads_host"
     log:
         "gene_expression_analysis/count_table/logs/featurecounts.log"
     conda: "../conda_envs/counts_env.yaml"
@@ -30,14 +30,14 @@ rule count_reads_host:
 
             
 rule plot_assignment:
+    """Plot featureCounts statistic."""
     input:
         feature_counts_log = "gene_expression_analysis/count_table/counts.txt.summary"
     output:
         multiext("gene_expression_analysis/count_table/counts_assignment_relative", ".pdf", ".png"),
         multiext("gene_expression_analysis/count_table/counts_assignment_absolute", ".pdf", ".png")
     priority: 1
-    group:
-        "count_reads_host"
+    group: "count_reads_host"
     params:
         output_folder="gene_expression_analysis/count_table/"
     log:

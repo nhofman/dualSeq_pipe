@@ -7,13 +7,16 @@ localrules: plot_statistics
 wildcard_constraints:
   sample="[^/]+"
 
+MOCK_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' not in config['entries'][entry]['main'].keys()]
+INFECTED_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]
+
 rule all:
     input:
-        expand("mapping/{A}.bam", A=config['entries'].keys()),
-        expand("mapping/host/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/virus/{A}.bam", A=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry]),
-        expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
+        expand("mapping/{sample}.bam", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
+        expand("mapping/host/{sample}.bam", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
+        expand("mapping/virus/{sample}.bam", sample=INFECTED_SAMPLES),
+        expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
+        expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
 
@@ -77,6 +80,7 @@ def get_genome(wildcards):
 		return(host+"_"+virus)
 
 rule star_mapping:
+    """Map preprocessed reads to the indexed reference genome."""
     input:
         index_dir=get_genome, #"%%STAR_INDEX_DIR%%",
         reads="preprocessing/{sample}.fq.gz",
@@ -103,6 +107,7 @@ rule star_mapping:
         " tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"
 
 rule index_bam:
+    """Index bam file."""
     input:
         "mapping/{sample}.bam"
     output:
@@ -117,80 +122,66 @@ rule index_bam:
     shell:
         "samtools index {input} 2>&1 | tee {log}"
 
-rule Mock:
+rule mock_statistic:
+    """Create mapping statistic for uninfected samples by counting SAM FLAGS."""
     input:
-        bam = "mapping/{sample}.bam",
-        bai = "mapping/{sample}.bam.bai"
+        bam = lambda wildcards: f"mapping/{wildcards.sample}.bam" if wildcards.sample in MOCK_SAMPLES else "None",
+        bai = lambda wildcards: f"mapping/{wildcards.sample}.bam.bai" if wildcards.sample in MOCK_SAMPLES else "None"
     output:
         bam = "mapping/host/{sample}.bam",
         stat = "mapping/host/stats/{sample}_stats.csv"
     priority: 1
-    wildcard_constraints:
-        sample="Mock.*"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
+         if [[ {input.bam} == "None" ]]; then
+            exit 0
+        fi
         mapped_host=$(samtools view -c -F 1284 {input.bam})
         uniquely_host=$(samtools view -c -F 1284 -q 255 {input.bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output.stat}
-        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',0,host' >> {output.stat}
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output.stat}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',0,host,untreated' >> {output.stat}
         cp {input.bam} {output.bam}
         """
 
-rule split_bam_virus:
+rule split_bam_infected:
+    """Split bam file by organism using chromosome names in virus annotaton file."""
     input:
-        bam="mapping/{sample}.bam",
-        idx="mapping/{sample}.bam.bai"
+        bam=lambda wildcards: f"mapping/{wildcards.sample}.bam" if wildcards.sample in INFECTED_SAMPLES else "None",
+        idx=lambda wildcards: f"mapping/{wildcards.sample}.bam.bai" if wildcards.sample in INFECTED_SAMPLES else "None"
     output:
-        bam="mapping/virus/{sample}.bam",
-        bai="mapping/virus/{sample}.bam.bai",
-        sam=temp("mapping/virus/{sample}.sam")
+        bam_virus="mapping/virus/{sample}.bam",
+        bai_virus="mapping/virus/{sample}.bam.bai",
+        sam_virus=temp("mapping/virus/{sample}.sam"),
+        bam_host = "mapping/host/{sample}.bam"
     params:
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
     priority: 1
-    wildcard_constraints:
-        sample="(?!Mock).*"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
+        if [[ {input.bam} == "None" ]];
+            exit 0
+        fi
         id=`cut -sf 1 {params.genome} | uniq`
-        samtools view -H {input.bam} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.sam}
-        samtools view {input.bam} $id >> {output.sam}
-        samtools view -hb {output.sam} > {output.bam}
-        samtools index {output.bam}
-        """
-
-rule split_bam_host:
-    input:
-        bam="mapping/{sample}.bam",
-        idx="mapping/{sample}.bam.bai"
-    output:
-        "mapping/host/{sample}.bam",
-        #temp("mapping/host/{sample}.sam")
-    params:
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome_annotation']
-    priority: 1
-    wildcard_constraints:
-        sample="(?!Mock).*"
-    group:
-        "bam_process"
-    conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
-    shell:
-        """
-        id=`cut -sf 1 {params.genome} | uniq`
-        id=`echo $id | sed -e 's/ /\\\\\\|/g'`
-        samtools idxstats {input.bam} | cut -f 1 | grep -v $id | xargs samtools view -b {input.bam} > {output}
+        samtools view -H {input.bam} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.sam_virus}
+        samtools view {input.bam} $id >> {output.sam_virus}
+        samtools view -hb {output.sam_virus} > {output.bam_virus}
+        samtools index {output.bam_virus}
+        id="${{id// /\\n}}"
+        samtools view -h {input.bam} | grep -v "$id" - | samtools view -hb - > {output.bam_host}
+        samtools index {output.bam_host} 
         """
 
 rule index_bam_host:
+    """Index host bam file."""
     input:
         "mapping/host/{sample}.bam"
     output:
@@ -204,6 +195,7 @@ rule index_bam_host:
         "samtools index {input} 2>&1 | tee {log}"
 
 rule virusNames:
+    """Get reads mapping to both organisms by identifying reads mapped to virus genome and searching for these reads in host bam."""
     input:
         virus="mapping/virus/{sample}.bam",
         host="mapping/host/{sample}.bam"
@@ -225,6 +217,7 @@ rule virusNames:
         """
 
 rule statistics_host:
+    """Generate mapping statistic for host files."""
     input:
         both="mapping/virus/{sample}_both.txt",
         host_bam="mapping/host/{sample}.bam",
@@ -248,6 +241,7 @@ rule statistics_host:
         """
 
 rule statistics_virus:
+    """Generate mapping statistic for virus files."""
     input:
         both="mapping/virus/{sample}_both.txt",
         virus_bam="mapping/virus/{sample}.bam",
@@ -269,9 +263,10 @@ rule statistics_virus:
         """
 
 rule plot_statistics:
+    """Plot mapping statistic."""
     input:
-        stat_host=expand("mapping/host/stats/{sample}_stats.csv", sample=config['entries'].keys()),
-        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=[entry for entry in config['entries'].keys() if "Mock" not in entry])
+        stat_host=expand("mapping/host/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES+MOCK_SAMPLES),
+        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES)
     output:
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),

@@ -10,6 +10,7 @@ rule all:
         multiext("gene_expression_analysis/count_table/counts_assignment_absolute", ".pdf", ".png")
         
 rule count_reads_host:
+    """Count features for read pairs mapped to host genome."""
     input:
         expand("mapping/host/{sample}.bam", sample=config['entries'].keys())
     output:
@@ -29,6 +30,7 @@ rule count_reads_host:
         "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -p --countReadPairs -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 | tee {log}"
 
 rule plot_assignment:
+    """Plot featureCounts statistic."""
     input:
         feature_counts_log = "gene_expression_analysis/count_table/counts.txt.summary"
     output:

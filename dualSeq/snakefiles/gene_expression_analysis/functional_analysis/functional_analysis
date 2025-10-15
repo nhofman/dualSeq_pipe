@@ -1,4 +1,5 @@
 def getComparisons():
+    """Parse comparison file for differential gene expression analysis."""
     comparisons = []
     with(open("%%COMPARISONS_HUMAN%%", 'r')) as input_file:
         for line in input_file:
@@ -7,6 +8,7 @@ def getComparisons():
     return(comparisons)
 
 def getDatabases():
+    """Parse functional annotation databases and GO categories"""
     #print(type(%%DB%%))
     #print(type(%%ONT%%))
     db="%%DB%%".split(",")
@@ -25,15 +27,13 @@ rule all:
         expand("gene_expression_analysis/deseq2/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
 
 rule functional_analysis:
+    """Functional enrichment analysis of differentially expressed genes with user-defined databases."""
     #localrule: True
     input:
         #rdata="gene_expression_analysis/deseq2/deseq2.RData",
         "gene_expression_analysis/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv"
     output:
-        #touch("gene_expression_analysis/deseq2/gsea.done"),
-        expand("gene_expression_analysis/deseq2/GSEA/{{comp}}_{db}.csv", db=DATABASE),
-        #directory("gene_expression_analysis/deseq2/GSEA"),
-        #directory("gene_expression_analysis/deseq2/STRING")
+        expand("gene_expression_analysis/deseq2/GSEA/{{comp}}_{db}.csv", db=DATABASE)
     priority: 1
     group:
         "gsea"

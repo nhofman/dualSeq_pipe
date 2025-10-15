@@ -47,7 +47,6 @@ times <- length(unique(stats.t.mean$Time[stats.t.mean$Virus==stats.t.mean$Virus[
 times <- ifelse(times<3, 3, times)
 
 # plot mapping statistic for host + virus samples
-# color each virus differently? What about virus multimapped?
 p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped" & stats.t.mean$Class=="infected",], aes(x=factor(Time, levels = unique(mixedsort(Time))), y=Count_percent, group=Category_2, fill=Category_2)) +
   geom_bar(stat = "identity", color = "black") +
   facet_wrap(~ Virus, scales = "free_x", ncol = ncol.facet) +

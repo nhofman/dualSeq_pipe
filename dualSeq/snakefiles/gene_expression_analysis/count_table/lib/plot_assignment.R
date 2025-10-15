@@ -59,5 +59,5 @@ create_feature_counts_statistics <- function(featureCountsLog) {
 plot.list <- create_feature_counts_statistics(feature_counts_log_file)
 invisible(sapply(list("pdf", "png"), function(p){
   sapply(names(plot.list), function(x){
-    ggsave(plot=plot.list[[x]],filename=paste0("counts_assignment_", x, ".", p), device=p, path=output_folder, width=20, height=12)
+    ggsave(plot=plot.list[[x]], filename=paste0("counts_assignment_", x, ".", p), device=p, path=output_folder, width=20, height=12)
   })}))
