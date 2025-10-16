@@ -167,7 +167,7 @@ rule split_bam_infected:
     #resources: cpus=1, mem_mb=4000
     shell:
         """
-        if [[ {input.bam} == "None" ]];
+        if [[ {input.bam} == "None" ]]; then
             exit 0
         fi
         id=`cut -sf 1 {params.genome} | uniq`
@@ -203,8 +203,6 @@ rule virusNames:
         names=temp("mapping/virus/{sample}_name.txt"),
         both="mapping/virus/{sample}_both.txt"
     priority: 1
-    wildcard_constraints:
-        sample="(?!Mock).*"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
@@ -224,8 +222,6 @@ rule statistics_host:
     output:
         "mapping/host/stats/{sample}_stats.csv"
     priority: 1
-    wildcard_constraints:
-        sample="(?!Mock).*"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"

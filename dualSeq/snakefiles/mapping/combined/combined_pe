@@ -146,7 +146,7 @@ rule mock_statistic:
         uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.bam})
         proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class > {output.stat}
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output.stat}
         echo {wildcards.sample}','${{total}}','${{proper_pairs}}','${{proper_pairs_uniq}}',0,host,untreated' >> {output.stat}
         cp {input.bam} {output.bam}
         """
@@ -170,7 +170,7 @@ rule split_bam_infected:
     #resources: cpus=1, mem_mb=4000
     shell:
         """
-        if [[ {input.bam} == "None" ]];
+        if [[ {input.bam} == "None" ]]; then
             exit 0
         fi
         id=`cut -sf 1 {params.genome} | uniq`
@@ -223,12 +223,11 @@ rule statistics_host:
     """Generate mapping statistic for host files."""
     input:
         both="mapping/virus/{sample}_both.txt",
-        host_bam="mapping/host/{sample}.bam",
+        host_bam="mapping/host/{sample}.bam"
+        #host_bam=lambda wildcards: f"mapping/host/{wildcards.sample}.bam" if wildcards.sample in INFECTED_SAMPLES else "None"
     output:
         "mapping/host/stats/{sample}_stats.csv"
     priority: 1
-    wildcard_constraints:
-        sample="(?!Mock).*"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"

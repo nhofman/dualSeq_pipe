@@ -70,7 +70,7 @@ Other arguments:
 
 ### Required:
 
-#### Data file (--data): 
+1. Data file (--data): 
 
 A comma- or tab-separated file that describes all input data. The samples are listed line by line.
 
@@ -92,7 +92,7 @@ Mock_12h_1 | /path/to/reads.fq | Mock_12h | |
 Mock_12h_2 | /path/to/reads.fq | Mock_12h | | 
 Mock_24h_1 | /path/to/reads.fq | Mock_24h | | 
 
-#### Pipeline config file (--pipeline-config): 
+2. Pipeline config file (--pipeline-config): 
 
 A YAML file that defines the modules that will be executed and the rule specific parameters. For each module,there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
 	
@@ -119,7 +119,7 @@ gene_expression_analysis:
   modules: ["count_table", "deseq2"]
 
   count_table:
-    gff_feature_type_human: "gene"
+    gff_feature_type_human: "exon"
     gff_feature_name_human: "gene_id"
     gff_human: "/path/to/human/genome.gtf"
 
@@ -129,18 +129,28 @@ gene_expression_analysis:
     rRNA: "/path/to/rRNA_genes.txt"
 
 ```
-**comparisons file**: A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
 
-**host genome**: Host reference genome {fasta}. File path needs to be specified in config file.
+**host_genome** (required): Host reference genome {fasta}. File path needs to be specified in config file.
 
-**host annotation**: Host reference annotation {gff/gtf}. File path needs to be specified in config file.
+**host_gtf** (required): Host reference annotation {gff/gtf}. File path needs to be specified in config file.
 
-**color file**: A tab-separated file that is used to specify custom colors for each pathogen (pathogen	color). The file pah is set for the deseq2 module in the config file.
+**comparisons_human file** (required): A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
+
+**color file** (optional): A tab-separated file that is used to specify custom colors for each pathogen (pathogen	color). The file path is set for the deseq2 module in the config file. Colors can either be name or HEX code.
+
+**rRNA file** (optional): A file containing a list of gene names that should be removed prior to the normalization of feature counts, e.g., rRNA genes.
 
 ### Optional:
 
 #### Snakemake profile: 
-A YAML file to define default values for snakemake command line parameters. The profile is used to specify the cluster command and resources.
+
+Snakemake allows to specify workflow profiles to define default values for snakemake command line parameters, such as the cluster command and resources. The profile is defined in a YAML file, that has to be named config.yaml or config.vX+.yaml, where X is the minimum supported Snakemake version. The location of the config file is specified with the option `--profile <profile_folder>`.
+
+Example:
+
+```
+
+```
 
 #### Conda/Mamba
 
