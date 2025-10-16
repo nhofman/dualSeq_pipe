@@ -169,10 +169,12 @@ gene_expression_analysis:
 
 ## Citation
 
-Sequence data availability:
+**Sequence data availability:**
+
 The raw sequence data of the time-resolved virus infection study were deposited in the Short Read Archive (SRA) of the National Center for Biotechnology Information (NCBI) under the BioProject ID [PRJNA1074963](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA1074963/).
 
-Paper on infection study:
+**Paper on infection study:**
+
 Hofmann N, Bartkuhn M, Becker S, Biedenkopf N, Böttcher-Friebertshäuser E, Brinkrolf K, Dietzel E, Fehling SK, Goesmann A, Heindl MR, Hoffmann S, Karl N, Maisner A, Mostafa A, Kornecki L, Müller-Kräuter H, Müller-Ruttloff C, Nist A, Pleschka S, Sauerhering L, Stiewe T, Strecker T, Wilhelm J, Wuerth JD, Ziebuhr J, Weber F, Schmitz ML.2024.Distinct negative-sense RNA viruses induce a common set of transcripts encoding proteins forming an extensive network. J Virol98:e00935-24.https://doi.org/10.1128/jvi.00935-24
 
 ## Contact
