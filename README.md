@@ -29,8 +29,6 @@ Available analysis modules are:
 
 The required tools need to be installed before running the pipeline. If conda or mamba is preexisting on the system, the file dualseq.yaml can be used to create a conda/mamba environment containing all necessary tools and dependencies.
 
-The pipeline uses the Snakemake conda integration to provide the necessary software packages, if conda or mamba is installed on the system. The environments are defined as YAML files and can be set via the conda directive for each rule. Predefined environment files are provided in the directory `conda_envs`.
-
 ## Execution
 The wrapper script can be executed with the following command:
 ```
@@ -70,18 +68,19 @@ Other arguments:
 
 ## Input
 
-#### Required:
-- **data file**: A comma- or tab-separated file that describes all input data. The samples are listed line by line.
+### Required:
 
-| Column names | Description |
-|--------------|--------------|
-| name | unique sample name |
-| reads | path to file containing reads; *if single reads* |
-| forward_reads | path to file containing forward reads; *if paired end* |
-| reverse_reads | path to file containing reverse reads; *if paired end* |
-| condition | sample condition, e.g. treatment |
-| virus_genome | path to virus genome file (fasta) |
-| virus_genome_annotation | path to virus annotation file (gff/gtf) |
+#### Data file (--data): 
+
+A comma- or tab-separated file that describes all input data. The samples are listed line by line.
+
+- **name**: unique sample name 
+- **reads**: path to file containing reads; *if single reads* 
+- **forward_reads**: path to file containing forward reads; *if paired end*
+- **reverse_reads**: path to file containing reverse reads; *if paired end*
+- **condition**: sample condition, e.g. treatment
+- **virus_genome**: path to virus genome file (fasta)
+- **virus_genome_annotation**: path to virus annotation file (gff/gtf)
 
 Example:
 
@@ -93,7 +92,9 @@ Mock_12h_1 | /path/to/reads.fq | Mock_12h | |
 Mock_12h_2 | /path/to/reads.fq | Mock_12h | | 
 Mock_24h_1 | /path/to/reads.fq | Mock_24h | | 
 
-- **pipeline config file**: A YAML file that defines the modules that will be executed and the rule specific parameters. For each module,there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
+#### Pipeline config file (--pipeline-config): 
+
+A YAML file that defines the modules that will be executed and the rule specific parameters. For each module,there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
 	
 Example:
 ```
@@ -112,20 +113,20 @@ mapping:
   star:
     host_genome: "/path/to/human/genome.fasta"
     host_gtf: "/path/to/human/genome.gtf"
-	star_index_dir: "/path/to/human/star_idx/"
+    star_index_dir: "/path/to/human/star_idx/"
 
 gene_expression_analysis:
   modules: ["count_table", "deseq2"]
 
   count_table:
     gff_feature_type_human: "gene"
-	gff_feature_name_human: "gene_id"
+    gff_feature_name_human: "gene_id"
     gff_human: "/path/to/human/genome.gtf"
 
   deseq2:
     comparisons_human: "/path/to/comparisons.txt"
-	color: "/path/to/color.txt"
-	rRNA: "/path/to/rRNA_genes.txt"
+    color: "/path/to/color.txt"
+    rRNA: "/path/to/rRNA_genes.txt"
 
 ```
 **comparisons file**: A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
@@ -136,9 +137,15 @@ gene_expression_analysis:
 
 **color file**: A tab-separated file that is used to specify custom colors for each pathogen (pathogen	color). The file pah is set for the deseq2 module in the config file.
 
-#### Optional:
-- **snakemake profile**: A YAML file to define default values for snakemake command line parameters. The profile is used to specify the cluster command and resources.
+### Optional:
 
+#### Snakemake profile: 
+A YAML file to define default values for snakemake command line parameters. The profile is used to specify the cluster command and resources.
+
+#### Conda/Mamba
+
+The pipeline uses the Snakemake conda integration to provide the necessary software packages, if conda or mamba is installed on the system. The environments are defined as YAML files and are set via the conda directive for each rule. Predefined environment files are provided in the directory `conda_envs`.
+To use the conda integration, the flag `--use-conda` has to be set. The conda frontend can be defined with the argument `--conda-frontend <{mamba, conda}>`, available options are mamba ('default') and conda. The conda environments are created in the `.snakemake` directory within the current working directory per default. The option `--conda-prefix <directory>` can be used to set a user-defined directory.
 
 ## Results
 - **QC**
