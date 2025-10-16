@@ -21,19 +21,20 @@ rule all:
         multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
 
 def virus2genome(wildcards):
-	"""Function to get viral genome and annotation files for a sample."""
-	#for sample in config['entries'].keys():
-	if 'virus_genome' in config['entries'][wildcards.sample]['main'].keys():
-        files = [config['entries'][wildcards.sample]['combined']['virus_genome'], config['entries'][wildcards.sample]['combined']['virus_genome_annotation']]
-		return files
-	elif wildcards.virus == "None":
-		return("None","None")	
+    """Function to get viral genome and annotation files for a sample."""
+    for sample in config['entries'].keys():
+        if 'virus_genome' in config['entries'][sample]['main'].keys():
+            if wildcards.virus in config['entries'][sample]['main']['virus_genome']:
+                files = [config['entries'][sample]['main']['virus_genome'], config['entries'][sample]['main']['virus_genome_annotation']]
+	        return files
+        elif wildcards.virus == "None":
+            return("None","None")	
 
 def annotation_name(wildcards):
     """Function to combine host annotation name with virus name."""
-	filename, file_extension = os.path.splitext("%%HOST_GTF%%")
-	anno_file = filename+"_"+wildcards.virus+file_extension
-	return anno_file
+    filename, file_extension = os.path.splitext("%%HOST_GTF%%")
+    anno_file = filename+"_"+wildcards.virus+file_extension
+    return anno_file
 
 rule star_index:
     """Create STAR index for host + virus reference"""

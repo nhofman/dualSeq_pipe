@@ -22,18 +22,19 @@ rule all:
 
 def virus2genome(wildcards):
     """Function to get viral genome and annotation files for a sample."""
-	#for sample in config['entries'].keys():
-	if 'virus_genome' in config['entries'][wildcards.sample]['main'].keys():
-        files = [config['entries'][wildcards.sample]['combined']['virus_genome'], config['entries'][wildcards.sample]['combined']['virus_genome_annotation']]
-		return files
-	elif wildcards.virus == "None":
-		return("None","None")			
+    for sample in config['entries'].keys():
+        if 'virus_genome' in config['entries'][sample]['main'].keys():
+            if wildcards.virus in config['entries'][sample]['main']['virus_genome']:
+                files = [config['entries'][sample]['main']['virus_genome'], config['entries'][sample]['main']['virus_genome_annotation']]
+                return files
+        elif wildcards.virus == "None":
+            return("None","None")			
 
 def annotation_name(wildcards):
     """Function to combine host annotation name with virus name."""
-	filename, file_extension = os.path.splitext("%%HOST_GTF%%")
-	anno_file = filename+"_"+wildcards.virus+file_extension
-	return anno_file
+    filename, file_extension = os.path.splitext("%%HOST_GTF%%")
+    anno_file = filename+"_"+wildcards.virus+file_extension
+    return anno_file
 
 rule star_index:
     """Create STAR index for host + virus reference"""
@@ -58,26 +59,25 @@ rule star_index:
     shell:
         """
         echo {wildcards.virus}
-	    echo params
-        if [[ "{wildcards.virus}" == "None" ]]
-	    then
-		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
-	    else
-		   touch {params.ann_file}    
-		   cat %%HOST_GTF%% > {params.ann_file}
-		   cat {params.filelist[1]} >> {params.ann_file}
-		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
-	    fi
+	echo params
+        if [[ "{wildcards.virus}" == "None" ]]; then
+            STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+        else
+	    touch {params.ann_file}    
+	    cat %%HOST_GTF%% > {params.ann_file}
+	    cat {params.filelist[1]} >> {params.ann_file}
+	    STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+	fi
 	"""
 
 def get_genome(wildcards):
     """Get name of STAR index for sample."""
-	host = "%%STAR_INDEX_DIR%%".rstrip("/")
-	if 'virus_genome' not in config['entries'][wildcards.sample]['main'].keys():
-		return(host+"_None")
-	else:
-		virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['main']['virus_genome']))[0]
-		return(host+"_"+virus)
+    host = "%%STAR_INDEX_DIR%%".rstrip("/")
+    if 'virus_genome' not in config['entries'][wildcards.sample]['main'].keys():
+        return(host+"_None")
+    else:
+        virus = os.path.splitext(os.path.basename(config['entries'][wildcards.sample]['main']['virus_genome']))[0]
+        return(host+"_"+virus)
 
 rule star_mapping:
     """Map preprocessed reads to the indexed reference genome."""
