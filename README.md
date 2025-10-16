@@ -150,22 +150,28 @@ gene_expression_analysis:
 		- Host mapping results (bam)
 		- Pathogen mapping resluts (bam)
 	- Mapping statistics
-		- table (tsv)
-		- plot (svg, png)
+		- table (csv, xlsx)
+		- plot (pdf, png)
 - **Gene expression analysis**
-	- Count table (.txt)
-	- DESeq2 result tables (csv, xlsx)
-	- Sample correlation heatmap (pdf)
-	- PCA (pdf, svg)
-	- featureCounts statistic plot (pdf)
-	- Volcano plot / MAplot (pdf)
-	- Summary of differentially expressed genes (tsv, png, svg)
-	- GSEA (csv, pdf, svg)
+	- featureCounts
+		- Count table (.txt)
+		- featureCounts statistic plot (pdf, png)
+	- Differential gene expression analysis
+		- Boxplots of raw and normalized read counts (pdf, png)
+		- Sample correlation heatmap (pdf, png)
+		- PCA (pdf, png)
+		- DESeq2 result tables (csv, xlsx)
+		- Volcano plot / MAplot (pdf, png)
+		- Summary of differentially expressed genes (csv, xlsx, pdf, png)
+	- Functional analysis
+		- GSEA (csv, pdf, svg)
 - **Report**
-	- MultiQC (html)
+	- MultiQC report (html)
 	- bamCoverage files (bigwig)
 - **Variant analysis**
-	- variant call files (vcf)
+	- Variant call files (vcf)
+	- VCF statistic plots (pdf, png)
+	- Plot of variant positions on genome (pdf, png) 
 
 ## Citation
 
