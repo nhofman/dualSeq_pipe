@@ -43,9 +43,19 @@ optional_settings:
     default: ''
 
   mem_mb_star:
-    description: "Memory requirement"
-    type: "string"
-    default: "35000" 
+    description: 'Memory requirement
+    type: string'
+    default: '35000'
+
+  threads_idx:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 8
+
+  threads_mapping:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 6 
     
 single_end:
   snakefile: 'combined_se'

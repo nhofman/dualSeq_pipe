@@ -32,6 +32,11 @@ optional_settings:
     type: "string"
     default: "1000"
 
+  threads:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 8
+
  
 single_end:
   snakefile: "count_table_se"

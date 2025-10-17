@@ -19,7 +19,7 @@ rule call_variant:
         "variant_analysis/variant_analysis/log/{sample}.log"
     group: "lofreq"
     conda: "../conda_envs/variant_env.yaml"
-    threads: 3
+    threads: %%THREADS%%
     resources:
         mem_mb=%%MEM_MB%%
     shell:

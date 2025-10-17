@@ -23,7 +23,7 @@ rule count_reads_host:
         "gene_expression_analysis/count_table/logs/featurecounts.log"
     conda: "../conda_envs/counts_env.yaml"
     threads:
-        8
+        %%THREADS%%
     resources:
         mem_mb=%%MEM_MB%%
     shell:

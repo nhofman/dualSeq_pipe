@@ -2,7 +2,7 @@
 
 ## Description
 In a dual RNA-Seq approach human HuH7 cells were infected with different pathogenic viruses. Samples were taken after predefined times of infection.
-The pipeline was build to analyse data from (these) infection experiments where samples are a mix of host and pathogenic reads. A python script is used to build and execute a customized snakemake workflow based on the analysis modules and parameters given by the user. 
+The pipeline was build to analyse data from (these) infection experiments where samples are a mix of host and pathogenic reads. A wrapper Python script is used to build and execute a customized snakemake workflow based on the analysis modules and parameters given by the user. 
 Available analysis modules are:
 - QC
 	- fastqc
@@ -24,10 +24,10 @@ Available analysis modules are:
 ## Prerequisites
 - [Mamba](https://mamba.readthedocs.io/en/latest/index.html)/[Conda](https://docs.conda.io/en/latest/)
 - [Snakemake](https://snakemake.readthedocs.io/en/stable/) >= 7.32
-- Python > 3.10
+- Python >= 3.10
 - Pyyaml
 
-The required tools need to be installed before running the pipeline. If conda or mamba is preexisting on the system, the file dualseq.yaml can be used to create a conda/mamba environment containing all necessary tools and dependencies.
+The required tools need to be installed before running the pipeline. If conda or mamba is preexisting on the system, the file dualseq.yaml can be used to create a conda/mamba environment containing the required tools and dependencies.
 
 ## Execution
 The wrapper script can be executed with the following command:
@@ -72,7 +72,8 @@ Other arguments:
 
 #### 1. Data file (--data): 
 
-A comma- or tab-separated file that describes all input data. The samples are listed line by line.
+A comma- or tab-separated file that describes all input data. The samples are listed line by line. In case of uninfected samples no virus genome and annotation are
+specified.
 
 - **name**: unique sample name 
 - **reads**: path to file containing reads; *if single reads* 
@@ -94,7 +95,7 @@ Mock_24h_1 | /path/to/reads.fq | Mock_24h | |
 
 #### 2. Pipeline config file (--pipeline-config): 
 
-A YAML file that defines the modules that will be executed and the rule specific parameters. For each module,there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
+A YAML file that defines the modules that will be executed and the rule specific parameters. For each available module, there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
 	
 ###### Example:
 ```
@@ -157,7 +158,9 @@ printshellcmds: True
 #### Conda/Mamba
 
 The pipeline uses the Snakemake conda integration to provide the necessary software packages, if conda or mamba is installed on the system. The environments are defined as YAML files and are set via the conda directive for each rule. Predefined environment files are provided in the directory `conda_envs`.
-To use the conda integration, the flag `--use-conda` has to be set. The conda frontend can be defined with the argument `--conda-frontend <{mamba, conda}>`, available options are mamba ('default') and conda. The conda environments are created in the `.snakemake` directory within the current working directory per default. The option `--conda-prefix <directory>` can be used to set a user-defined directory.
+To use the conda integration, the flag `--use-conda` has to be set. The conda frontend can be defined with the argument `--conda-frontend <{mamba, conda}>`, available options are mamba ('default') and conda. The conda environments are created in the `.snakemake` directory within the current working directory per default. The option `--conda-prefix <directory>` can be used to set a user-defined directory. If the conda environments should be created without running the pipeline, the flag `--conda-create-envs-only` can be specified.
+
+In the event that the conda integration is not utilized, it is up to the user to ensure that the necessary analysis tools are accessible to the pipeline.
 
 ## Results
 - **QC**
@@ -192,6 +195,9 @@ To use the conda integration, the flag `--use-conda` has to be set. The conda fr
 	- VCF statistic plots (pdf, png)
 	- Plot of variant positions on genome (pdf, png) 
 
+## ADVICER
+
+An interactive visualization of the analysis results of the virus infection study can be viewed on the Analysis Dashboard for Virus-Induced CEll Response based on RNA-Seq data (ADVICER). ADVICER is an [R Shiny app](https://shiny.posit.co/) that is publicly available under https://advicer.computational.bio/. 
 ## Citation
 
 **Sequence data availability:**

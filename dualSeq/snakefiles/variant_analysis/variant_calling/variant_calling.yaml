@@ -11,6 +11,11 @@ optional_settings:
     type: "string"
     default: "500"
 
+  threads:
+    description: 'Number of threads for variant calling'
+    type: 'integer'
+    default: 8
+
 single_end:
   snakefile: "variant_calling"
 

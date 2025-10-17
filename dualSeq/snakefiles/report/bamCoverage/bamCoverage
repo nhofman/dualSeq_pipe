@@ -40,7 +40,7 @@ rule create_bigwig_virus:
     benchmark:
         repeat("benchmarks/bigwig/{sample}.tsv", 1)
     threads:
-        1
+        4
     resources:
         mem_mb=%%MEM_MB_VIRUS%%
     shell:
