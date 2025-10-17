@@ -82,7 +82,7 @@ A comma- or tab-separated file that describes all input data. The samples are li
 - **virus_genome**: path to virus genome file (fasta)
 - **virus_genome_annotation**: path to virus annotation file (gff/gtf)
 
-Example:
+###### Example:
 
 name | reads | condition | virus_genome | virus_genome_annotation
 -----|-------|-----------|--------------|------------------------
@@ -96,7 +96,7 @@ Mock_24h_1 | /path/to/reads.fq | Mock_24h | |
 
 A YAML file that defines the modules that will be executed and the rule specific parameters. For each module,there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
 	
-Example:
+###### Example:
 ```
 pipeline:
   paired_end: false
@@ -144,9 +144,9 @@ gene_expression_analysis:
 
 #### Snakemake profile: 
 
-Snakemake allows to specify workflow profiles to define default values for snakemake command line parameters, such as the cluster command and resources. The profile is defined in a YAML file, that has to be named config.yaml or config.vX+.yaml, where X is the minimum supported Snakemake version. The location of the config file is specified with the option `--profile <profile_folder>`.
+Snakemake allows to specify workflow profiles to define default values for snakemake command line parameters, such as the cluster command and resources (https://snakemake.readthedocs.io/en/stable/executing/cli.html#executing-profiles). The profile is defined in a YAML file, that has to be named config.yaml or config.vX+.yaml, where X is the minimum supported Snakemake version. The location of the config file is specified with the option `--profile <profile_folder>`.
 
-Example:
+###### Example:
 
 ```
 cluster: sbatch --mem={resources.mem_mb} -c {threads} -p {resources.partition} -o .snakemake/log/%j.slurm.out  -e .snakemake/log/%j.slurm.err
