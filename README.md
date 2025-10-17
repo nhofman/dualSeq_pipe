@@ -22,8 +22,8 @@ Available analysis modules are:
 	- variant_calling
 
 ## Prerequisites
-- Mamba/Conda
-- Snakemake >= 7
+- [Mamba](https://mamba.readthedocs.io/en/latest/index.html)/[Conda](https://docs.conda.io/en/latest/)
+- [Snakemake](https://snakemake.readthedocs.io/en/stable/) >= 7.32
 - Python > 3.10
 - Pyyaml
 
@@ -70,7 +70,7 @@ Other arguments:
 
 ### Required:
 
-1. Data file (--data): 
+#### 1. Data file (--data): 
 
 A comma- or tab-separated file that describes all input data. The samples are listed line by line.
 
@@ -92,7 +92,7 @@ Mock_12h_1 | /path/to/reads.fq | Mock_12h | |
 Mock_12h_2 | /path/to/reads.fq | Mock_12h | | 
 Mock_24h_1 | /path/to/reads.fq | Mock_24h | | 
 
-2. Pipeline config file (--pipeline-config): 
+#### 2. Pipeline config file (--pipeline-config): 
 
 A YAML file that defines the modules that will be executed and the rule specific parameters. For each module,there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
 	
@@ -149,7 +149,9 @@ Snakemake allows to specify workflow profiles to define default values for snake
 Example:
 
 ```
-
+cluster: sbatch --mem={resources.mem_mb} -c {threads} -p {resources.partition} -o .snakemake/log/%j.slurm.out  -e .snakemake/log/%j.slurm.err
+default-resources: [mem_mb=500, partition=bcf]
+printshellcmds: True
 ```
 
 #### Conda/Mamba
