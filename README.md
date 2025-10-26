@@ -1,9 +1,14 @@
 # Dual RNA-Seq analysis pipeline
 
-## Description
-In a dual RNA-Seq approach human HuH7 cells were infected with different pathogenic viruses. Samples were taken after predefined times of infection.
-The pipeline was build to analyse data from (these) infection experiments where samples are a mix of host and pathogenic reads. A wrapper Python script is used to build and execute a customized snakemake workflow based on the analysis modules and parameters given by the user. 
+## Idea
+In a dual RNA-Seq approach human HuH7 cells were infected with different pathogenic viruses. Samples were taken after predefined times of infection. Total RNA was extracted and sequenced on an Illumina HiSeq4000.
+
+A pipeline was build to analyse data from such dual RNA-Seq infection experiments where samples are a mix of host and pathogenic reads. The pipeline is split into three parts: joint analyses, host- and virus-specific analyses. A Python script is used to build and execute a customized Snakemake workflow based on the analysis modules and parameters specified by the user. A workflow is composed of several modules and submodules.
+
 Available analysis modules are:
+
+#### Joint analyses
+---
 - QC
 	- fastqc
 - Preprocessing
@@ -11,23 +16,42 @@ Available analysis modules are:
 	- fastp
 - Mapping
 	- combined {STAR}
-- Gene_expression_analysis
-	- count_table {featureCounts}
-	- deseq2
 - Report
 	- bamCoverage {bigwig}
 	- multiqc
+
+#### Host-specific analyses
+---
+- Gene_expression_analysis
+	- count_table {featureCounts}
+	- deseq2
+	- functional_analysis
+
+#### Virus-specific analyses
+---
 - Variant_analysis
 	- preprocessing
+	- preprocessing_dedup
 	- variant_calling
 
+
 ## Prerequisites
-- [Mamba](https://mamba.readthedocs.io/en/latest/index.html)/[Conda](https://docs.conda.io/en/latest/)
 - [Snakemake](https://snakemake.readthedocs.io/en/stable/) >= 7.32
 - Python >= 3.10
 - Pyyaml
+- ([Mamba](https://mamba.readthedocs.io/en/latest/index.html)/[Conda](https://docs.conda.io/en/latest/))
 
 The required tools need to be installed before running the pipeline. If conda or mamba is preexisting on the system, the file dualseq.yaml can be used to create a conda/mamba environment containing the required tools and dependencies.
+
+```
+mamba env create -f dualseq.yaml 
+mamba activate dualseq
+```
+or 
+```
+mamba create -n <env_name> -f dualseq.yaml
+mamba activate <env_name>
+```
 
 ## Execution
 The wrapper script can be executed with the following command:
@@ -72,18 +96,17 @@ Other arguments:
 
 #### 1. Data file (--data): 
 
-A comma- or tab-separated file that describes all input data. The samples are listed line by line. In case of uninfected samples no virus genome and annotation are
-specified.
+A comma- or tab-separated file that describes all input data. The samples are listed line by line. File paths can either be absolute paths or paths relative to this data file. In case of uninfected samples no virus genome and annotation are specified.
 
 - **name**: unique sample name 
-- **reads**: path to file containing reads; *if single reads* 
-- **forward_reads**: path to file containing forward reads; *if paired end*
-- **reverse_reads**: path to file containing reverse reads; *if paired end*
-- **condition**: sample condition, e.g. treatment
+- **reads**: path to the file containing the sequencing reads; *if single reads* 
+- **forward_reads**: path to the file containing forward reads; *if paired end*
+- **reverse_reads**: path to the file containing reverse reads; *if paired end*
+- **condition**: sample condition, e.g. treatment or control
 - **virus_genome**: path to virus genome file (fasta)
 - **virus_genome_annotation**: path to virus annotation file (gff/gtf)
 
-###### Example:
+###### Example for single reads:
 
 name | reads | condition | virus_genome | virus_genome_annotation
 -----|-------|-----------|--------------|------------------------
@@ -95,7 +118,7 @@ Mock_24h_1 | /path/to/reads.fq | Mock_24h | |
 
 #### 2. Pipeline config file (--pipeline-config): 
 
-A YAML file that defines the modules that will be executed and the rule specific parameters. For each available module, there are module-specific YAML files that define mandatory and optional parameters. An example pipeline_config.yaml can be found in the test folder.
+The pipeline config file is a YAML file that defines the modules that will be executed and the rule specific parameters. For each available module, there are module-specific YAML files that define mandatory and optional parameters. These can be found at `snakefiles/<module_name>/<submodule_name/<submodule_name>.yaml`. The parameter `paired-end` is used to define the sequencing strategy (paired-end or single read), which will trigger the use of specific module-files.
 	
 ###### Example:
 ```
@@ -131,21 +154,21 @@ gene_expression_analysis:
 
 ```
 
-**host_genome** (required): Host reference genome {fasta}. File path needs to be specified in config file.
+**host_genome** (required): Path to host reference genome {fasta}. The file path can be specified as an absolute path or relative to the pipeline config file.
 
-**host_gtf** (required): Host reference annotation {gff/gtf}. File path needs to be specified in config file.
+**host_gtf** (required): Path to host reference annotation {gff/gtf}. The file path can be specified as an absolute path or relative to the pipeline config file.
 
-**comparisons_human file** (required): A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path is specified in the config file.
+**comparisons_human file** (required): A tab-separated file that defines the comparisons for the differential gene expression analysis. The 1st column specifies the name of the numerator (e.g. treated) while the 2nd column gives the name of the denominator (e.g. untreated) for the log2 fold change calculation. The file path can be specified as an absolute path or relative to the pipeline config file.
 
-**color file** (optional): A tab-separated file that is used to specify custom colors for each pathogen (pathogen	color). The file path is set for the deseq2 module in the config file. Colors can either be name or HEX code.
+**color file** (optional): A tab-separated file that is used to specify custom colors for each pathogen (pathogen	color). The file path is set for the deseq2 module in the config file. Colors can either be name or HEX code. The file path can be specified as an absolute path or relative to the pipeline config file.
 
-**rRNA file** (optional): A file containing a list of gene names that should be removed prior to the normalization of feature counts, e.g., rRNA genes.
+**rRNA file** (optional): A file containing a list of gene names that should be removed prior to the normalization of feature counts, e.g., rRNA genes. The file path can be specified as an absolute path or relative to the pipeline config file.
 
 ### Optional:
 
 #### Snakemake profile: 
 
-Snakemake allows to specify workflow profiles to define default values for snakemake command line parameters, such as the cluster command and resources (https://snakemake.readthedocs.io/en/stable/executing/cli.html#executing-profiles). The profile is defined in a YAML file, that has to be named config.yaml or config.vX+.yaml, where X is the minimum supported Snakemake version. The location of the config file is specified with the option `--profile <profile_folder>`.
+Snakemake allows users to define workflow profiles that specify the default values for Snakemake command-line parameters, such as the cluster command and default resources (https://snakemake.readthedocs.io/en/stable/executing/cli.html#executing-profiles). The profile is defined in a YAML file, that has to be named config.yaml or config.vX+.yaml, where X is the minimum supported Snakemake version. The location of the config file is specified with the option `--profile <profile_folder>`.
 
 ###### Example:
 
@@ -157,20 +180,22 @@ printshellcmds: True
 
 #### Conda/Mamba
 
-The pipeline uses the Snakemake conda integration to provide the necessary software packages, if conda or mamba is installed on the system. The environments are defined as YAML files and are set via the conda directive for each rule. Predefined environment files are provided in the directory `conda_envs`.
+The pipeline uses the Snakemake conda integration to provide the necessary rule-specific software packages, as long as conda or mamba is installed on the system. The environments are defined as YAML files and are set via the conda directive for each rule. Predefined environment files are provided in the directory `conda_envs`.
 To use the conda integration, the flag `--use-conda` has to be set. The conda frontend can be defined with the argument `--conda-frontend <{mamba, conda}>`, available options are mamba ('default') and conda. The conda environments are created in the `.snakemake` directory within the current working directory per default. The option `--conda-prefix <directory>` can be used to set a user-defined directory. If the conda environments should be created without running the pipeline, the flag `--conda-create-envs-only` can be specified.
 
-In the event that the conda integration is not utilized, it is up to the user to ensure that the necessary analysis tools are accessible to the pipeline.
+In the event that the conda integration is not utilized, it is up to the user to ensure that the necessary analysis tools are accessible to the pipeline. The required tools are specified in the respective YAML files, which are stored in the directory `conda_envs`.
 
 ## Results
+All analysis results can be found in the output directory specified by the user (`--outdir`). For each submodule, a separate folder is created within the respective module folder. Available results include:
 - **QC**
 	- FastQC result for each sample (html)
 - **Preprocessing**
+	- Preprocessed reads (fq.gz)
 	- Fastp result for each sample (html)
 - **Mapping**
 	- Alignment files for each sample 
 		- Host mapping results (bam)
-		- Pathogen mapping resluts (bam)
+		- Pathogen mapping results (bam)
 	- Mapping statistics
 		- table (csv, xlsx)
 		- plot (pdf, png)

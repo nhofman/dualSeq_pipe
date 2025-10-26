@@ -110,7 +110,7 @@ assign_tracks <- function(feat.data, track.y, base){
 for(virus in unique(df.SNP$Virus)){
   # gggenomes package
   #gbk <- read_gbk(paste0("Documents/Virus_project/gff/feature_viewer/genbank_mod/", virus, ".gb"))
-  gff.df <- read_gff3(sample2gff[grep(virus, sample2gff$Sample), "GFF"][1], is_gff2 = T)
+  gff.df <- read_gff3(sample2gff[grep(virus, sample2gff$Sample), "GFF"][1])
   gff.df$length <- gff.df$end - gff.df$start + 1 
   colnames(gff.df)[1] <- "chrom"
   gff.df$seq_id <- gff.df$chrom

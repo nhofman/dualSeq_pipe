@@ -137,7 +137,7 @@ def check_columns(col_names: List[str], modules: Dict[str, List['Module']], pair
 
 def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_end: bool) -> Dict[str, Dict[str, Dict[str, str]]]:
     """Function to parse the data file."""
-    table = {}  # type: Dict[str, Dict[str, Dict[str, str]]]
+    table = {} 
     with data_file.open('r') as file:
         col_names = file.readline().strip().replace(',','\t').split('\t')
         col2module = check_columns(col_names, modules, paired_end)
@@ -145,7 +145,7 @@ def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_
             if len(line.strip()) == 0:
                 continue
             columns = line.strip().replace(',','\t').split('\t')
-            entries = {}  # type: Dict[str, Dict[str, str]]
+            entries = {}  
             for index, col in enumerate(columns):
                 if col2module[index] == '' or col2module[index] == 'name':
                     continue

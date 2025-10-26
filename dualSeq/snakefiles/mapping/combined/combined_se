@@ -58,8 +58,11 @@ rule star_index:
         mem_mb=%%MEM_MB_STAR%%
     shell:
         """
-        echo {wildcards.virus}
-	echo params
+        host_gtf, host_ext = os.path.splitext({genome.host})
+        virus_gtf, virus_ext = os.path.splitext({params.filelist[1]})
+        if host_ext != virus_ext
+
+        else
         if [[ "{wildcards.virus}" == "None" ]]; then
             STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
         else
@@ -194,7 +197,7 @@ rule index_bam_host:
     shell:
         "samtools index {input} 2>&1 | tee {log}"
 
-rule virusNames:
+rule mapped_both:
     """Get reads mapping to both organisms by identifying reads mapped to virus genome and searching for these reads in host bam."""
     input:
         virus="mapping/virus/{sample}.bam",
@@ -209,8 +212,7 @@ rule virusNames:
     #resources: cpus=1, mem_mb=4000
     shell:
         """
-        samtools view {input.virus} | cut -f1 | sort | uniq > {output.names}
-        sed -i 's/$/\t/' {output.names}
+        samtools view {input.virus} | cut -f1 | awk '{a[$1]=1} END{for(i in a) print i}' > {output.names}
         samtools view -N {output.names} {input.host} | cut -f1 | sort -u > {output.both} || true
         """
 
@@ -231,7 +233,7 @@ rule statistics_host:
         mapped_host=$(samtools view -c -F 1284 {input.host_bam})
         uniquely_host=$(samtools view -c -F 1284 -q 255 {input.host_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-        both_host=$(samtools view -F 1284 -N {input.both} {input.host_bam} | wc -l) || true
+        both_host=$(wc -l {input.both}) || true
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}','${{both_host}}',host' >> {output}
         """
@@ -253,7 +255,7 @@ rule statistics_virus:
         mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})
         uniquely_virus=$(samtools view -c -F 1284 -q 255 {input.virus_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-        both_virus=$(samtools view -F 1284 -N {input.both} {input.virus_bam} | wc -l) || true
+        both_virus=$(wc -l {input.both}) || true
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}','${{both_virus}}',virus' >> {output}
         """
