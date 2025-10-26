@@ -197,7 +197,7 @@ rule index_bam_host:
     shell:
         "samtools index {input} 2>&1 | tee {log}"
 
-rule virusNames:
+rule mapped_both:
     """Get reads mapping to both organisms by identifying reads mapped to virus genome and searching for these reads in host bam."""
     input:
         virus="mapping/virus/{sample}.bam",
@@ -207,15 +207,14 @@ rule virusNames:
         both="mapping/virus/{sample}_both.txt"
     priority: 1
     log:
-        "mapping/host/logs/virusNames.{sample}.log"
+        "mapping/host/logs/mapped_both.{sample}.log"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
     #resources: cpus=1, mem_mb=4000
     shell:
         """
-        samtools view {input.virus} | cut -f1 | sort | uniq > {output.names}
-        sed -i 's/$/\t/' {output.names}
+        samtools view {input.virus} | cut -f1 | awk '{a[$1]=1} END{for(i in a) print i}' > {output.names}
         samtools view -N {output.names} {input.host} | cut -f1 | sort -u > {output.both} || true
         """
 
@@ -239,7 +238,7 @@ rule statistics_host:
         uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.host_bam})
         proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-        both_host=$(samtools view -F 3340 -N {input.both} {input.host_bam} | wc -l) || true
+        both_host=$(samtools view -f 64 -N {input.both} mapping/{wildcards.sample}.bam | wc -l) || true # only count first in pair
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output}
         echo {wildcards.sample}','${{total}}','${{proper_pairs}}','${{proper_pairs_uniq}}','${{both_host}}',host,infected' >> {output}
         """
@@ -263,7 +262,7 @@ rule statistics_virus:
         uniquely_virus=$(samtools view -c -F 3340 -f 2 -q 255 {input.virus_bam})
         proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_virus}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-        both_virus=$(samtools view -F 3340 -N {input.both} {input.virus_bam} | wc -l) || true
+        both_virus=$(samtools view -f 64 -N {input.both} mapping/{wildcards.sample}.bam | wc -l) || true # only count first in pair
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output}
         echo {wildcards.sample}','${{total}}','${{proper_pairs}}','${{proper_pairs_uniq}}','${{both_virus}}',virus,infected' >> {output}
         """
