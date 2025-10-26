@@ -405,7 +405,7 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
             module_content = re_rule_name.sub(r'rule {}__\g<rule_name>:'.format(module.name.lower().replace('-', '_')), module_content)
             module_content = re_lib_folder.sub(r'{}/{}_lib/\g<file_name>'.format(SNAKEFILES_TARGET_DIRECTORY, module.name.lower()), module_content)
             for (wildcard, value) in module.settings.items():
-                module_content = module_content.replace("%%{}%%".format(wildcard.upper()), ','.join(value) if type(value) is list else value)
+                module_content = module_content.replace("%%{}%%".format(wildcard.upper()), ','.join(value) if type(value) is list else str(value))
             module_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / (module.name.lower() + '.sm')
             with module_path.open('w') as module_output_file:
                 module_output_file.write(module_content)

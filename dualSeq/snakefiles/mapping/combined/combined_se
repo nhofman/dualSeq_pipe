@@ -232,8 +232,8 @@ rule statistics_host:
         uniquely_host=$(samtools view -c -F 1284 -q 255 {input.host_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_host=$(samtools view -F 1284 -N {input.both} {input.host_bam} | wc -l) || true
-        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
-        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}','${{both_host}}',host' >> {output}
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}','${{both_host}}',host,infected' >> {output}
         """
 
 rule statistics_virus:
@@ -254,8 +254,8 @@ rule statistics_virus:
         uniquely_virus=$(samtools view -c -F 1284 -q 255 {input.virus_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_virus=$(samtools view -F 1284 -N {input.both} {input.virus_bam} | wc -l) || true
-        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group' > {output}
-        echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}','${{both_virus}}',virus' >> {output}
+        echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}','${{both_virus}}',virus,infected' >> {output}
         """
 
 rule plot_statistics:
