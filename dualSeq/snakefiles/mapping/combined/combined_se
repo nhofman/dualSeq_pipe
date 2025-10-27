@@ -1,6 +1,7 @@
 from os import listdir
 from os.path import isfile, splitext
 import csv, glob
+import shutil
 
 localrules: plot_statistics
 
