@@ -58,12 +58,10 @@ rule star_index:
         mem_mb=%%MEM_MB_STAR%%
     shell:
         """
-	host_gtf=%%HOST_GTF%%
+        host_gtf=%%HOST_GTF%%
         host_ext="${{host_gtf##*.}}"
-	virus_gtf={params.filelist[1]}
+        virus_gtf={params.filelist[1]}
         virus_ext="${{virus_gtf##*.}}"
-	echo $host_ext
-	echo $virus_ext
         if [[ "$host_ext" != "$virus_ext" ]]; then
             echo "ERROR: Annotation file format of host and virus does not match." >&2
             exit 1

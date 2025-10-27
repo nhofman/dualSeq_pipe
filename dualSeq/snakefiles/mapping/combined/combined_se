@@ -59,19 +59,21 @@ rule star_index:
         mem_mb=%%MEM_MB_STAR%%
     run:
         """
-        host_gtf, host_ext = os.path.splitext({genome.host})
-        virus_gtf, virus_ext = os.path.splitext({params.filelist[1]})
-        if host_ext != virus_ext:
-            sys.exit("ERROR: Annotation file format of host and virus does not match.")
-        else
-            if "{wildcards.virus}" == "None":
-                shell("STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}")
-            else
-                with open({params.ann_file}, 'w') as outfile:
-                    for filename in [%%HOST_GTF%%, {params.filelist[1]}]:
-                        with open(filename, 'r') as infile:
-                            shutil.copyfileobj(infile, outfile)
-                shell("STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}")
+        host_gtf=%%HOST_GTF%%
+        host_ext="${{host_gtf##*.}}"
+        virus_gtf={params.filelist[1]}
+        virus_ext="${{virus_gtf##*.}}"
+        if [[ "$host_ext" != "$virus_ext" ]]; then
+            echo "ERROR: Annotation file format of host and virus does not match." >&2
+            exit 1
+        elif [[ "{wildcards.virus}" == "None" ]]; then
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+	    else
+		   touch {params.ann_file}    
+		   cat %%HOST_GTF%% > {params.ann_file}
+		   cat {params.filelist[1]} >> {params.ann_file}
+		   STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_host} {params.filelist[0]} --sjdbGTFfile {params.ann_file} --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 | tee {log}
+	    fi
         """
 
 def get_genome(wildcards):
@@ -122,7 +124,6 @@ rule index_bam:
     group:
         "star_mapping"
     conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
 
@@ -138,7 +139,6 @@ rule mock_statistic:
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
     shell:
         """
          if [[ {input.bam} == "None" ]]; then
@@ -168,7 +168,6 @@ rule split_bam_infected:
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
     shell:
         """
         if [[ {input.bam} == "None" ]]; then
@@ -194,7 +193,6 @@ rule index_bam_host:
     log:
         "mapping/host/logs/index.{sample}.log"
     conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
     shell:
         "samtools index {input} 2>&1 | tee {log}"
 
@@ -210,10 +208,9 @@ rule mapped_both:
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
     shell:
         """
-        samtools view {input.virus} | cut -f1 | awk '{a[$1]=1} END{for(i in a) print i}' > {output.names}
+        samtools view {input.virus} | cut -f1 | awk '{{a[$1]=1}} END{{for(i in a) print i}}' > {output.names}
         samtools view -N {output.names} {input.host} | cut -f1 | sort -u > {output.both} || true
         """
 
@@ -228,7 +225,6 @@ rule statistics_host:
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=4000
     shell:
         """
         mapped_host=$(samtools view -c -F 1284 {input.host_bam})
@@ -250,7 +246,6 @@ rule statistics_virus:
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
-    #resources: cpus=1, mem_mb=2000
     shell:
         """
         mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})
