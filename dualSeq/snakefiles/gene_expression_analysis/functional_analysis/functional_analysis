@@ -24,7 +24,7 @@ COMPARISONS=getComparisons()
 
 rule all:
     input:
-        expand("gene_expression_analysis/deseq2/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
+        expand("gene_expression_analysis/functional_analysis/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
 
 rule functional_analysis:
     """Functional enrichment analysis of differentially expressed genes with user-defined databases."""
@@ -33,14 +33,14 @@ rule functional_analysis:
         #rdata="gene_expression_analysis/deseq2/deseq2.RData",
         "gene_expression_analysis/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv"
     output:
-        expand("gene_expression_analysis/deseq2/GSEA/{{comp}}_{db}.csv", db=DATABASE)
+        expand("gene_expression_analysis/functional_analysis/GSEA/{{comp}}_{db}.csv", db=DATABASE)
     priority: 1
     group:
         "gsea"
     params:
-        output_folder="gene_expression_analysis/deseq2/"
+        output_folder="gene_expression_analysis/functional_analysis/"
     log:
-        "gene_expression_analysis/deseq2/logs/functional_analysis_{comp}.log"
+        "gene_expression_analysis/functional_analysis/logs/functional_analysis_{comp}.log"
     conda: "../conda_envs/R_env.yaml"
     threads:
         1
