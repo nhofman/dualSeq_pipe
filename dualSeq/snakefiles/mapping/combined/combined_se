@@ -1,7 +1,6 @@
 from os import listdir
 from os.path import isfile, splitext
 import csv, glob
-import shutil
 
 localrules: plot_statistics
 
@@ -57,7 +56,7 @@ rule star_index:
         %%THREADS_IDX%%
     resources:
         mem_mb=%%MEM_MB_STAR%%
-    run:
+    shell:
         """
         host_gtf=%%HOST_GTF%%
         host_ext="${{host_gtf##*.}}"
