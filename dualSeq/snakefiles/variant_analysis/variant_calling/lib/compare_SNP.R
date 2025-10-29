@@ -173,7 +173,7 @@ for(virus in unique(df.SNP$Virus)){
       geom_gene_text(data = genes(.gene_types = "gene"), aes(y = track, label = name), size = 2.5, vjust = -1, hjust = 0.5, angle = 0, nudge_y = 0, check_overlap = F) + 
       geom_gene(data = genes(.gene_types = "CDS"), aes(y = track, fill = type)) + 
       geom_gene_text(data = genes(.gene_types = "CDS"), aes(y = track, label = name), size = 2.5, vjust = -1, hjust = 0.5, angle = 0, nudge_y = 0, check_overlap = F) + 
-      scale_x_bp(accuracy = NULL, expand = c(0.01,0.01), limits = c(0, max(gff.seq$length))) + 
+      scale_x_bp(accuracy = NULL, expand = c(0.01,0.01), limits = c(0, max(gff.seq$length))) + labs(fill = "Type") +
       theme(text = element_text(face = "plain"), line = element_line(linewidth = 0.25),
             axis.title.y = element_blank(), 
             axis.text.x = element_text(size = 10))

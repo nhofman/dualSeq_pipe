@@ -47,7 +47,7 @@ if(rRNA_file != "NULL"){
 # Import condition file
 conditiontable <- read.csv(condition_file, header = FALSE, row.names = 1, comment.char = "#", stringsAsFactors = FALSE)
 colnames(conditiontable) <- c('condition')
-conditiontable <- separate(conditiontable, condition, c("Treatment", "Time"), "_", FALSE)
+conditiontable <- separate(conditiontable, condition, c("Infection", "Time"), "_", FALSE)
 conditiontable <- conditiontable[mixedorder(rownames(conditiontable)),]
 conditiontable <- as.data.frame(row.names=colnames(countdata), lapply(conditiontable, as.factor))
 condition <- as.factor(conditiontable[, 1])
@@ -68,13 +68,13 @@ if(color_file != "NULL"){
   color <- color.df[,2]
   names(color) <- color.df[,1]
 }else{
-  color <- hue_pal()(length(unique(conditiontable$Treatment)))
-  names(color) <- unique(conditiontable$Treatment)
+  color <- hue_pal()(length(unique(conditiontable$Infection)))
+  names(color) <- unique(conditiontable$Infection)
 }
 # Set color for column names of countdata
 colnames.col <- c()
 for(x in names(color)){
-  i <- grep(x, conditiontable$Treatment)
+  i <- grep(x, conditiontable$Infection)
   colnames.col[i] <- color[x]
 }
 
@@ -114,9 +114,9 @@ deseq.results.vst <- vst(deseq.results, blind = FALSE)
 # Plot PCA
 shape <- if(length(unique(conditiontable$Time)) <= 6){ scales::shape_pal()(length(unique(conditiontable$Time))) }else{ c(1:length(unique(conditiontable$Time)))}
 names(shape) <- unique(conditiontable$Time)
-pca <- plotPCA(deseq.results.vst, intgroup = c("Treatment", "Time"), returnData = TRUE)
+pca <- plotPCA(deseq.results.vst, intgroup = c("Infection", "Time"), returnData = TRUE)
 percentVar <- round(100 * attr(pca, "percentVar"))
-plot_PCA <- ggplot(pca, aes(PC1, PC2, color = Treatment, shape = factor(Time, levels = mixedsort(as.character(unique(conditiontable$Time)))))) + 
+plot_PCA <- ggplot(pca, aes(PC1, PC2, color = Infection, shape = factor(Time, levels = mixedsort(as.character(unique(conditiontable$Time)))))) + 
   geom_point(size=3) + labs(color = "Infection", shape = "Time") + scale_shape_manual(values=shape) + guides(color=guide_legend(override.aes=list(fill=NA))) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
   ylab(paste0("PC2: ",percentVar[2],"% variance")) + theme_bw() +
@@ -129,9 +129,9 @@ ggsave("PCA.pdf", plot = plot_PCA, device = "pdf", path = output_folder, width =
 ggsave("PCA.png", plot = plot_PCA, device = "png", path = output_folder, width = 10, height = 6)
 
 for(time in unique(conditiontable$Time)) {
-  pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("Treatment", "Time"), returnData = TRUE)
+  pca_time <- plotPCA(deseq.results.vst[,grep(time, colnames(deseq.results.vst))], intgroup = c("Infection", "Time"), returnData = TRUE)
   percentVar <- round(100 * attr(pca_time, "percentVar"))
-  plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Treatment, shape = Time)) + geom_point(size=5) + 
+  plot_PCA <- ggplot(pca_time, aes(PC1, PC2, color = Infection, shape = Time)) + geom_point(size=5) + 
     labs(color = "Infection", shape = "Time") + 
     xlab(paste0("PC1: ",percentVar[1],"% variance")) +
     ylab(paste0("PC2: ",percentVar[2],"% variance")) + theme_bw() +
@@ -149,14 +149,14 @@ for(time in unique(conditiontable$Time)) {
 if("pheatmap" %in% rownames(installed.packages())) {
   sample_cor <- cor(assay(deseq.results.vst), method = 'pearson', use = 'pairwise.complete.obs')
   if(exists("color")){
-    annColor <- list(Treatment = color)
+    annColor <- list(Infection = color)
   }else(
-    annColor <- NA
+    annColor <- list()
   )
-  color_2nd <- RColorBrewer::brewer.pal(length(unique(conditiontable$Time)), "Greys")
+  color_2nd <- grey.colors(length(unique(conditiontable$Time)), 0.2, 0.9)
   names(color_2nd) <- unique(conditiontable$Time)
   annColor[["Time"]] <- color_2nd
-  plot.heat <- pheatmap(sample_cor, annotation_col = conditiontable[,-1], annotation_row = conditiontable[,-1], fontsize=8, annotation_colors = annColor, silent = T)
+  plot.heat <- pheatmap(sample_cor, annotation_col = conditiontable[,-1], annotation_row = conditiontable[,-1], fontsize = 8, annotation_colors = annColor, silent = T)
   pdf(paste(output_folder, 'correlation_heatmap.pdf', sep = ""), width = 15, height = 15, onefile = FALSE)
   print(plot.heat)
   dev.off()
