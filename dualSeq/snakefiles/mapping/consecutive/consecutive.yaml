@@ -1,10 +1,10 @@
-name: 'star'
+name: 'consecutive'
 
 required_settings:
 
-        #index_dir:
-        #description: 'Path to genome index output'
-        #type: 'directory'
+  index_dir_host:
+    description: 'Path to genome index output'
+    type: 'directory'
 
   host_genome:
     description: 'Path to genome fasta file'
@@ -13,6 +13,13 @@ required_settings:
   host_gtf:
     description: 'Path to genome gtf/gff file'
     type: 'file'
+
+  alignment_type:
+    description: 'Choose local or end-to-end alignment'
+    type: 'enum'
+    choices:
+      local: '--very-sensitive-local'
+      end-to-end: '--very-sensitive'
 
     
 optional_settings:
@@ -47,9 +54,37 @@ optional_settings:
     type: "string"
     default: "35000" 
 
+  threads_idx_host:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 8
+
+  threads_mapping_host:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 6 
+
+  additional_bowtie2_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+
+  mem_mb_bowtie2:
+    description: "Memory requirement"
+    type: "string"
+    default: "2000" 
+
+  threads_idx_virus:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 8
+
+  threads_mapping_virus:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 6 
 
 single_end:
-  snakefile: 'star'
+  snakefile: 'consecutive'
 
 paired_end:
   snakefile: 'star_pe'
