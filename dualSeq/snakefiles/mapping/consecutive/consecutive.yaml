@@ -2,7 +2,7 @@ name: 'consecutive'
 
 required_settings:
 
-  index_dir_host:
+  star_index_dir:
     description: 'Path to genome index output'
     type: 'directory'
 
@@ -14,7 +14,7 @@ required_settings:
     description: 'Path to genome gtf/gff file'
     type: 'file'
 
-  alignment_type:
+  alignment_type_virus:
     description: 'Choose local or end-to-end alignment'
     type: 'enum'
     choices:
@@ -67,6 +67,7 @@ optional_settings:
   additional_bowtie2_options:
     description: "Additional options to use in shell command"
     type: "string"
+    default: ''
 
   mem_mb_bowtie2:
     description: "Memory requirement"
@@ -76,7 +77,7 @@ optional_settings:
   threads_idx_virus:
     description: 'Number of threads for index generation'
     type: 'integer'
-    default: 8
+    default: 2
 
   threads_mapping_virus:
     description: 'Number of threads for index generation'
