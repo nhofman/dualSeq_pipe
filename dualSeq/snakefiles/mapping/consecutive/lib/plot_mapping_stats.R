@@ -22,6 +22,13 @@ stats.df <- Reduce(rbind,lapply(c(list.files(stat_host, ".*_stats.csv", full.nam
 write.csv(stats.df[,c(1,2,3,4,6,5)], paste0(output_folder, "stats/mapping_statistic.csv"), row.names = F)
 write.xlsx(stats.df[,c(1,2,3,4,6,5)], paste0(output_folder, "stats/mapping_statistic.xlsx"))
 
+# Replace virus total_reads with host total_reads, since the host count represents the total number of reads in the sample (Bowtie2 used the unmapped reads from STAR)
+for(name in unique(stats.df$sample)){
+  if(nrow(stats.df[stats.df$sample==name & stats.df$group=="virus", ])>0){
+    stats.df[stats.df$sample==name & stats.df$group=="virus", "total_reads"] <- stats.df[stats.df$sample==name & stats.df$group=="host", "total_reads"]
+  }
+}
+
 # transpose data frame for plotting
 stats.t <- data.frame("Sample"=character(), "Total"=integer(), "Count"=integer(), "Organism"=character(), "Category"=character())
 stats.t <- data.frame(Map(c, stats.t, data.frame(stats.df[,c(1,2,3,5)], "mapped")))
