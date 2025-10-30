@@ -10,8 +10,8 @@ rule all:
         expand("mapping/virus/{sample}.bam", sample=INFECTED_SAMPLES),
         #expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
         #expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
-        #multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
-        #multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
+        multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
     
     
 rule mapping_stats_tsv:
@@ -165,13 +165,14 @@ rule star_stat:
         mapped_host=$(samtools view -c -F 2308 {input.host_bam})
         uniquely_host=$(samtools view -c -F 2308 -q 255 {input.host_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-	    echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
+	echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',host' >> {output}
         """
 
 rule bowtie2_stat:
     input:
-        "mapping/virus/logs/bowtie2_mapping.{sample}.log"
+        log="mapping/virus/logs/bowtie2_mapping.{sample}.log",
+        bam="mapping/virus/{sample}.bam"
     output:
         "mapping/virus/stats/{sample}_stats.csv"
     priority: 1
@@ -180,10 +181,10 @@ rule bowtie2_stat:
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        mapped_virus=$(samtools view -c -F 2308 {input})
-        uniquely_virus=$(grep "aligned exactly 1 time" "{input}" | awk '{print $1}')
-        #mapped_multi=$(grep "aligned >1 times" "{input}" | awk '{print $1}')
-        total=$(grep "reads" "{input}" | awk '{print $1}')
+        mapped_virus=$(samtools view -c -F 2308 {input.bam})
+        uniquely_virus=$(grep "aligned exactly 1 time" "{input.log}" | awk '{{print $1}}')
+        #mapped_multi=$(grep "aligned >1 times" "{input.log}" | awk '{{print $1}}')
+        total=$(grep "reads" "{input.log}" | awk '{{print $1}}')
         echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}',virus' >> {output}
         """
@@ -195,8 +196,7 @@ rule plot_statistics:
         stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES)
     output:
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
-        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
-        multiext("mapping/stats/mapping_statistic_mock", ".pdf", ".png")
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
     params:
         "mapping/"
     priority: 1
