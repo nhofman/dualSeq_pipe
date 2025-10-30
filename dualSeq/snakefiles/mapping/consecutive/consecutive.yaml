@@ -50,9 +50,9 @@ optional_settings:
     default: ''
 
   mem_mb_star:
-    description: "Memory requirement"
-    type: "string"
-    default: "35000" 
+    description: 'Memory requirement'
+    type: 'string'
+    default: '35000' 
 
   threads_idx_host:
     description: 'Number of threads for index generation'
@@ -65,14 +65,14 @@ optional_settings:
     default: 6 
 
   additional_bowtie2_options:
-    description: "Additional options to use in shell command"
-    type: "string"
+    description: 'Additional options to use in shell command'
+    type: 'string'
     default: ''
 
   mem_mb_bowtie2:
-    description: "Memory requirement"
-    type: "string"
-    default: "2000" 
+    description: 'Memory requirement'
+    type: 'string'
+    default: '2000' 
 
   threads_idx_virus:
     description: 'Number of threads for index generation'
@@ -85,7 +85,7 @@ optional_settings:
     default: 6 
 
 single_end:
-  snakefile: 'consecutive'
+  snakefile: 'consecutive_se'
 
 paired_end:
   snakefile: 'star_pe'

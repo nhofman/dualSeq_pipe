@@ -149,3 +149,59 @@ rule sam_to_bam:
     shell:
         "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam};"
         "samtools view -f 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
+
+rule star_stat:
+    """Generate mapping statistic for host files."""
+    input:
+        host_bam="mapping/host/{sample}.bam",
+    output:
+        "mapping/host/stats/{sample}_stats.csv"
+    priority: 1
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    shell:
+        """
+        mapped_host=$(samtools view -c -F 2308 {input.host_bam})
+        uniquely_host=$(samtools view -c -F 2308 -q 255 {input.host_bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
+	    echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',host' >> {output}
+        """
+
+rule bowtie2_stat:
+    input:
+        "mapping/virus/logs/bowtie2_mapping.{sample}.log"
+    output:
+        "mapping/virus/stats/{sample}_stats.csv"
+    priority: 1
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    shell:
+        """
+        mapped_virus=$(samtools view -c -F 2308 {input})
+        uniquely_virus=$(grep "aligned exactly 1 time" "{input}" | awk '{print $1}')
+        #mapped_multi=$(grep "aligned >1 times" "{input}" | awk '{print $1}')
+        total=$(grep "reads" "{input}" | awk '{print $1}')
+        echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}',virus' >> {output}
+        """
+
+rule plot_statistics:
+    """Plot mapping statistic."""
+    input:
+        stat_host=expand("mapping/host/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES+MOCK_SAMPLES),
+        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES)
+    output:
+        multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
+        multiext("mapping/stats/mapping_statistic_mock", ".pdf", ".png")
+    params:
+        "mapping/"
+    priority: 1
+    conda: "../conda_envs/R_env.yaml"
+    shell:
+        """
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params}
+        """

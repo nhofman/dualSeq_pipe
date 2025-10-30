@@ -143,8 +143,8 @@ rule mock_statistic:
          if [[ {input.bam} == "None" ]]; then
             exit 0
         fi
-        mapped_host=$(samtools view -c -F 1284 {input.bam})
-        uniquely_host=$(samtools view -c -F 1284 -q 255 {input.bam})
+        mapped_host=$(samtools view -c -F 2308 {input.bam})
+        uniquely_host=$(samtools view -c -F 2308 -q 255 {input.bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output.stat}
         echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',0,host,untreated' >> {output.stat}
@@ -226,8 +226,8 @@ rule statistics_host:
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        mapped_host=$(samtools view -c -F 1284 {input.host_bam})
-        uniquely_host=$(samtools view -c -F 1284 -q 255 {input.host_bam})
+        mapped_host=$(samtools view -c -F 2308 {input.host_bam})
+        uniquely_host=$(samtools view -c -F 2308 -q 255 {input.host_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
 	both_host=$(wc -l < {input.both}) || true
 	echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output}
@@ -247,8 +247,8 @@ rule statistics_virus:
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        mapped_virus=$(samtools view -c -F 1284 {input.virus_bam})
-        uniquely_virus=$(samtools view -c -F 1284 -q 255 {input.virus_bam})
+        mapped_virus=$(samtools view -c -F 2308 {input.virus_bam})
+        uniquely_virus=$(samtools view -c -F 2308 -q 255 {input.virus_bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_virus=$(wc -l < {input.both}) || true
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output}
