@@ -154,6 +154,7 @@ rule star_stat:
     """Generate mapping statistic for host files."""
     input:
         host_bam="mapping/host/{sample}.bam",
+        host_log="mapping/host/{sample}Log.final.out"
     output:
         "mapping/host/stats/{sample}_stats.csv"
     priority: 1
@@ -164,8 +165,8 @@ rule star_stat:
         """
         mapped_host=$(samtools view -c -F 2308 {input.host_bam})
         uniquely_host=$(samtools view -c -F 2308 -q 255 {input.host_bam})
-        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
-	    echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' {input.host_log}`
+	echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',host' >> {output}
         """
 

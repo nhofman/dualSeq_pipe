@@ -92,7 +92,7 @@ rule unmapped_to_fastq:
         unmap1="mapping/host/unmapped/{sample}_R1.fastq",
         unmap2="mapping/host/unmapped/{sample}_R2.fastq"
     shell:
-        "mv {input.unmap1} {output.unmap1}"
+        "mv {input.unmap1} {output.unmap1};"
         "mv {input.unmap2} {output.unmap2}"
 
 rule bowtie2_index:
@@ -160,6 +160,7 @@ rule star_stat:
     """Generate mapping statistic for host files."""
     input:
         host_bam="mapping/host/{sample}.bam",
+        host_log="mapping/host/{sample}Log.final.out"
     output:
         "mapping/host/stats/{sample}_stats.csv"
     priority: 1
@@ -172,7 +173,7 @@ rule star_stat:
         proper_pairs=`awk "BEGIN {{print ${{mapped_host}}/2}}"`
         uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.host_bam})
         proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
-        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' {input.host_log}`
 	echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
         echo {wildcards.sample}','${{total}}','${{proper_pairs}}','${{proper_pairs_uniq}}',host' >> {output}
         """

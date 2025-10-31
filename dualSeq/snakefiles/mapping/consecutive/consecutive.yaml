@@ -88,4 +88,4 @@ single_end:
   snakefile: 'consecutive_se'
 
 paired_end:
-  snakefile: 'star_pe'
+  snakefile: 'consecutive_pe'
