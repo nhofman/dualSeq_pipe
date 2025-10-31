@@ -169,10 +169,12 @@ rule star_stat:
     shell:
         """
         mapped_host=$(samtools view -c -F 3340 {input.host_bam})
+        proper_pairs=`awk "BEGIN {{print ${{mapped_host}}/2}}"`
         uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.host_bam})
+        proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
 	echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
-        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',host' >> {output}
+        echo {wildcards.sample}','${{total}}','${{proper_pairs}}','${{proper_pairs_uniq}}',host' >> {output}
         """
 
 rule bowtie2_stat:
