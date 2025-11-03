@@ -85,6 +85,7 @@ rule star_mapping:
         " tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"        
 
 rule unmapped_to_fastq:
+    """Move unmapped reads to separate folder."""
     input:
         unmap1="mapping/host/{sample}Unmapped.out.mate1",
         unmap2="mapping/host/{sample}Unmapped.out.mate2"
@@ -141,6 +142,7 @@ rule bowtie2_mapping:
         "tee {log}"
 
 rule sam_to_bam:
+    """Convert Bowtie2 sam file to sorted bam file and create index. Write mapped and unmapped reads in separate files."""
     input:
         "mapping/virus/{sample}.sam"
     output:
@@ -153,8 +155,11 @@ rule sam_to_bam:
     threads:
         2
     shell:
-        "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam};"
-        "samtools view -f 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
+        """
+        samtools view -F 4 -hb {input} | samtools sort -@ {threads} -o {output.bam} - 
+        samtools index {output.bam}
+        samtools view -f 4 -hb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
+        """
 
 rule star_stat:
     """Generate mapping statistic for host files."""
@@ -169,9 +174,9 @@ rule star_stat:
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        mapped_host=$(samtools view -c -F 3340 {input.host_bam})
+        mapped_host=$(samtools view -c -F 2316 -f 1 {input.host_bam})
         proper_pairs=`awk "BEGIN {{print ${{mapped_host}}/2}}"`
-        uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.host_bam})
+        uniquely_host=$(samtools view -c -F 2316 -f 2 -q 255 {input.host_bam})
         proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' {input.host_log}`
 	echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
@@ -179,6 +184,7 @@ rule star_stat:
         """
 
 rule bowtie2_stat:
+    """Generate mapping statistic for virus files."""
     input:
         log="mapping/virus/logs/bowtie2_mapping.{sample}.log",
         bam="mapping/virus/{sample}.bam"
@@ -190,7 +196,7 @@ rule bowtie2_stat:
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        mapped_virus=$(samtools view -c -F 3340 {input.bam})
+        mapped_virus=$(samtools view -c -F 2316 {input.bam})
         uniquely_virus=$(grep "aligned concordantly exactly 1 time" "{input.log}" | awk '{{print $1}}')
         #mapped_multi=$(grep "aligned concordantly >1 times" "{input.log}" | awk '{{print $1}}')
         total=$(grep "reads" "{input.log}" | awk '{{print $1}}')

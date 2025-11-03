@@ -1,0 +1,26 @@
+
+rule all:
+    input:
+        expand("variant_analysis/preprocessing/downsample/{sample}.bam", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()])
+
+rule downsample:
+    input:
+        bam="mapping/virus/{sample}.bam"
+    output:
+        "variant_analysis/preprocessing/downsample/{sample}.bam"
+    conda: "../conda_envs/samtools_env.yaml"
+    shell:
+        """
+        if [[  %%DOWNSAMPLE%% ]]; then
+            mean_cov=$(samtools depth -a {input.bam} | awk '{{sum+=$3; i++}} END {{print sum/i}}')
+            if [[ $mean_cov > %%MAX_COV%%]]; then
+                frac=$(awk -v mean_cov="$mean_cov" max_cov="%%MAX_COV%%" 'BEGIN{{frac=max_cov/mean_cov; if(frac>1) frac=1; print frac}}')
+            else
+                frac=1
+            fi
+            echo $frac
+            samtools view -b --subsample-seed %%SEED%% --subsample $frac -o {output}
+        else
+            ln `readlink -f {input.bam}` {output}
+        fi
+        """

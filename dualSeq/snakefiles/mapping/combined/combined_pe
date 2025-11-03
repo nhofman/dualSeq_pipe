@@ -237,9 +237,9 @@ rule statistics_host:
     #resources: cpus=1, mem_mb=4000
     shell:
         """
-        mapped_host=$(samtools view -c -F 3340 {input.host_bam})
+        mapped_host=$(samtools view -c -F 2316 -f 1 {input.host_bam})
         proper_pairs=`awk "BEGIN {{print ${{mapped_host}}/2}}"`
-        uniquely_host=$(samtools view -c -F 3340 -f 2 -q 255 {input.host_bam})
+        uniquely_host=$(samtools view -c -F 2316 -f 2 -q 255 {input.host_bam})
         proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_host}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_host=$(samtools view -f 64 -N {input.both} mapping/{wildcards.sample}.bam | wc -l) || true # only count first in pair
@@ -261,9 +261,9 @@ rule statistics_virus:
     #resources: cpus=1, mem_mb=2000
     shell:
         """
-        mapped_virus=$(samtools view -c -F 3340 {input.virus_bam})
+        mapped_virus=$(samtools view -c -F 2316 -f 1 {input.virus_bam})
         proper_pairs=`awk "BEGIN {{print ${{mapped_virus}}/2}}"`
-        uniquely_virus=$(samtools view -c -F 3340 -f 2 -q 255 {input.virus_bam})
+        uniquely_virus=$(samtools view -c -F 2316 -f 2 -q 255 {input.virus_bam})
         proper_pairs_uniq=`awk "BEGIN {{print ${{uniquely_virus}}/2}}"`
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         both_virus=$(samtools view -f 64 -N {input.both} mapping/{wildcards.sample}.bam | wc -l) || true # only count first in pair
