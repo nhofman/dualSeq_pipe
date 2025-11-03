@@ -11,7 +11,7 @@ rule all:
         #expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
         #expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
         #multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
-        #multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
     
     
 rule mapping_stats_tsv:
@@ -147,8 +147,11 @@ rule sam_to_bam:
     threads:
         2
     shell:
-        "samtools view -F 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam} - && samtools index {output.bam};"
-        "samtools view -f 4 -Shb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
+        """
+	samtools view -F 4 -h -b {input} | samtools sort -@ {threads} -o {output.bam} - 
+	samtools index {output.bam}
+        samtools view -f 4 -hb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -
+	"""
 
 rule star_stat:
     """Generate mapping statistic for host files."""
@@ -172,7 +175,8 @@ rule star_stat:
 
 rule bowtie2_stat:
     input:
-        "mapping/virus/logs/bowtie2_mapping.{sample}.log"
+        log="mapping/virus/logs/bowtie2_mapping.{sample}.log",
+        bam="mapping/virus/{sample}.bam"
     output:
         "mapping/virus/stats/{sample}_stats.csv"
     priority: 1
@@ -181,10 +185,10 @@ rule bowtie2_stat:
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        mapped_virus=$(samtools view -c -F 2308 {input})
-        uniquely_virus=$(grep "aligned exactly 1 time" "{input}" | awk '{print $1}')
-        #mapped_multi=$(grep "aligned >1 times" "{input}" | awk '{print $1}')
-        total=$(grep "reads" "{input}" | awk '{print $1}')
+        mapped_virus=$(samtools view -c -F 2308 {input.bam})
+        uniquely_virus=$(grep "aligned exactly 1 time" "{input.log}" | awk '{{print $1}}')
+        #mapped_multi=$(grep "aligned >1 times" "{input.log}" | awk '{{print $1}}')
+        total=$(grep "reads" "{input.log}" | awk '{{print $1}}')
         echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
         echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}',virus' >> {output}
         """
@@ -196,8 +200,7 @@ rule plot_statistics:
         stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES)
     output:
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
-        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
-        multiext("mapping/stats/mapping_statistic_mock", ".pdf", ".png")
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
     params:
         "mapping/"
     priority: 1

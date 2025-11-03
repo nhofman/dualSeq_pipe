@@ -55,7 +55,7 @@ p <- ggplot(stats.t.mean[stats.t.mean$Category!="mapped",], aes(x=factor(Time, l
   geom_bar(stat = "identity", color = "black") +
   facet_wrap(~ Virus, scales = "free_x", ncol = ncol.facet) +
   xlab("Time") + ylab("Ratio of mapped reads") + labs(fill="Category") +
-  scale_fill_manual(labels = c("Host: Multimapped", "Host: Uniquely mapped (proper pair)", "Virus: Multimapped", "Virus: Uniquely mapped (concordantly)"), 
+  scale_fill_manual(labels = c("Host: Multimapped", "Host: Uniquely mapped (proper pairs)", "Virus: Multimapped", "Virus: Uniquely mapped (concordant pairs)"), 
                     values = c("peachpuff2", "darkorange", "lightblue", "darkblue")) + 
   theme(text = element_text(face = "bold"), line = element_line(linewidth = 0.25),
         axis.line.x.top = element_blank(), axis.line.x.bottom = element_line(color = "black", linewidth = 0.25),
