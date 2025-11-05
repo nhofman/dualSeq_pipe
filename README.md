@@ -3,7 +3,7 @@
 ## Idea
 In a dual RNA-Seq approach human HuH7 cells were infected with different pathogenic viruses. Samples were taken after predefined times of infection. Total RNA was extracted and sequenced on an Illumina HiSeq4000.
 
-A pipeline was build to analyse data from such dual RNA-Seq infection experiments where samples are a mix of host and pathogenic reads. The pipeline is split into three parts: joint analyses, host- and virus-specific analyses. A Python script is used to build and execute a customized Snakemake workflow based on the analysis modules and parameters specified by the user. A workflow is composed of several modules and submodules.
+A pipeline was developed for the analysis of data from such dual RNA-Seq infection experiments, in which samples consist of a mixture of host and pathogenic reads. The objective of this study was to analyze the human cell response to viral infections and to conduct a mutation analysis of the viral sequences. Consequently, the pipeline is divided into three segments: joint analyses, host-specific analyses, and virus-specific analyses. A Python script is used to build and execute a customized Snakemake workflow based on the analysis modules and parameters specified by the user. A workflow comprises a series of modules and submodules.
 
 Available analysis modules are:
 
@@ -15,7 +15,8 @@ Available analysis modules are:
 	- none
 	- fastp
 - Mapping
-	- combined {STAR}
+	- combined {STAR, joint host + virus reference}
+  - consecutive {1. STAR, whole sample (host reference), 2. Bowtie2, unmapped reads from STAR (virus reference)}
 - Report
 	- bamCoverage {bigwig}
 	- multiqc
@@ -178,12 +179,16 @@ default-resources: [mem_mb=500, partition=bcf]
 printshellcmds: True
 ```
 
-#### Conda/Mamba
+### Conda/mamba usage:
 
 The pipeline uses the Snakemake conda integration to provide the necessary rule-specific software packages, as long as conda or mamba is installed on the system. The environments are defined as YAML files and are set via the conda directive for each rule. Predefined environment files are provided in the directory `conda_envs`.
 To use the conda integration, the flag `--use-conda` has to be set. The conda frontend can be defined with the argument `--conda-frontend <{mamba, conda}>`, available options are mamba ('default') and conda. The conda environments are created in the `.snakemake` directory within the current working directory per default. The option `--conda-prefix <directory>` can be used to set a user-defined directory. If the conda environments should be created without running the pipeline, the flag `--conda-create-envs-only` can be specified.
 
 In the event that the conda integration is not utilized, it is up to the user to ensure that the necessary analysis tools are accessible to the pipeline. The required tools are specified in the respective YAML files, which are stored in the directory `conda_envs`.
+
+### Test:
+
+The pipeline can be tested with the exemplary input data and pipeline files provided in the `test\test_single` directory. The folder contains a pipeline configuration file, sample overview file, the comparison.txt and a snakemake profile. A virus reference genome and annotation can be found in `references`, while the human reference files have to be prepared by the user. The pipeline can be executed with the file `run_pipeline.sh`.
 
 ## Results
 All analysis results can be found in the output directory specified by the user (`--outdir`). For each submodule, a separate folder is created within the respective module folder. Available results include:

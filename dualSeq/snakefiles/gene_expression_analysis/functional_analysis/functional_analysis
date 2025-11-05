@@ -9,8 +9,6 @@ def getComparisons():
 
 def getDatabases():
     """Parse functional annotation databases and GO categories"""
-    #print(type(%%DB%%))
-    #print(type(%%ONT%%))
     db="%%DB%%".split(",")
     ont="%%ONT%%".split(",")
     if "GO" in db:
@@ -28,7 +26,6 @@ rule all:
 
 rule functional_analysis:
     """Functional enrichment analysis of differentially expressed genes with user-defined databases."""
-    #localrule: True
     input:
         #rdata="gene_expression_analysis/deseq2/deseq2.RData",
         "gene_expression_analysis/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv"
