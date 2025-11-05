@@ -1,0 +1,63 @@
+pipeline:
+    paired_end: false
+
+QC:
+    module: "fastqc"
+
+preprocessing:
+    module: "fastp"
+
+    fastp:
+        additional_fastp_options: "-x"
+
+mapping:
+    module: "consecutive"
+
+    consecutive:
+        star_index_dir: "starindex/"
+        host_genome: "genome.fa"
+        host_gtf: "genes.gtf"
+        star_sj_overhang: "149"
+        additional_star_options: "--readFilesCommand zcat"
+        alignment_type_virus: "local"
+
+gene_expression_analysis:
+    modules: ["count_table", "deseq2", "functional_analysis"] 
+
+    count_table:
+        gff_feature_type_human: "exon"
+        gff_feature_name_human: "gene_id"
+        gff_human: "genes.gtf"
+        additional_featcounts_options: "-s 2"
+   
+    deseq2:
+        comparisons_human: "comparison.txt"
+        #color: "colors.txt"
+        rRNA: "rRNA_genes.txt"
+        mem_mb: "10000"
+
+    functional_analysis:
+        comparisons_human: "comparison.txt"
+        db: "GO,KEGG,REACTOME"
+        ont: "CC,MF,BP"
+        mem_mb: "10000" 
+
+report:
+    modules: ["bamCoverage", "multiqc"]
+
+    bamCoverage:
+        effectiveGenomeSize_host: "2913022398"
+        normMethod_host: "RPGC"
+        binSize_host: "10"
+        normMethod_virus: "None"
+        binSize_virus: "10"
+
+    multiqc:
+        additional_multiqc_options: "-f --export"
+
+variant_analysis:
+    modules: ["preprocessing", "variant_calling"]
+
+    variant_calling:
+        additional_lofreq_options: "--call-indels"
+        mem_mb: "2000"
