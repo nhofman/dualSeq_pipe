@@ -4,7 +4,8 @@ rule all:
     input:
         expand("variant_analysis/variant_analysis/{sample}.vcf", sample=INFECTED_SAMPLES),
         "variant_analysis/variant_analysis/plots/Count_SNP.pdf",
-        "variant_analysis/variant_analysis/plots/Frequency_density.pdf"
+        "variant_analysis/variant_analysis/plots/Frequency_density.pdf",
+        "variant_analysis/variant_analysis.done"
 
 rule call_variant:
     """Call variants in preprocessed bam file."""
@@ -48,9 +49,19 @@ rule plot_snp:
         output_folder="variant_analysis/variant_analysis/plots",
         vcf_folder="variant_analysis/variant_analysis/"
     priority: 1
+    log:
+        "variant_analysis/variant_analysis/log/plot_SNP.log"
     group: "lofreq_plot"
     conda: "../conda_envs/R_env.yaml"
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "R --vanilla --file=lib/compare_SNP.R --args --vcf {params.vcf_folder} --gff {input.gff} --output {params.output_folder}"
+        "R --vanilla --file=lib/compare_SNP.R --args --vcf {params.vcf_folder} --gff {input.gff} --output {params.output_folder} 2> {log}"
+
+rule done:
+    input:
+        "variant_analysis/variant_analysis/plots/Count_SNP.pdf"
+    output:
+        "variant_analysis/variant_analysis.done"
+    shell:
+        "touch {output}"

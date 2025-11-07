@@ -3,8 +3,8 @@ INFECTED_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome
 rule all:
   input:
     expand("variant_analysis/preprocessing/{sample}_indel.bam", sample=INFECTED_SAMPLES),
-    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=INFECTED_SAMPLES)
-    
+    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=INFECTED_SAMPLES),
+    "variant_analysis/preprocessing.done"
 
 rule remove_spliced:
     """Remove spliced reads using the CIGAR string."""
@@ -13,13 +13,15 @@ rule remove_spliced:
     output:
         "variant_analysis/preprocessing/{sample}_noSplice.bam"
     priority: 1
+    log:
+        "variant_analysis/preprocessing/log/{sample}.spliced.log"
     conda: "../conda_envs/samtools_env.yaml"
     resources:
         mem_mb=%%MEM_MB%%
     shell:
         """
-        samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
-        samtools sort -m 4G -O bam -o {output} {output}.sam
+        samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam 2> {log}
+        samtools sort -m 4G -O bam -o {output} {output}.sam 2>> {log}
         rm {output}.sam
         """
 
@@ -68,6 +70,8 @@ rule index:
     output:
         "variant_analysis/preprocessing/{sample}_indel.bam.bai"
     priority: 1
+    log:
+        "variant_analysis/preprocessing/log/{sample}.index.log"
     group: "indel_qual"
     conda: "../conda_envs/samtools_env.yaml"
     threads: 1
@@ -75,6 +79,14 @@ rule index:
         mem_mb=%%MEM_MB%%
     shell:
         """
-        samtools index {input}
+        samtools index {input} 2> {log}
         """
 			 
+rule done:
+    input:
+        expand("variant_analysis/preprocessing/{sample}_indel.bam.bai", sample=INFECTED_SAMPLES)
+    output:
+        "variant_analysis/preprocessing.done"
+    shell:
+        "touch {output}"
+

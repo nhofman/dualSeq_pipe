@@ -22,7 +22,8 @@ COMPARISONS=getComparisons()
 
 rule all:
     input:
-        expand("gene_expression_analysis/functional_analysis/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
+        expand("gene_expression_analysis/functional_analysis/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE),
+        "gene_expression_analysis/functional_analysis/functional_analysis.done"
 
 rule functional_analysis:
     """Functional enrichment analysis of differentially expressed genes with user-defined databases."""
@@ -47,4 +48,12 @@ rule functional_analysis:
         """
         R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --datatable {input} --db %%DB%% --ont %%ONT%% --output_folder {params.output_folder} 2>&1 | tee {log}
         """
+
+rule done:
+    input:
+        expand("gene_expression_analysis/functional_analysis/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
+    output:
+        "gene_expression_analysis/functional_analysis/functional_analysis.done"
+    shell:
+        "touch {output}"
 

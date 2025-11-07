@@ -35,7 +35,7 @@ rule fastqc:
 
 rule done:
     input:
-        rules.fastqc__fastqc.output
+        expand("QC/fastqc/{sample}_fastqc.html", sample=sorted(config['entries'].keys()))
     output:
         "QC/fastqc.done"
     shell:

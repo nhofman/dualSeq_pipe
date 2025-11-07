@@ -17,8 +17,8 @@ COMPARISONS=getComparisons()
 rule all:
     input:
         "gene_expression_analysis/deseq2/counts_normalized.csv",
-        "gene_expression_analysis/deseq2/deseq2.RData"
-
+        "gene_expression_analysis/deseq2/deseq2.RData",
+        "gene_expression_analysis/deseq2/deseq2.done"
         
 rule create_conditions_human:
     """Create table of samples and corresponding conditions."""
@@ -47,7 +47,7 @@ rule deseq2_human:
     params:
         output_folder="gene_expression_analysis/deseq2/"
     log:
-        "gene_expression_analysis/deseq2/logs/deseq2.log"
+        "gene_expression_analysis/deseq2/log/deseq2.log"
     conda: "../conda_envs/R_env.yaml"
     threads:
         1
@@ -56,4 +56,11 @@ rule deseq2_human:
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} --color %%COLOR%% --rRNA %%RRNA%% 2>&1 | tee {log}"
   
+rule done:
+    input:
+        "gene_expression_analysis/deseq2/deseq2.RData"
+    output:
+        "gene_expression_analysis/deseq2/deseq2.done"
+    shell:
+        "touch {output}"
 

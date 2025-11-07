@@ -18,7 +18,8 @@ rule all:
         expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
         expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
-        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
+        "mapping/combined.done"
 
 def virus2genome(wildcards):
     """Function to get viral genome and annotation files for a sample."""
@@ -48,7 +49,7 @@ rule star_index:
         ann_file=annotation_name
     priority: 1
     log:
-        "mapping/logs/star_index_"+"{virus}"+".log"
+        "mapping/log/star_index_"+"{virus}"+".log"
     group:
         "star_index"
     conda: "../conda_envs/star_env.yaml"
@@ -99,7 +100,7 @@ rule star_mapping:
         prefix="mapping/{sample}"
     priority: 1
     log:
-        "mapping/logs/star_mapping.{sample}.log"
+        "mapping/log/star_mapping.{sample}.log"
     group:
         "star_mapping"
     conda: "../conda_envs/star_env.yaml"
@@ -119,7 +120,7 @@ rule index_bam:
         "mapping/{sample}.bam.bai"
     priority: 1
     log:
-        "mapping/logs/index.{sample}.log"
+        "mapping/log/index.{sample}.log"
     group:
         "star_mapping"
     conda: "../conda_envs/samtools_env.yaml"
@@ -135,6 +136,8 @@ rule mock_statistic:
         bam = "mapping/host/{sample}.bam",
         stat = "mapping/host/stats/{sample}_stats.csv"
     priority: 1
+    log:
+        "mapping/log/mock.{sample}.log"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
@@ -143,7 +146,7 @@ rule mock_statistic:
          if [[ {input.bam} == "None" ]]; then
             exit 0
         fi
-        mapped_host=$(samtools view -c -F 2308 {input.bam})
+        mapped_host=$(samtools view -c -F 2308 {input.bam}) 
         uniquely_host=$(samtools view -c -F 2308 -q 255 {input.bam})
         total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' mapping/{wildcards.sample}Log.final.out`
         echo $'sample,total_reads,mapped,uniquely_mapped,mapped_to_both,group,class' > {output.stat}
@@ -164,6 +167,8 @@ rule split_bam_infected:
     params:
         genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome_annotation']
     priority: 1
+    log:
+        "mapping/log/split_bam.{sample}.log"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
@@ -174,12 +179,12 @@ rule split_bam_infected:
         fi
         id=`cut -sf 1 {params.genome} | uniq`
         samtools view -H {input.bam} | awk -v id="${{id}}" '{{if ($0 ~ /@SQ/){{ split($2,b,":"); if(id ~ b[2]){{print $0}}}}else{{print $0}}}}' > {output.sam_virus}
-        samtools view {input.bam} $id >> {output.sam_virus}
-        samtools view -hb {output.sam_virus} > {output.bam_virus}
-        samtools index {output.bam_virus}
+        samtools view {input.bam} $id >> {output.sam_virus} 2>> {log}
+        samtools view -hb -o {output.bam_virus} {output.sam_virus} 2>> {log}
+        samtools index {output.bam_virus} 2>> {log}
         id="${{id// /\\n}}"
-        samtools view -h {input.bam} | grep -v "$id" - | samtools view -hb - > {output.bam_host}
-        samtools index {output.bam_host} 
+        samtools view -h {input.bam} | grep -v "$id" - | samtools view -hb -o {output.bam_host} - 2>> {log}
+        samtools index {output.bam_host} 2>> {log}
         """
 
 rule index_bam_host:
@@ -190,7 +195,7 @@ rule index_bam_host:
         "mapping/host/{sample}.bam.bai"
     priority: 1
     log:
-        "mapping/host/logs/index.{sample}.log"
+        "mapping/log/host.index.{sample}.log"
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         "samtools index {input} 2>&1 | tee {log}"
@@ -204,13 +209,15 @@ rule mapped_both:
         names=temp("mapping/virus/{sample}_name.txt"),
         both="mapping/virus/{sample}_both.txt"
     priority: 1
+    log:
+        "mapping/log/mapped_both.{sample}.log"
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        samtools view {input.virus} | cut -f1 | awk '{{a[$1]=1}} END{{for(i in a) print i}}' > {output.names}
-        samtools view -N {output.names} {input.host} | cut -f1 | sort -u > {output.both} || true
+        samtools view {input.virus} | cut -f1 | awk '{{a[$1]=1}} END{{for(i in a) print i}}' > {output.names} 2> {log}
+        samtools view -N {output.names} {input.host} | cut -f1 | sort -u > {output.both} || true 2>> {log}
         """
 
 rule statistics_host:
@@ -267,8 +274,18 @@ rule plot_statistics:
     params:
         "mapping/"
     priority: 1
+    log:
+        "mapping/log/plot_mapping_stat.log"
     conda: "../conda_envs/R_env.yaml"
     shell:
         """
-        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params}
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params} 2>> {log}
         """
+
+rule done:
+    input:
+        "mapping/stats/mapping_statistic.csv"
+    output:
+        "mapping/combined.done"
+    shell:
+        "touch {output}"

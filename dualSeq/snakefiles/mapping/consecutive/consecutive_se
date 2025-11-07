@@ -24,7 +24,7 @@ rule star_index:
         #"%%STAR_INDEX_DIR%%"+"SAindex"
     priority: 1
     log:
-        "mapping/logs/star_index.log"
+        "mapping/log/star_index.log"
     group:
         "star_index"
     conda: "../conda_envs/star_env.yaml"
@@ -50,7 +50,7 @@ rule star_mapping:
         prefix="mapping/host/{sample}"
     priority: 1
     log:
-        "mapping/logs/star_mapping.{sample}.log"
+        "mapping/log/star_mapping.{sample}.log"
     group:
         "star_mapping"
     conda: "../conda_envs/star_env.yaml"
@@ -81,15 +81,14 @@ rule bowtie2_index:
     group:
         "bowtie2_index"
     log:
-        "mapping/virus/logs/bowtie2_index_{genome_name}.log"
+        "mapping/log/bowtie2_index_{genome_name}.log"
     conda: "../conda_envs/bowtie2_env.yaml"
     threads:
         %%THREADS_IDX_VIRUS%%
     resources:
         mem_mb=%%MEM_MB_BOWTIE2%%
     shell:
-        "bowtie2-build --threads {threads} {input} {input} 2>&1 |"
-        "tee {log}"
+        "bowtie2-build --threads {threads} {input} {input} 2>&1 | tee {log}"
 
 rule bowtie2_mapping:
     """Map reads that could not be mapped against the host reference to the pathogen (virus) genome."""
@@ -105,7 +104,7 @@ rule bowtie2_mapping:
     group:
         "bowtie2_mapping"
     log:
-        "mapping/virus/logs/bowtie2_mapping.{sample}.log"
+        "mapping/log/bowtie2_mapping.{sample}.log"
     conda: "../conda_envs/bowtie2_env.yaml"
     threads:
         %%THREADS_MAPPING_VIRUS%%
@@ -123,6 +122,8 @@ rule sam_to_bam:
         bam="mapping/virus/{sample}.bam",
         bai="mapping/virus/{sample}.bam.bai",
         bam_unmapped="mapping/virus/unmapped/{sample}_unmap.bam"
+    log:
+        "mapping/log/bowtie2_sam_bam.{sample}.log"
     group:
         "bowtie2_mapping"
     conda: "../conda_envs/samtools_env.yaml"
@@ -130,10 +131,10 @@ rule sam_to_bam:
         2
     shell:
         """
-	samtools view -F 4 -hb {input} | samtools sort -@ {threads} -o {output.bam} - 
-	samtools index {output.bam}
-        samtools view -f 4 -hb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -
-	"""
+        samtools view -F 4 -hb {input} | samtools sort -@ {threads} -o {output.bam} - 2>> {log}
+        samtools index {output.bam} 2>> {log}
+        samtools view -f 4 -hb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} - 2>> {log}
+        """
 
 rule star_stat:
     """Generate mapping statistic for host files."""
@@ -158,7 +159,7 @@ rule star_stat:
 rule bowtie2_stat:
     """Generate mapping statistic for virus files."""
     input:
-        log="mapping/virus/logs/bowtie2_mapping.{sample}.log",
+        log="mapping/virus/log/bowtie2_mapping.{sample}.log",
         bam="mapping/virus/{sample}.bam"
     output:
         "mapping/virus/stats/{sample}_stats.csv"
@@ -187,10 +188,12 @@ rule plot_statistics:
     params:
         "mapping/"
     priority: 1
+    log:
+        "mapping/log/plot_mapping_stat.log"
     conda: "../conda_envs/R_env.yaml"
     shell:
         """
-        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params}
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params} 2> {log}
         """
 
 rule done:

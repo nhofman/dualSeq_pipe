@@ -11,28 +11,9 @@ rule all:
         #expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
         #expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
         multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
-        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
-    
-    
-rule mapping_stats_tsv:
-    input:
-        expand("mapping/host/{sample}Log.final.out", sample=config['entries'].keys())
-    output:
-        "mapping/host/stats/mapping_stats.tsv"
-    run:
-        
-        with open(output[0], 'w') as summary_file:
-            summary_file.write("sample	total_reads	avg_input_read_length	uniquely_mapped	uniquely_mapped_percent	avg_mapped_read_length	num_splices	num_annotated_splices	num_GT/AG_splices	num_GC/AG_splices	num_AT/AC_splices	num_noncanonical_splices	mismatch_rate	deletion_rate	deletion_length	insertion_rate	insertion_length	multimapped	multimapped_percent	multimapped_toomany	multimapped_toomany_percent	unmapped_mismatches_percent	unmapped_tooshort_percent	unmapped_other_percent	chimeric	chimeric_percent\n")
-            #pattern = {}
-            for i in input:
-                summary_file.write(i.replace("Log.final.out", "").replace("mapping/host/", "") + "	")
-                #with open(i, "r") as input_file:
-                for line in shell("tail -n +5 {i}", iterable=True):
-                        if "|" in line:
-                            line_data = line.split("|")
-                            summary_file.write(line_data[1].split()[0] + "	")
-                summary_file.write("\n")
-        
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
+        "mapping/consecutive.done"
+   
 
 rule star_index:
     """Create STAR index for host reference"""
@@ -44,7 +25,7 @@ rule star_index:
         #"%%STAR_INDEX_DIR%%"+"SAindex"
     priority: 1
     log:
-        "mapping/logs/star_index.log"
+        "mapping/log/star_index.log"
     group:
         "star_index"
     conda: "../conda_envs/star_env.yaml"
@@ -55,7 +36,6 @@ rule star_index:
     shell:
         "STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir %%STAR_INDEX_DIR%% --genomeFastaFiles {input.genome} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 |"
         "tee {log}"
-
 
 rule star_mapping:
     """Map preprocessed reads to the indexed reference genome."""
@@ -72,7 +52,7 @@ rule star_mapping:
         prefix="mapping/host/{sample}"
     priority: 1
     log:
-        "mapping/logs/star_mapping.{sample}.log"
+        "mapping/log/star_mapping.{sample}.log"
     group:
         "star_mapping"
     conda: "../conda_envs/star_env.yaml"
@@ -106,7 +86,7 @@ rule bowtie2_index:
     group:
         "bowtie2_index"
     log:
-        "mapping/virus/logs/bowtie2_index_{genome_name}.log"
+        "mapping/log/bowtie2_index_{genome_name}.log"
     conda: "../conda_envs/bowtie2_env.yaml"
     threads:
         %%THREADS_IDX_VIRUS%%
@@ -131,7 +111,7 @@ rule bowtie2_mapping:
     group:
         "bowtie2_mapping"
     log:
-        "mapping/virus/logs/bowtie2_mapping.{sample}.log"
+        "mapping/log/bowtie2_mapping.{sample}.log"
     conda: "../conda_envs/bowtie2_env.yaml"
     threads:
         %%THREADS_MAPPING_VIRUS%%
@@ -151,14 +131,16 @@ rule sam_to_bam:
         bam_unmapped="mapping/virus/unmapped/{sample}_unmap.bam"
     group:
         "bowtie2_mapping"
+    log:
+        "mapping/log/bowtie2_sam_bam.{sample}.log"
     conda: "../conda_envs/samtools_env.yaml"
     threads:
         2
     shell:
         """
-        samtools view -F 4 -hb {input} | samtools sort -@ {threads} -o {output.bam} - 
-        samtools index {output.bam}
-        samtools view -f 4 -hb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} -"
+        samtools view -F 4 -hb {input} | samtools sort -@ {threads} -o {output.bam} - 2> {log}
+        samtools index {output.bam} 2>> {log}
+        samtools view -f 4 -hb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} - 2>> {log}
         """
 
 rule star_stat:
@@ -215,8 +197,18 @@ rule plot_statistics:
     params:
         "mapping/"
     priority: 1
+    log:
+        "mapping/log/plot_mapping_stat.log"
     conda: "../conda_envs/R_env.yaml"
     shell:
         """
-        R --vanilla --file=lib/plot_mapping_stats_pe.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params}
+        R --vanilla --file=lib/plot_mapping_stats_pe.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params} 2> {log}
         """
+
+rule done:
+    input:
+        "mapping/stats/mapping_statistic.csv"
+    output:
+        "mapping/consecutive.done"
+    shell:
+        "touch {output}"

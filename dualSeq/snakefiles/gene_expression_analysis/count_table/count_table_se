@@ -20,7 +20,7 @@ rule count_reads_host:
     priority: 1
     group: "count_reads_host"
     log:
-        "gene_expression_analysis/count_table/logs/featurecounts.log"
+        "gene_expression_analysis/count_table/log/featurecounts.log"
     conda: "../conda_envs/counts_env.yaml"
     threads:
         %%THREADS%%
@@ -42,14 +42,14 @@ rule plot_assignment:
     params:
         output_folder="gene_expression_analysis/count_table/"
     log:
-        "gene_expression_analysis/count_table/logs/plot_featurecounts.log"
+        "gene_expression_analysis/count_table/log/plot_featurecounts.log"
     conda: "../conda_envs/R_env.yaml"
     shell:
         "R --vanilla --file=lib/plot_assignment.R --args --featurecounts-log {input} --output {params.output_folder} 2>&1 | tee {log}"
 
 rule done:
     input:
-        "gene_expression_analysis/count_table/counts_assignment.pdf"
+        "gene_expression_analysis/count_table/counts_assignment_relative.pdf"
     output:
         "gene_expression_analysis/count_table/count.done"
     shell:
