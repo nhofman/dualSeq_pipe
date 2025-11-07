@@ -391,7 +391,7 @@ def create_output_directory(output_path: Path):
 
 def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
     """Function to create the snakemake files and related scripts for every module in the snakemake target directory."""
-    pipeline_config = create_snakemake_pipeline_config(output_folder, data)
+    pipeline_config = create_snakemake_pipeline_config(output_folder, data, modules)
     # find every rule name
     re_rule_name = re.compile('^rule (?P<rule_name>.*):$', re.MULTILINE)
     # find every lib reference
@@ -435,17 +435,22 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'gene_expression_analysis', 'mapping', 'report', 'variant_analysis')]:
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'preprocessing', 'gene_expression_analysis', 'mapping', 'report', 'variant_analysis')]:
             snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-', '_')))
 
     return snakefile_main_path
 
 
-def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]]) -> Path:
+def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
     """Create snakemake config file that contains a dictionary of all input data."""
     config_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'snakefile_config.yaml'
+    m_list = []
     with config_path.open('w') as pipeline_config:
-        pipeline_config.write('entries:\n')
+        #pipeline_config.write('modules:\n')
+        for module in [module for (category, module_list) in modules.items() for module in module_list]:
+            m_list.append('{module_name}'.format(module_name=module.name.lower().replace('-', '_')))
+        pipeline_config.write('modules: {}'.format(m_list))
+        pipeline_config.write('\nentries:\n')
         for row, modules in data.items():
             pipeline_config.write('    "{}":\n'.format(row))
             for module_name, columns in modules.items():

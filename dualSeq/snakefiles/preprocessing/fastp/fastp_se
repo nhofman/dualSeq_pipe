@@ -1,7 +1,8 @@
 
 rule all:
     input:
-        expand("preprocessing/{sample}.fq.gz", sample=sorted(config['entries'].keys()))
+        expand("preprocessing/{sample}.fq.gz", sample=sorted(config['entries'].keys())),
+        "preprocessing/fastp.done"
 
 rule trim_reads:
     """Trim reads with fastp."""
@@ -21,3 +22,11 @@ rule trim_reads:
         mem_mb=%%MEM_MB%%
     shell:
         "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/fastp/{wildcards.sample}_fastp.html -j preprocessing/fastp/{wildcards.sample}_fastp.json %%ADDITIONAL_FASTP_OPTIONS%% 2>&1 | tee {log}"
+
+rule done:
+    input:
+        rules.fastp__trim_reads.output
+    output: 
+        "preprocessing/fastp.done"
+    shell:
+        "touch {output}"

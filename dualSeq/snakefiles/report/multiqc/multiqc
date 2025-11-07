@@ -20,12 +20,17 @@ rule parse_envs:
         python scripts/parse_software_versions.py {input} {output} 2>&1 | tee {log}
         """
 
+used_modules = [module for module in config["modules"] if module != "multiqc"]
+
 rule multiqc:
     """Generate MultiQC report by scanning the working directory for usable files."""
     input:
-        rules.multiqc__parse_envs.output
+        done=[eval(f"rules.{module}__done.output") for module in used_modules],
+        config=rules.multiqc__parse_envs.output
     output:
         "report/multiqc/multiqc_report.html"
+    #params:
+        #rules.multiqc__parse_envs.output
     log:
         "report/multiqc/log/multiqc.log"
     group:
@@ -36,4 +41,4 @@ rule multiqc:
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --ignore .snakemake --config {input} --outdir report/multiqc . 2>&1 | tee {log}"
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --ignore .snakemake --config {input.config} --outdir report/multiqc . 2>&1 | tee {log}"

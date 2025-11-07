@@ -4,7 +4,7 @@ optional_settings:
   downsample:
     description: 'Indicate if reads should be downsampled.'
     type: 'boolean'
-    default: False
+    default: false
 
   max_cov:
     description: 'Mean target coverage.'

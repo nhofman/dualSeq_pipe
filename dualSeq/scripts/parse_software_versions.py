@@ -14,5 +14,8 @@ for conda_env in yaml_list:
         if "=" in entry:
             entry_split = entry.split("=")
             tmp = str(entry_split[0]) + ': "' + str(entry_split[1] + '"')
-            file.write(f'  {tmp}\n')
+        else:
+            tmp = str(entry) + ': ""'
+        file.write(f'  {tmp}\n')
+            
 file.close()

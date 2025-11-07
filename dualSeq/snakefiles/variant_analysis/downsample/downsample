@@ -11,15 +11,19 @@ rule downsample:
     conda: "../conda_envs/samtools_env.yaml"
     shell:
         """
-        if [[  %%DOWNSAMPLE%% ]]; then
+        if [[ "%%DOWNSAMPLE%%" = True ]]; then
             mean_cov=$(samtools depth -a {input.bam} | awk '{{sum+=$3; i++}} END {{print sum/i}}')
-            if [[ $mean_cov > %%MAX_COV%%]]; then
-                frac=$(awk -v mean_cov="$mean_cov" max_cov="%%MAX_COV%%" 'BEGIN{{frac=max_cov/mean_cov; if(frac>1) frac=1; print frac}}')
+            if awk "BEGIN {{exit !($mean_cov > %%MAX_COV%%)}}"; then
+		echo "mean > max"
+		echo $mean_cov
+                frac=$(awk -v mean_cov="$mean_cov" -v max_cov="%%MAX_COV%%" 'BEGIN{{frac=max_cov/mean_cov; if(frac>1) frac=1; print frac}}')
+		echo $frac
             else
+		echo "mean < max"
                 frac=1
+		echo $frac
             fi
-            echo $frac
-            samtools view -b --subsample-seed %%SEED%% --subsample $frac -o {output}
+            samtools view -b --subsample-seed %%SEED%% --subsample $frac -o {output} {input.bam}
         else
             ln `readlink -f {input.bam}` {output}
         fi

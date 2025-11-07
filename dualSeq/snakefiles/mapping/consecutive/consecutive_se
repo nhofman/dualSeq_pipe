@@ -11,7 +11,8 @@ rule all:
         #expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
         #expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
         #multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
-        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
+        "mapping/consecutive.done"
             
 rule star_index:
     """Create STAR index for host reference"""
@@ -191,3 +192,11 @@ rule plot_statistics:
         """
         R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params}
         """
+
+rule done:
+    input:
+        "mapping/stats/mapping_statistic.csv"
+    output:
+        "mapping/consecutive.done"
+    shell:
+        "touch {output}"

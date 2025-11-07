@@ -1,7 +1,8 @@
 
 rule all:
     input:
-        expand("QC/fastqc/{sample}_fastqc.html", sample=sorted(config['entries'].keys()))
+        expand("QC/fastqc/{sample}_fastqc.html", sample=sorted(config['entries'].keys())),
+        "QC/fastqc.done"
 
 rule fastqc:
     """Run FastQC with reads and rename the output files to {sample_name}_*."""
@@ -31,3 +32,11 @@ rule fastqc:
             mv QC/fastqc/${{input_name}}_fastqc.zip {output[1]}
         fi
         """
+
+rule done:
+    input:
+        rules.fastqc__fastqc.output
+    output:
+        "QC/fastqc.done"
+    shell:
+        "touch {output}"

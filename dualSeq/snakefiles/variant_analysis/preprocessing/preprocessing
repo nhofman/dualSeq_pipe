@@ -19,7 +19,7 @@ rule remove_spliced:
     shell:
         """
         samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam
-        samtools sort -O bam -o {output} {output}.sam
+        samtools sort -m 4G -O bam -o {output} {output}.sam
         rm {output}.sam
         """
 
