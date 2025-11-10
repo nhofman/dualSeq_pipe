@@ -1,25 +1,33 @@
-from os import listdir
-from os.path import isfile, splitext
 
 rule all:
     input:
-        expand("preprocessing/{A}.fq.gz", A=sorted(config['entries'].keys()))
+        expand("preprocessing/{sample}.fq.gz", sample=sorted(config['entries'].keys())),
+        "preprocessing/fastp.done"
 
 rule trim_reads:
+    """Trim reads with fastp."""
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
     output:
-        "preprocessing/{sample}.fq.gz",
-        "preprocessing/fastp/{sample}_fastp.json"
+        reads="preprocessing/{sample}.fq.gz",
+        json="preprocessing/fastp/{sample}_fastp.json",
+        html="preprocessing/fastp/{sample}_fastp.html"
     priority: 1
     log:
         "preprocessing/fastp/log/{sample}.log"
-    group:
-        "fastp"
+    group: "fastp"
     conda: "../conda_envs/fastp_env.yaml"
     threads:
         2
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "fastp -w {threads} --in1 {input} --out1 {output} -h preprocessing/fastp/{wildcards.sample}_fastp.html -j preprocessing/fastp/{wildcards.sample}_fastp.json %%ADDITIONAL_FASTP_OPTIONS%% 2>&1 | tee {log}"
+        "fastp -w {threads} --in1 {input} --out1 {output.reads} -h {output.html} -j {output.json} %%ADDITIONAL_FASTP_OPTIONS%% 2>&1 | tee {log}"
+
+rule done:
+    input:
+        expand("preprocessing/fastp/{sample}_fastp.json", sample=sorted(config['entries'].keys()))
+    output: 
+        "preprocessing/fastp.done"
+    shell:
+        "touch {output}"

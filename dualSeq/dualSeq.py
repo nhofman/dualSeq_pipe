@@ -1,3 +1,38 @@
+#!/usr/bin/env python3
+"""
+Dual RNA-Seq analysis pipeline
+
+usage: dualSeq.py --data DATA_FILE --pipeline-config PIPELINE_CONFIG --outdir OUTPUT_FOLDER [--profile PROFILE] [-t CORES] [-j JOBS] [--use-conda] [--conda-frontend {mamba,conda}]
+                  [--conda-prefix CONDA_PREFIX] [--conda-create-envs-only] [--latency-wait LATENCY] [--other [OTHER ...]] [-v] [--verbose] [-h]
+
+Required arguments:
+  --data DATA_FILE      Path to comma- or tab-separated file that lists all input data.
+  --pipeline-config PIPELINE_CONFIG
+                        Path to YAML file that defines rules and rule-specific parameters.
+  --outdir OUTPUT_FOLDER, -o OUTPUT_FOLDER
+                        Path to output folder.
+
+Other arguments:
+  --profile PROFILE     Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. See
+                        also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles
+  -t CORES, --cores CORES
+                        Number of threads/cores (Default: 1).
+  -j JOBS, --jobs JOBS  Maximal number of parallel jobs send to the cluster (Default: 1). Only used in cluster mode.
+  --use-conda           Run job in conda environment, if defined in rule.
+  --conda-frontend {mamba,conda}
+                        Choose frontend for installing environmnents ['conda', 'mamba']. (Default: mamba)
+  --conda-prefix CONDA_PREFIX
+                        Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.
+  --conda-create-envs-only
+                        Only create job-specific environments and exit. --use-conda has to be set.
+  --latency-wait LATENCY
+                        Seconds to wait before checking if all files of a rule were created (Default: 3). Should be increased if using cluster mode.
+  --other [OTHER ...]   Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.). Can be used multiple times.
+  -v, --version         Show program's version number and exit
+  --verbose             Print debugging output
+  -h, --help            Show this help message and exit
+
+"""
 import argparse
 import errno
 import os
@@ -7,10 +42,7 @@ import filecmp
 import re
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
-
 import yaml
-#from snakemake import snakemake
-
 import metadata
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
@@ -21,6 +53,7 @@ SNAKEFILES_TARGET_DIRECTORY = 'snakemake_lib'  # type: str
 
 
 def main():
+    """Main function to parse input files and create and execute the snakemake command."""
     args = parse_arguments()
     used_modules, paired_end = load_pipeline_config(args.pipeline_config)
     validate_argsfiles(args.data_file, args.pipeline_config)
@@ -59,6 +92,7 @@ def main():
 
 
 def check_columns(col_names: List[str], modules: Dict[str, List['Module']], paired_end: bool) -> List[Tuple[str, str]]:
+    """Function to check the validity of the data file columns."""
     col2module = [('', '') for _ in col_names]  # type: List[Tuple[str, str]]
     if 'name' not in col_names:
         raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('name'))
@@ -102,7 +136,8 @@ def check_columns(col_names: List[str], modules: Dict[str, List['Module']], pair
 
 
 def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_end: bool) -> Dict[str, Dict[str, Dict[str, str]]]:
-    table = {}  # type: Dict[str, Dict[str, Dict[str, str]]]
+    """Function to parse the data file."""
+    table = {} 
     with data_file.open('r') as file:
         col_names = file.readline().strip().replace(',','\t').split('\t')
         col2module = check_columns(col_names, modules, paired_end)
@@ -110,7 +145,7 @@ def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_
             if len(line.strip()) == 0:
                 continue
             columns = line.strip().replace(',','\t').split('\t')
-            entries = {}  # type: Dict[str, Dict[str, str]]
+            entries = {}  
             for index, col in enumerate(columns):
                 if col2module[index] == '' or col2module[index] == 'name':
                     continue
@@ -125,21 +160,21 @@ def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_
 
 
 def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module']], bool]:
+    """Parse pipeline config file."""
     modules = {"preprocessing": [],
                "QC": [],
                "mapping": [],
                "gene_expression_analysis": [],
-               "report": [],
-               "variant_analysis": []}
+               "variant_analysis": [],
+               "report": []}
 
     used_modules = {"preprocessing": [],
                     "QC": [],
                     "mapping": [],
                     "gene_expression_analysis": [],
-                    "report": [],
-                    "variant_analysis": []}
+                    "variant_analysis": [],
+                    "report": []}
     config = yaml.safe_load(pipeline_config.open('r'))
-    #print(config)
     if "preprocessing" in config:
         if "module" in config["preprocessing"]:
             if not isinstance(config["preprocessing"]["module"], str):
@@ -150,8 +185,6 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                 modules["preprocessing"].append(config["preprocessing"]["module"])
         else:
             modules["preprocessing"].append('none')
-    #else:
-    #    modules["preprocessing"].append('none')
     if "QC" in config:
         if "modules" in config["QC"]:
             if "module" in config["QC"]:
@@ -194,20 +227,6 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                 raise InvalidConfigFileError('gene_expression_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["gene_expression_analysis"].append(config["gene_expression_analysis"]["module"])
-    if "report" in config:
-        if "modules" in config["report"]:
-            if "module" in config["report"]:
-                raise InvalidConfigFileError('report: Please use either "module" or "modules"')
-            if not isinstance(config["report"]["modules"], list):
-                raise InvalidConfigFileError("report: modules must be a LIST of modules")
-            else:
-                for module in config["report"]["modules"]:
-                    modules["report"].append(module)
-        elif "module" in config["report"]:
-            if not isinstance(config["report"]["module"], str):
-                raise InvalidConfigFileError('report: Only one module as a string is allowed. For multiple modules use "modules"')
-            else:
-                modules["report"].append(config["report"]["module"])
     if "variant_analysis" in config:
         if "modules" in config["variant_analysis"]:
             if "module" in config["variant_analysis"]:
@@ -222,6 +241,20 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                 raise InvalidConfigFileError('variant_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["variant_analysis"].append(config["variant_analysis"]["module"])
+    if "report" in config:
+        if "modules" in config["report"]:
+            if "module" in config["report"]:
+                raise InvalidConfigFileError('report: Please use either "module" or "modules"')
+            if not isinstance(config["report"]["modules"], list):
+                raise InvalidConfigFileError("report: modules must be a LIST of modules")
+            else:
+                for module in config["report"]["modules"]:
+                    modules["report"].append(module)
+        elif "module" in config["report"]:
+            if not isinstance(config["report"]["module"], str):
+                raise InvalidConfigFileError('report: Only one module as a string is allowed. For multiple modules use "modules"')
+            else:
+                modules["report"].append(config["report"]["module"])
     if "pipeline" in config:
         if "paired_end" in config["pipeline"]:
             if not isinstance(config["pipeline"]["paired_end"], bool) and not (
@@ -241,6 +274,7 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
 
 
 def load_module(category: str, module_name: str, settings: Dict[str, str], pipeline_config_path: Path, paired_end: bool) -> 'Module':
+    """Parse module parameters given in the pipeline config file and compare them with specifications defined in module yaml file."""
     loaded_module = Module(module_name)
     module_yaml_file = SNAKEFILES_LIBRARY / category / module_name / (module_name + '.yaml')
     if module_yaml_file.is_file():
@@ -334,6 +368,7 @@ def load_module(category: str, module_name: str, settings: Dict[str, str], pipel
 
 
 def validate_argsfiles(data_file: Path, pipeline_config: Path):
+    """Validate the data file and pipeline config file."""
     if not data_file.is_file():
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(data_file))
     if not pipeline_config.is_file():
@@ -341,6 +376,7 @@ def validate_argsfiles(data_file: Path, pipeline_config: Path):
 
 
 def create_output_directory(output_path: Path):
+    """Create the given output directory."""
     if not output_path.exists():
         output_path.mkdir(parents=True)
     elif not output_path.is_dir():
@@ -354,21 +390,22 @@ def create_output_directory(output_path: Path):
 
 
 def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
-    pipeline_config = create_snakemake_pipeline_config(output_folder, data)
+    """Function to create the snakemake files and related scripts for every module in the snakemake target directory."""
+    pipeline_config = create_snakemake_pipeline_config(output_folder, data, modules)
     # find every rule name
     re_rule_name = re.compile('^rule (?P<rule_name>.*):$', re.MULTILINE)
     # find every lib reference
-    re_lib_folder = re.compile('lib/(?P<file_name>[^\s]*)', re.MULTILINE)
+    re_lib_folder = re.compile(r'lib/(?P<file_name>[^\s]*)', re.MULTILINE)
     snakefile_module_paths = []
     # for every Module in modules
     for module in [module for module_list in modules.values() for module in module_list]:
         with module.snakefile.open('r') as module_file:
             module_content = module_file.read()
             # change rule name from <rule name> to <module name>__<rule name>
-            module_content = re_rule_name.sub('rule {}__\g<rule_name>:'.format(module.name.lower().replace('-', '_')), module_content)
-            module_content = re_lib_folder.sub('{}/{}_lib/\g<file_name>'.format(SNAKEFILES_TARGET_DIRECTORY, module.name.lower()), module_content)
+            module_content = re_rule_name.sub(r'rule {}__\g<rule_name>:'.format(module.name.lower().replace('-', '_')), module_content)
+            module_content = re_lib_folder.sub(r'{}/{}_lib/\g<file_name>'.format(SNAKEFILES_TARGET_DIRECTORY, module.name.lower()), module_content)
             for (wildcard, value) in module.settings.items():
-                module_content = module_content.replace("%%{}%%".format(wildcard.upper()), value)
+                module_content = module_content.replace("%%{}%%".format(wildcard.upper()), ','.join(value) if type(value) is list else str(value))
             module_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / (module.name.lower() + '.sm')
             with module_path.open('w') as module_output_file:
                 module_output_file.write(module_content)
@@ -398,16 +435,22 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'gene_expression_analysis', 'mapping', 'report', 'variant_analysis')]:
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'preprocessing', 'mapping', 'gene_expression_analysis', 'variant_analysis', 'report')]:
             snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-', '_')))
 
     return snakefile_main_path
 
 
-def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]]) -> Path:
+def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
+    """Create snakemake config file that contains a dictionary of all input data."""
     config_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'snakefile_config.yaml'
+    m_list = []
     with config_path.open('w') as pipeline_config:
-        pipeline_config.write('entries:\n')
+        #pipeline_config.write('modules:\n')
+        for module in [module for (category, module_list) in modules.items() for module in module_list]:
+            m_list.append('{module_name}'.format(module_name=module.name.lower().replace('-', '_')))
+        pipeline_config.write('modules: {}'.format(m_list))
+        pipeline_config.write('\nentries:\n')
         for row, modules in data.items():
             pipeline_config.write('    "{}":\n'.format(row))
             for module_name, columns in modules.items():
@@ -418,6 +461,7 @@ def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[s
 
 
 def create_conda_lib(output_folder: Path):
+    """Create directory of conda YAML files."""
     lib_src = CURRENT_DIRECTORY / 'conda_envs'
     lib_dest = output_folder / 'conda_envs'
     if lib_dest.is_dir():
@@ -429,6 +473,7 @@ def create_conda_lib(output_folder: Path):
 
 
 def create_scripts_lib(output_folder: Path):
+    """Create directory of miscellaneous scripts."""
     lib_src = CURRENT_DIRECTORY / 'scripts'
     lib_dest = output_folder / 'scripts'
     if lib_dest.is_dir():
@@ -440,6 +485,7 @@ def create_scripts_lib(output_folder: Path):
 
 
 def copy_lib(src_folder: Path, dest_folder: Path):
+    """Copy source directory to output folder."""
     try:
         if dest_folder.is_dir():
             shutil.rmtree(str(dest_folder))
@@ -449,11 +495,12 @@ def copy_lib(src_folder: Path, dest_folder: Path):
 
 
 def parse_arguments() -> argparse.Namespace:
+    """Parse required and optional command line arguments."""
     parser = argparse.ArgumentParser(description=metadata.__program_name__, add_help=False)
 
     required = parser.add_argument_group('Required arguments')
     required.add_argument('--data', dest='data_file', required=True, help="Path to comma- or tab-separated file that lists all input data.")
-    required.add_argument('--pipeline-config', dest='pipeline_config', required=True, help="Path to yaml file that defines rules and rule specific parameters.")
+    required.add_argument('--pipeline-config', dest='pipeline_config', required=True, help="Path to YAML file that defines rules and rule specific parameters.")
     required.add_argument('--outdir', '-o', dest='output_folder', required=True, help="Path to output folder.")
 
     other = parser.add_argument_group('Other arguments')
@@ -469,13 +516,13 @@ def parse_arguments() -> argparse.Namespace:
     other.add_argument('--conda-frontend', dest='conda_frontend', default='mamba', type=str, choices=['mamba','conda'],
                        help="Choose frontend for installing environmnents ['conda', 'mamba']. (Default: %(default)s)")
     other.add_argument('--conda-prefix', dest='conda_prefix', default=None, type=str,
-                       help='Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.')
+                       help="Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.")
     other.add_argument('--conda-create-envs-only', dest='conda_create_envs_only', action='store_true',
                        help="Only create job-specific environments and exit. --use-conda has to be set.")
     other.add_argument('--latency-wait', dest='latency', default=3, type=int,
                        help="Seconds to wait before checking if all files of a rule were created (Default: %(default)s). Should be increased if using cluster mode.")
     other.add_argument('--other', dest='other', default=None, type=str, nargs="*", action="append",
-                       help="Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.)")
+                       help="Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.). Can be used multiple times.")
     other.add_argument('-v', '--version', action='version', version='%(prog)s \nVersion: {}'.format(metadata.__version__),
                        help="Show program's version number and exit")
     other.add_argument('--verbose', dest='verbose', action="store_true", help="Print debugging output")

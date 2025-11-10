@@ -3,10 +3,11 @@ from os.path import isfile
 
 rule all:
     input:
-        expand("report/bigwig/host/{A}.bigWig", A=sorted(config['entries'].keys())),
-        expand("report/bigwig/virus/{A}.bigWig", A=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+        expand("report/bigwig/host/{sample}.bigWig", sample=sorted(config['entries'].keys())),
+        expand("report/bigwig/virus/{sample}.bigWig", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()])
 
 rule create_bigwig_host:
+    """Create bigwig file from host bam file."""
     input:
         bam = "mapping/host/{sample}.bam",
         bai = "mapping/host/{sample}.bam.bai"
@@ -14,7 +15,7 @@ rule create_bigwig_host:
         "report/bigwig/host/{sample}.bigWig"
     priority: 1
     log:
-        "report/bigwig/host/log/{sample}.log"
+        "report/bigwig/log/{sample}.host.log"
     group: "bigwig_host"
     conda: "../conda_envs/bigwig_env.yaml"
     threads:
@@ -22,9 +23,10 @@ rule create_bigwig_host:
     resources:
         mem_mb=%%MEM_MB_HOST%%
     shell:
-        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_HOST%% --effectiveGenomeSize %%EFFECTIVEGENOMESIZE_HOST%% --binSize %%BINSIZE_HOST%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%% 2> {log}"
+        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_HOST%% --effectiveGenomeSize %%EFFECTIVEGENOMESIZE_HOST%% --binSize %%BINSIZE_HOST%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%% 2>&1 | tee {log}"
 
 rule create_bigwig_virus:
+    """Create bigwig file from virus bam file."""
     input:
         bam = "mapping/virus/{sample}.bam",
         bai = "mapping/virus/{sample}.bam.bai"
@@ -32,13 +34,11 @@ rule create_bigwig_virus:
         "report/bigwig/virus/{sample}.bigWig"
     priority: 1
     log:
-        "report/bigwig/virus/log/{sample}.log"
+        "report/bigwig/log/{sample}.virus.log"
     group: "bigwig_virus"
     conda: "../conda_envs/bigwig_env.yaml"
-    benchmark:
-        repeat("benchmarks/bigwig/{sample}.tsv", 1)
     threads:
-        1
+        4
     resources:
         mem_mb=%%MEM_MB_VIRUS%%
     shell:
@@ -47,4 +47,3 @@ rule create_bigwig_virus:
         echo $genome
         bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_VIRUS%% --effectiveGenomeSize ${{genome}} --binSize %%BINSIZE_VIRUS%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%% 2>&1 | tee {log}
         """
-    

@@ -9,7 +9,12 @@ optional_settings:
   mem_mb:
     description: "Memory requirement"
     type: "string"
-    default: "500"
+    default: "2000"
+
+  threads:
+    description: 'Number of threads for variant calling'
+    type: 'integer'
+    default: 4
 
 single_end:
   snakefile: "variant_calling"

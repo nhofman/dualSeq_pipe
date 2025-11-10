@@ -1,10 +1,8 @@
 from os import listdir
 from os.path import isfile
 
-def getConditions():
-    return set([seqRun['deseq2']['condition'] for seqRun in config['entries'].values()])
-
 def getComparisons():
+    """Parse comparison file for differential gene expression analysis."""
     comparisons = []
     with(open("%%COMPARISONS_HUMAN%%", 'r')) as input_file:
         for line in input_file:
@@ -12,18 +10,18 @@ def getComparisons():
             comparisons.append(line)
     return(comparisons)
 
-localrules: deseq2__create_conditions_human, #deseq2__functional_analysis
+localrules: deseq2__create_conditions_human
 
 COMPARISONS=getComparisons()
 
 rule all:
     input:
-        #"gene_expression_analysis/deseq2/counts.txt",
         "gene_expression_analysis/deseq2/counts_normalized.csv",
-        "gene_expression_analysis/deseq2/deseq2.RData"
-
+        "gene_expression_analysis/deseq2/deseq2.RData",
+        "gene_expression_analysis/deseq2/deseq2.done"
         
 rule create_conditions_human:
+    """Create table of samples and corresponding conditions."""
     output:
         "gene_expression_analysis/deseq2/conditions.txt"
     priority: 1
@@ -34,6 +32,7 @@ rule create_conditions_human:
 
                          
 rule deseq2_human:
+    """Calculate differentially expressed genes for user-defined comparisons."""
     input:
         counttable = "gene_expression_analysis/count_table/counts.txt",
         conditions = "gene_expression_analysis/deseq2/conditions.txt"
@@ -48,7 +47,7 @@ rule deseq2_human:
     params:
         output_folder="gene_expression_analysis/deseq2/"
     log:
-        "gene_expression_analysis/deseq2/logs/deseq2.log"
+        "gene_expression_analysis/deseq2/log/deseq2.log"
     conda: "../conda_envs/R_env.yaml"
     threads:
         1
@@ -57,4 +56,11 @@ rule deseq2_human:
     shell:
         "R --vanilla --file=lib/deseq2_analysis.R --args --threads {threads} --counttable {input.counttable} --conditions {input.conditions} --comparisons %%COMPARISONS_HUMAN%% --output {params.output_folder} --color %%COLOR%% --rRNA %%RRNA%% 2>&1 | tee {log}"
   
+rule done:
+    input:
+        "gene_expression_analysis/deseq2/deseq2.RData"
+    output:
+        "gene_expression_analysis/deseq2/deseq2.done"
+    shell:
+        "touch {output}"
 

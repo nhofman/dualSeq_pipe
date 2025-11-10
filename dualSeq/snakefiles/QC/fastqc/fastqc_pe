@@ -1,24 +1,28 @@
-from os import listdir
-from os.path import isfile, basename, splitext
 
 rule all:
     input:
-        expand("QC/fastqc/{A}_{B}_fastqc.html", A=sorted(config['entries'].keys()), B=["R1","R2"])
+        expand("QC/fastqc/{sample}_{read}_fastqc.html", sample=sorted(config['entries'].keys()), read=["R1","R2"]),
+        "QC/fastqc.done"
 
 rule fastqc_fwd:
+    """Run FastQC with forward reads and rename the output files to {sample_name}_R1_*."""
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads']
     output:
         "QC/fastqc/{sample}_R1_fastqc.html",
         "QC/fastqc/{sample}_R1_fastqc.zip"
-    group:
-        "fastqc"
+    priority: 1
+    log:
+        "QC/fastqc/log/{sample}_fwd.log"
+    group: "fastqc"
     conda: "../conda_envs/fastqc_env.yaml"
     threads:
         1
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
         """
-        fastqc -o QC/fastqc {input}
+        fastqc -o QC/fastqc {input} 2>&1 | tee {log}
         input_name=`basename {input}`
         input_name="${{input_name%%.*}}"
         if [[ "${{input_name}}" != "{wildcards.sample}" ]]
@@ -29,19 +33,24 @@ rule fastqc_fwd:
         """
 
 rule fastqc_rev:
+    """Run FastQC with reverse reads and rename the output files to {sample_name}_R2_*."""
     input:
         lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
     output:
         "QC/fastqc/{sample}_R2_fastqc.html",
         "QC/fastqc/{sample}_R2_fastqc.zip"
-    group:
-        "fastqc"
+    priority: 1
+    log:
+        "QC/fastqc/log/{sample}_rev.log"
+    group: "fastqc"
     conda: "../conda_envs/fastqc_env.yaml"
     threads:
         1
+    resources:
+        mem_mb=%%MEM_MB%%
     shell:
         """
-        fastqc -o QC/fastqc {input}
+        fastqc -o QC/fastqc {input} 2>&1 | tee {log}
         input_name=`basename {input}`
         input_name="${{input_name%%.*}}"
         if [[ "${{input_name}}" != "{wildcards.sample}" ]]
@@ -50,3 +59,11 @@ rule fastqc_rev:
             mv QC/fastqc/${{input_name}}_fastqc.zip {output[1]}
         fi
         """
+
+rule done:
+    input:
+        expand("QC/fastqc/{sample}_{read}_fastqc.html", sample=sorted(config['entries'].keys()), read=["R1","R2"])
+    output:
+        "QC/fastqc.done"
+    shell:
+        "touch {output}"

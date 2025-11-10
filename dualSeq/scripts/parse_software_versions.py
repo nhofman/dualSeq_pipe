@@ -12,7 +12,10 @@ for conda_env in yaml_list:
     conda = yaml.safe_load(conda_env.open('r'))
     for entry in conda['dependencies']:
         if "=" in entry:
-            entry_split = entry.split("=")
+            entry_split = entry.replace(">=", "=").split("=")
             tmp = str(entry_split[0]) + ': "' + str(entry_split[1] + '"')
-            file.write(f'  {tmp}\n')
+        else:
+            tmp = str(entry) + ': ""'
+        file.write(f'  {tmp}\n')
+            
 file.close()

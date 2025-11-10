@@ -1,16 +1,18 @@
+INFECTED_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]
 
 rule all:
-	input:
-		expand("variant_analysis/variant_analysis/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry])),
-        #expand("variant_analysis/variant_analysis/{virus}_SNP.svg", virus=list(set([entry.split('_')[0] for entry in config['entries'].keys() if "Mock" not in entry]))),
+    input:
+        expand("variant_analysis/variant_analysis/{sample}.vcf", sample=INFECTED_SAMPLES),
         "variant_analysis/variant_analysis/plots/Count_SNP.pdf",
-        "variant_analysis/variant_analysis/plots/Frequency_density.pdf"
+        "variant_analysis/variant_analysis/plots/Frequency_density.pdf",
+        "variant_analysis/variant_analysis.done"
 
 rule call_variant:
+    """Call variants in preprocessed bam file."""
     input:
         bam="variant_analysis/preprocessing/{sample}_indel.bam",
         bai="variant_analysis/preprocessing/{sample}_indel.bam.bai",
-        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+        genome=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome']
     output:
         "variant_analysis/variant_analysis/{sample}.vcf"
     priority: 1
@@ -18,26 +20,28 @@ rule call_variant:
         "variant_analysis/variant_analysis/log/{sample}.log"
     group: "lofreq"
     conda: "../conda_envs/variant_env.yaml"
-    threads: 3
+    threads: %%THREADS%%
     resources:
         mem_mb=%%MEM_MB%%
     shell:
         "lofreq call-parallel %%ADDITIONAL_LOFREQ_OPTIONS%% --pp-threads {threads} -f {input.genome} -o {output} {input.bam} 2>&1 | tee {log}"
 
 rule sample2gff:
+    """Generate table of sample names and corresponding virus genome and annotation files."""
     output:
         "variant_analysis/variant_analysis/sample2gff.txt"
     priority: 1
     run:
         with(open(output[0], 'w')) as output_file:
             for name in config['entries'].keys():
-                if 'combined' in config['entries'][name]:
-                    output_file.write('{},{},{}\n'.format(name, config['entries'][name]['combined']['virus_genome_annotation'], config['entries'][name]['combined']['virus_genome']))
+                if 'virus_genome' in config['entries'][name]['main'].keys():
+                    output_file.write('{},{},{}\n'.format(name, config['entries'][name]['main']['virus_genome_annotation'], config['entries'][name]['main']['virus_genome']))
 
 rule plot_snp:
+    """Plot variant statistics and positions on genome."""
     input:
         gff="variant_analysis/variant_analysis/sample2gff.txt",
-        vcf=expand("variant_analysis/variant_analysis/{sample}.vcf", sample=sorted([entry for entry in config['entries'].keys() if "Mock" not in entry]))
+        vcf=expand("variant_analysis/variant_analysis/{sample}.vcf", sample=INFECTED_SAMPLES)
     output:
         "variant_analysis/variant_analysis/plots/Count_SNP.pdf",
         "variant_analysis/variant_analysis/plots/Frequency_density.pdf"
@@ -45,9 +49,19 @@ rule plot_snp:
         output_folder="variant_analysis/variant_analysis/plots",
         vcf_folder="variant_analysis/variant_analysis/"
     priority: 1
-    group: "lofreq"
+    log:
+        "variant_analysis/variant_analysis/log/plot_SNP.log"
+    group: "lofreq_plot"
     conda: "../conda_envs/R_env.yaml"
     resources:
         mem_mb=%%MEM_MB%%
     shell:
-        "R --vanilla --file=lib/compare_SNP.R --args --vcf {params.vcf_folder} --gff {input.gff} --output {params.output_folder}"
+        "R --vanilla --file=lib/compare_SNP.R --args --vcf {params.vcf_folder} --gff {input.gff} --output {params.output_folder} 2> {log}"
+
+rule done:
+    input:
+        "variant_analysis/variant_analysis/plots/Count_SNP.pdf"
+    output:
+        "variant_analysis/variant_analysis.done"
+    shell:
+        "touch {output}"

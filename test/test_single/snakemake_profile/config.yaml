@@ -1,0 +1,9 @@
+slurm: True
+
+default-resources:
+  - slurm_partition=bcf
+  - mem_mb=2000
+  - jobname="smk-{rule}"
+  - slurm_extra="--output=.snakemake/log/%j.slurm.out --error=.snakemake/log/%j.slurm.err"
+
+printshellcmds: True

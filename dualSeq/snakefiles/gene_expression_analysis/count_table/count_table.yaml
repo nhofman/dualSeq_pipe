@@ -13,8 +13,8 @@ required_settings:
   gff_human:
     description: "File path to gff file"
     type: "file"
+
     
-  
 optional_settings:
 
   additional_featcounts_options:
@@ -31,10 +31,15 @@ optional_settings:
     description: "Memory requirement"
     type: "string"
     default: "1000"
+
+  threads:
+    description: 'Number of threads for index generation'
+    type: 'integer'
+    default: 8
+
  
 single_end:
   snakefile: "count_table_se"
-
 
 paired_end:
   snakefile: "count_table_pe"
