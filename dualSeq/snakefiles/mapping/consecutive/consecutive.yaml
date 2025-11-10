@@ -72,7 +72,7 @@ optional_settings:
   mem_mb_bowtie2:
     description: 'Memory requirement'
     type: 'string'
-    default: '2000' 
+    default: '5000' 
 
   threads_idx_virus:
     description: 'Number of threads for index generation'

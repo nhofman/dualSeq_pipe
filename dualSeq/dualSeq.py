@@ -165,15 +165,15 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                "QC": [],
                "mapping": [],
                "gene_expression_analysis": [],
-               "report": [],
-               "variant_analysis": []}
+               "variant_analysis": [],
+               "report": []}
 
     used_modules = {"preprocessing": [],
                     "QC": [],
                     "mapping": [],
                     "gene_expression_analysis": [],
-                    "report": [],
-                    "variant_analysis": []}
+                    "variant_analysis": [],
+                    "report": []}
     config = yaml.safe_load(pipeline_config.open('r'))
     if "preprocessing" in config:
         if "module" in config["preprocessing"]:
@@ -227,20 +227,6 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                 raise InvalidConfigFileError('gene_expression_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["gene_expression_analysis"].append(config["gene_expression_analysis"]["module"])
-    if "report" in config:
-        if "modules" in config["report"]:
-            if "module" in config["report"]:
-                raise InvalidConfigFileError('report: Please use either "module" or "modules"')
-            if not isinstance(config["report"]["modules"], list):
-                raise InvalidConfigFileError("report: modules must be a LIST of modules")
-            else:
-                for module in config["report"]["modules"]:
-                    modules["report"].append(module)
-        elif "module" in config["report"]:
-            if not isinstance(config["report"]["module"], str):
-                raise InvalidConfigFileError('report: Only one module as a string is allowed. For multiple modules use "modules"')
-            else:
-                modules["report"].append(config["report"]["module"])
     if "variant_analysis" in config:
         if "modules" in config["variant_analysis"]:
             if "module" in config["variant_analysis"]:
@@ -255,6 +241,20 @@ def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module'
                 raise InvalidConfigFileError('variant_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
             else:
                 modules["variant_analysis"].append(config["variant_analysis"]["module"])
+    if "report" in config:
+        if "modules" in config["report"]:
+            if "module" in config["report"]:
+                raise InvalidConfigFileError('report: Please use either "module" or "modules"')
+            if not isinstance(config["report"]["modules"], list):
+                raise InvalidConfigFileError("report: modules must be a LIST of modules")
+            else:
+                for module in config["report"]["modules"]:
+                    modules["report"].append(module)
+        elif "module" in config["report"]:
+            if not isinstance(config["report"]["module"], str):
+                raise InvalidConfigFileError('report: Only one module as a string is allowed. For multiple modules use "modules"')
+            else:
+                modules["report"].append(config["report"]["module"])
     if "pipeline" in config:
         if "paired_end" in config["pipeline"]:
             if not isinstance(config["pipeline"]["paired_end"], bool) and not (
@@ -435,7 +435,7 @@ def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, An
         snakefile.write('\n')
         snakefile.write('rule all:\n')
         snakefile.write('    input:\n')
-        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'preprocessing', 'gene_expression_analysis', 'mapping', 'report', 'variant_analysis')]:
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'preprocessing', 'mapping', 'gene_expression_analysis', 'variant_analysis', 'report')]:
             snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-', '_')))
 
     return snakefile_main_path

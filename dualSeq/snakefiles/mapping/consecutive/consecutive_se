@@ -112,7 +112,7 @@ rule bowtie2_mapping:
         mem_mb=%%MEM_MB_BOWTIE2%%
     shell:
         "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%ALIGNMENT_TYPE_VIRUS%% -x {params.prefix} -U {input.reads} -S {output.sam} --un {output.unmapped} 2>&1 |"
-        "tee {log}"
+        " tee {log}"
 
 rule sam_to_bam:
     """Convert Bowtie2 sam file to sorted bam file and create index. Write mapped and unmapped reads in separate files."""
