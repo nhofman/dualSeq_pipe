@@ -15,6 +15,7 @@ sample2gff.file <- args[match('--gff', args) + 1]
 # Read vcf files
 vcf.files <- list.files(vcf.dir, ".*.vcf", full.names = T)
 print(vcf.files)
+
 vcf.list <- sapply(vcf.files, function(f){
   print(f)
   vcf <- read.vcfR(f)
@@ -109,13 +110,12 @@ assign_tracks <- function(feat.data, track.y, base){
 # Plot positions of virus-specific variants 
 for(virus in unique(df.SNP$Virus)){
   # gggenomes package
-  #gbk <- read_gbk(paste0("Documents/Virus_project/gff/feature_viewer/genbank_mod/", virus, ".gb"))
   gff.df <- read_gff3(sample2gff[grep(virus, sample2gff$Sample), "GFF"][1])
   gff.df$length <- gff.df$end - gff.df$start + 1 
   colnames(gff.df)[1] <- "chrom"
   gff.df$seq_id <- gff.df$chrom
   fa.seqs <- read_seqs(sample2gff[grep(virus, sample2gff$Sample), "FASTA"][1])
-  
+
   df.SNP.filter <- df.SNP[df.SNP$Virus==virus,] # & df.SNP$AF>0.01
   df.SNP.filter <- separate(df.SNP.filter, "Time", c("Time_point", "Rep"), "_", F)
   df.SNP.filter$Rep <- paste("Rep", df.SNP.filter$Rep)
@@ -147,7 +147,7 @@ for(virus in unique(df.SNP$Virus)){
       }
     }
     gff.seq <- fa.seqs[fa.seqs$seq_id == chrom,]
-    
+
     gg.snp.manual <- ggplot(df.SNP.filter[df.SNP.filter$CHROM==chrom,], aes(x = POS, y = AF)) + 
       geom_point(aes(alpha = 1, color = Rep, shape = type), size = 1, alpha = 0.7) + 
       facet_grid(rows = vars(factor(seq_id, levels = mixedsort(unique(df.SNP.filter$seq_id)))), 
@@ -167,7 +167,7 @@ for(virus in unique(df.SNP$Virus)){
             strip.text = element_text(size = 12, face = "bold"), strip.background = element_rect(fill = NA, color = NA), 
             panel.spacing = unit(2, "lines"),
             legend.text = element_text(size = 10, face = "plain"), legend.title = element_blank())
-    
+
     gg.genome <- gggenomes(genes = rbind(gff.genes, gff.cds), seqs = gff.seq) + geom_seq(arrow = 1) +
       geom_gene(data = genes(.gene_types = "gene"), aes(y = track, fill = type)) + 
       geom_gene_text(data = genes(.gene_types = "gene"), aes(y = track, label = name), size = 2.5, vjust = -1, hjust = 0.5, angle = 0, nudge_y = 0, check_overlap = F) + 

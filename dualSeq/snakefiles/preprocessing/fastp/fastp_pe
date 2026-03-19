@@ -1,7 +1,7 @@
 
 rule all:
     input:
-        expand("preprocessing/{sample}_{read}.fastq.gz", sample=sorted(config['entries'].keys()), read=["R1","R2"]),
+        expand("preprocessing/{sample}_{read}.fq.gz", sample=sorted(config['entries'].keys()), read=["R1","R2"]),
         "preprocessing/fastp.done"
 
 rule trim_reads:

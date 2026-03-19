@@ -4,7 +4,8 @@ from os.path import isfile
 rule all:
     input:
         expand("report/bigwig/host/{sample}.bigWig", sample=sorted(config['entries'].keys())),
-        expand("report/bigwig/virus/{sample}.bigWig", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()])
+        expand("report/bigwig/virus/{sample}.bigWig", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
+        "report/bigwig/bamCov.done"
 
 rule create_bigwig_host:
     """Create bigwig file from host bam file."""
@@ -47,3 +48,28 @@ rule create_bigwig_virus:
         echo $genome
         bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_VIRUS%% --effectiveGenomeSize ${{genome}} --binSize %%BINSIZE_VIRUS%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%% 2>&1 | tee {log}
         """
+        
+rule done_host:
+    input:
+        expand("report/bigwig/host/{sample}.bigWig", sample=sorted(config['entries'].keys()))
+    output: 
+        temp("report/bigwig/bamCov_host.done")
+    shell:
+        "touch {output}"
+        
+rule done_virus:
+    input:
+        expand("report/bigwig/virus/{sample}.bigWig", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()])
+    output: 
+        temp("report/bigwig/bamCov_virus.done")
+    shell:
+        "touch {output}"
+
+rule done:
+    input:
+        virus = "report/bigwig/bamCov_virus.done",
+        host = "report/bigwig/bamCov_host.done"
+    output:
+        "report/bigwig/bamCov.done"
+    shell:
+        "touch {output}"

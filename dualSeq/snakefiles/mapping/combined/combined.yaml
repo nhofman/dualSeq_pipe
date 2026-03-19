@@ -43,9 +43,14 @@ optional_settings:
     default: ''
 
   mem_mb_star:
-    description: 'Memory requirement
-    type: string'
+    description: 'Memory requirement for the mapping'
+    type: 'string'
     default: '35000'
+  
+  mem_mb_proc:
+    description: 'Memory requirement for the processing steps'
+    type: 'string'
+    default: '3000'
 
   threads_idx:
     description: 'Number of threads for index generation'

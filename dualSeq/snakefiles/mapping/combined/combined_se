@@ -172,6 +172,8 @@ rule split_bam_infected:
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
+    resources:
+        mem_mb=%%MEM_MB_PROC%%
     shell:
         """
         if [[ {input.bam} == "None" ]]; then
@@ -214,6 +216,8 @@ rule mapped_both:
     group:
         "bam_process"
     conda: "../conda_envs/samtools_env.yaml"
+    resources:
+        mem_mb=%%MEM_MB_PROC%%
     shell:
         """
         samtools view {input.virus} | cut -f1 | awk '{{a[$1]=1}} END{{for(i in a) print i}}' > {output.names} 2> {log}
