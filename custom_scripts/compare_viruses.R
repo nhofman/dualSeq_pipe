@@ -8,6 +8,24 @@ library(enrichplot)
 source("plot_heatmap.R")
 source("enrichment.R")
 
+# Convert lists of DEG to binary table
+list2binary <- function(data.list, filename){
+  data.binary <- Reduce(function(x,y)merge(x,y,by="SYMBOL",all=T),sapply(names(data.list),function(n){
+    if(length(data.list[[n]])>0){
+      data.df <- data.frame(data.list[[n]],1)
+    }else{
+      data.df <- data.frame(matrix(ncol=2,nrow=0)) 
+    }
+    colnames(data.df) <- c("SYMBOL", n)
+    return(data.df)
+  }, USE.NAMES = T, simplify = F))
+  data.binary[is.na(data.binary)] <- 0
+  if(!missing(filename)){
+    write.csv(data.binary, filename, row.names = F)
+  }
+  return(data.binary)
+}
+
 load("deseq2.RData") # load data from DESeq2 analysis
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
 res.list <- res.list[mixedorder(names(res.list))]
