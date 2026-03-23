@@ -21,6 +21,7 @@ list2binary <- function(data.list, filename){
 }
 
 load("deseq2.RData") # load data from DESeq2 analysis
+output_folder <- paste0(output_folder, "compare_times/")
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
 res.list <- res.list[mixedorder(names(res.list))]
 
