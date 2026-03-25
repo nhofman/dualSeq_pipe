@@ -1,0 +1,21 @@
+name: "multiqc"
+
+optional_settings:
+
+  additional_multiqc_options:
+    description: "Additional options to use in shell command"
+    type: "string"
+    default: ""
+
+  mem_mb:
+    description: "Memory requirement"
+    type: "string"
+    default: "2000"
+
+single_end:
+  snakefile: "multiqc"
+
+paired_end:
+  snakefile: "multiqc"
+
+

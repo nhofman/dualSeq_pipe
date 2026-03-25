@@ -1,0 +1,44 @@
+from os import listdir
+from os.path import isfile, basename, splitext
+
+localrules: all, parse_envs
+
+rule all:
+    input:
+        "report/multiqc/multiqc_report.html"
+
+rule parse_envs:
+    """Parse conda environment files to read the defined software versions."""
+    input:
+        "conda_envs"
+    output:
+        "report/multiqc/multiqc_config.yaml"
+    log:
+        "report/multiqc/log/parse_envs.log"
+    shell:
+        """
+        python scripts/parse_software_versions.py {input} {output} 2>&1 | tee {log}
+        """
+
+used_modules = [module for module in config["modules"] if module != "multiqc"]
+
+rule multiqc:
+    """Generate MultiQC report by scanning the working directory for usable files."""
+    input:
+        done=[eval(f"rules.{module}__done.output") for module in used_modules],
+        config=rules.multiqc__parse_envs.output
+    output:
+        "report/multiqc/multiqc_report.html"
+    #params:
+        #rules.multiqc__parse_envs.output
+    log:
+        "report/multiqc/log/multiqc.log"
+    group:
+        "multiqc"
+    conda: "../conda_envs/multiqc_env.yaml"
+    threads:
+        1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "multiqc %%ADDITIONAL_MULTIQC_OPTIONS%% --ignore .snakemake --config {input.config} --outdir report/multiqc . 2>&1 | tee {log}"

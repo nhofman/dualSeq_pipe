@@ -1,0 +1,205 @@
+from os import listdir
+from os.path import isfile, splitext, isdir
+
+MOCK_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' not in config['entries'][entry]['main'].keys()]
+INFECTED_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]
+
+rule all:
+    input:
+        expand("mapping/host/{sample}.bam", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
+        expand("mapping/virus/{sample}.bam", sample=INFECTED_SAMPLES),
+        #expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES),
+        #expand("mapping/host/stats/{sample}_stats.csv", sample=MOCK_SAMPLES + INFECTED_SAMPLES),
+        #multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png"),
+        "mapping/consecutive.done"
+            
+rule star_index:
+    """Create STAR index for host reference"""
+    input:
+        genome="%%HOST_GENOME%%"
+        #index_dir="%%STAR_INDEX_DIR%%"
+    output:
+        directory("%%STAR_INDEX_DIR%%")
+        #"%%STAR_INDEX_DIR%%"+"SAindex"
+    priority: 1
+    log:
+        "mapping/log/star_index.log"
+    group:
+        "star_index"
+    conda: "../conda_envs/star_env.yaml"
+    threads:
+        %%THREADS_IDX_HOST%%
+    resources:
+        mem_mb=%%MEM_MB_STAR%%
+    shell:
+        "STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir %%STAR_INDEX_DIR%% --genomeFastaFiles {input.genome} --sjdbGTFfile %%HOST_GTF%% --sjdbOverhang %%STAR_SJ_OVERHANG%% --sjdbGTFfeatureExon %%STAR_FEATURE_EXON%% --sjdbGTFtagExonParentGene %%STAR_GENE_TAG%% --sjdbGTFtagExonParentTranscript %%STAR_TRANSCRIPT_TAG%% --outTmpDir {params.tmp} 2>&1 |"
+        "tee {log}"
+
+
+rule star_mapping:
+    """Map preprocessed reads to the indexed reference genome."""
+    input:
+        index_dir="%%STAR_INDEX_DIR%%",
+        reads="preprocessing/{sample}.fq.gz",
+    output:
+        bam="mapping/host/{sample}.bam",
+        summary="mapping/host/{sample}Log.final.out",
+        unmap="mapping/host/{sample}Unmapped.out.mate1"
+    params:
+        prefix="mapping/host/{sample}"
+    priority: 1
+    log:
+        "mapping/log/star_mapping.{sample}.log"
+    group:
+        "star_mapping"
+    conda: "../conda_envs/star_env.yaml"
+    threads:
+        %%THREADS_MAPPING_HOST%%
+    resources:
+        mem_mb=%%MEM_MB_STAR%%
+    shell:
+        "STAR --runThreadN {threads} --runMode alignReads --genomeDir {input.index_dir} --readFilesIn {input.reads} --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.prefix} --outReadsUnmapped Fastx %%ADDITIONAL_STAR_OPTIONS%% 2>&1 |"
+        " tee {log}; mv {params.prefix}Aligned.sortedByCoord.out.bam {params.prefix}.bam"        
+
+rule unmapped_to_fastq:
+    """Move unmapped reads to separate folder."""
+    input:
+        "mapping/host/{sample}Unmapped.out.mate1"
+    output:
+        "mapping/host/unmapped/{sample}.fastq"
+    shell:
+        "mv {input} {output}"
+
+rule bowtie2_index:
+    """Create index for pathogen genomes listed in sample file."""
+    input:
+        "{genome_name}"
+    output:
+        "{genome_name}.1.bt2"
+    priority: 1
+    group:
+        "bowtie2_index"
+    log:
+        "mapping/log/bowtie2_index_{genome_name}.log"
+    conda: "../conda_envs/bowtie2_env.yaml"
+    threads:
+        %%THREADS_IDX_VIRUS%%
+    resources:
+        mem_mb=%%MEM_MB_BOWTIE2%%
+    shell:
+        "bowtie2-build --threads {threads} {input} {input} 2>&1 | tee {log}"
+
+rule bowtie2_mapping:
+    """Map reads that could not be mapped against the host reference to the pathogen (virus) genome."""
+    input:
+        genome_index=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome'] + ".1.bt2",
+        reads="mapping/host/unmapped/{sample}.fastq"
+    output:
+        sam=temp("mapping/virus/{sample}.sam"),
+        unmapped="mapping/virus/unmapped/{sample}_unmapped.fastq"
+    params:
+        prefix=lambda wildcards: config['entries'][wildcards.sample]['main']['virus_genome']
+    priority: 1
+    group:
+        "bowtie2_mapping"
+    log:
+        "mapping/log/bowtie2_mapping.{sample}.log"
+    conda: "../conda_envs/bowtie2_env.yaml"
+    threads:
+        %%THREADS_MAPPING_VIRUS%%
+    resources:
+        mem_mb=%%MEM_MB_BOWTIE2%%
+    shell:
+        "bowtie2 %%ADDITIONAL_BOWTIE2_OPTIONS%% -p {threads} --mm %%ALIGNMENT_TYPE_VIRUS%% -x {params.prefix} -U {input.reads} -S {output.sam} --un {output.unmapped} 2>&1 |"
+        " tee {log}"
+
+rule sam_to_bam:
+    """Convert Bowtie2 sam file to sorted bam file and create index. Write mapped and unmapped reads in separate files."""
+    input:
+        "mapping/virus/{sample}.sam"
+    output:
+        bam="mapping/virus/{sample}.bam",
+        bai="mapping/virus/{sample}.bam.bai",
+        bam_unmapped="mapping/virus/unmapped/{sample}_unmap.bam"
+    log:
+        "mapping/log/bowtie2_sam_bam.{sample}.log"
+    group:
+        "bowtie2_mapping"
+    conda: "../conda_envs/samtools_env.yaml"
+    threads:
+        2
+    shell:
+        """
+        samtools view -F 4 -hb {input} | samtools sort -@ {threads} -o {output.bam} - 2>> {log}
+        samtools index {output.bam} 2>> {log}
+        samtools view -f 4 -hb {input} | samtools sort -@ {threads} -o {output.bam_unmapped} - 2>> {log}
+        """
+
+rule star_stat:
+    """Generate mapping statistic for host files."""
+    input:
+        host_bam="mapping/host/{sample}.bam",
+        host_log="mapping/host/{sample}Log.final.out"
+    output:
+        "mapping/host/stats/{sample}_stats.csv"
+    priority: 1
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    shell:
+        """
+        mapped_host=$(samtools view -c -F 2308 {input.host_bam})
+        uniquely_host=$(samtools view -c -F 2308 -q 255 {input.host_bam})
+        total=`awk '{{if($0 ~ "Number of input reads"){{ split($0, x, "|"); gsub("\t","",x[2]); print x[2]}}}}' {input.host_log}`
+	echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_host}}','${{uniquely_host}}',host' >> {output}
+        """
+
+rule bowtie2_stat:
+    """Generate mapping statistic for virus files."""
+    input:
+        log="mapping/virus/log/bowtie2_mapping.{sample}.log",
+        bam="mapping/virus/{sample}.bam"
+    output:
+        "mapping/virus/stats/{sample}_stats.csv"
+    priority: 1
+    group:
+        "bam_process"
+    conda: "../conda_envs/samtools_env.yaml"
+    shell:
+        """
+        mapped_virus=$(samtools view -c -F 2308 {input.bam})
+        uniquely_virus=$(grep "aligned exactly 1 time" "{input.log}" | awk '{{print $1}}')
+        #mapped_multi=$(grep "aligned >1 times" "{input.log}" | awk '{{print $1}}')
+        total=$(grep "reads" "{input.log}" | awk '{{print $1}}')
+        echo $'sample,total_reads,mapped,uniquely_mapped,group' > {output}
+        echo {wildcards.sample}','${{total}}','${{mapped_virus}}','${{uniquely_virus}}',virus' >> {output}
+        """
+
+rule plot_statistics:
+    """Plot mapping statistic."""
+    input:
+        stat_host=expand("mapping/host/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES+MOCK_SAMPLES),
+        stat_virus=expand("mapping/virus/stats/{sample}_stats.csv", sample=INFECTED_SAMPLES)
+    output:
+        multiext("mapping/stats/mapping_statistic", ".csv", ".xlsx"),
+        multiext("mapping/stats/mapping_statistic", ".pdf", ".png")
+    params:
+        "mapping/"
+    priority: 1
+    log:
+        "mapping/log/plot_mapping_stat.log"
+    conda: "../conda_envs/R_env.yaml"
+    shell:
+        """
+        R --vanilla --file=lib/plot_mapping_stats.R --args --stat-host mapping/host/stats/ --stat-virus mapping/virus/stats/ --output {params} 2> {log}
+        """
+
+rule done:
+    input:
+        "mapping/stats/mapping_statistic.csv"
+    output:
+        "mapping/consecutive.done"
+    shell:
+        "touch {output}"

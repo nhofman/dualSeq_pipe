@@ -1,0 +1,56 @@
+from os import listdir
+from os.path import isfile
+
+
+rule all:
+    input:
+        "gene_expression_analysis/count_table/counts.txt",
+        "gene_expression_analysis/count_table/counts.txt.summary",
+        multiext("gene_expression_analysis/count_table/counts_assignment_relative", ".pdf", ".png"),
+        multiext("gene_expression_analysis/count_table/counts_assignment_absolute", ".pdf", ".png"),
+        "gene_expression_analysis/count_table/count.done"
+        
+rule count_reads_host:
+    """Count features for read pairs mapped to host genome."""
+    input:
+        expand("mapping/host/{sample}.bam", sample=config['entries'].keys())
+    output:
+        counts = "gene_expression_analysis/count_table/counts.txt",
+        summary = "gene_expression_analysis/count_table/counts.txt.summary"
+    priority: 1
+    group: "count_reads_host"
+    log:
+        "gene_expression_analysis/count_table/log/featurecounts.log"
+    conda: "../conda_envs/counts_env.yaml"
+    threads:
+        %%THREADS%%
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "featureCounts -T {threads} %%ADDITIONAL_FEATCOUNTS_OPTIONS%% -t '%%GFF_FEATURE_TYPE_HUMAN%%' -g '%%GFF_FEATURE_NAME_HUMAN%%' -a %%GFF_HUMAN%% -o {output.counts} {input} 2>&1 | tee {log}"
+
+            
+rule plot_assignment:
+    """Plot featureCounts statistic."""
+    input:
+        feature_counts_log = "gene_expression_analysis/count_table/counts.txt.summary"
+    output:
+        multiext("gene_expression_analysis/count_table/counts_assignment_relative", ".pdf", ".png"),
+        multiext("gene_expression_analysis/count_table/counts_assignment_absolute", ".pdf", ".png")
+    priority: 1
+    group: "count_reads_host"
+    params:
+        output_folder="gene_expression_analysis/count_table/"
+    log:
+        "gene_expression_analysis/count_table/log/plot_featurecounts.log"
+    conda: "../conda_envs/R_env.yaml"
+    shell:
+        "R --vanilla --file=lib/plot_assignment.R --args --featurecounts-log {input} --output {params.output_folder} 2>&1 | tee {log}"
+
+rule done:
+    input:
+        "gene_expression_analysis/count_table/counts_assignment_relative.pdf"
+    output:
+        "gene_expression_analysis/count_table/count.done"
+    shell:
+        "touch {output}"

@@ -1,0 +1,59 @@
+def getComparisons():
+    """Parse comparison file for differential gene expression analysis."""
+    comparisons = []
+    with(open("%%COMPARISONS_HUMAN%%", 'r')) as input_file:
+        for line in input_file:
+            line = line.strip().replace("\t", "_vs_")
+            comparisons.append(line)
+    return(comparisons)
+
+def getDatabases():
+    """Parse functional annotation databases and GO categories"""
+    db="%%DB%%".split(",")
+    ont="%%ONT%%".split(",")
+    if "GO" in db:
+        go_ont = ["{}_{}".format("GO", i) for i in ont]
+        db.remove("GO")
+        db.extend(go_ont)
+    return(db)
+
+DATABASE=getDatabases()
+COMPARISONS=getComparisons()
+
+rule all:
+    input:
+        expand("gene_expression_analysis/functional_analysis/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE),
+        "gene_expression_analysis/functional_analysis/functional_analysis.done"
+
+rule functional_analysis:
+    """Functional enrichment analysis of differentially expressed genes with user-defined databases."""
+    input:
+        #rdata="gene_expression_analysis/deseq2/deseq2.RData",
+        "gene_expression_analysis/deseq2/deseq2_comparisons_shrunken/deseq2_results_{comp}.csv"
+    output:
+        expand("gene_expression_analysis/functional_analysis/GSEA/{{comp}}_{db}.csv", db=DATABASE)
+    priority: 1
+    group:
+        "gsea"
+    params:
+        output_folder="gene_expression_analysis/functional_analysis/"
+    log:
+        "gene_expression_analysis/functional_analysis/logs/functional_analysis_{comp}.log"
+    conda: "../conda_envs/R_env.yaml"
+    threads:
+        1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        """
+        R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --datatable {input} --db %%DB%% --ont %%ONT%% --id_type %%ID_TYPE%% --output_folder {params.output_folder} 2>&1 | tee {log}
+        """
+
+rule done:
+    input:
+        expand("gene_expression_analysis/functional_analysis/GSEA/{comp}_{db}.csv", comp=COMPARISONS, db=DATABASE)
+    output:
+        "gene_expression_analysis/functional_analysis/functional_analysis.done"
+    shell:
+        "touch {output}"
+

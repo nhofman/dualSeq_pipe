@@ -1,0 +1,45 @@
+name: "functional_analysis.yaml"
+
+required_settings:
+    
+  comparisons_human:
+    description: "File path to comparisons file for host"
+    type: "file"
+  
+  
+optional_settings:
+
+  color:
+    description: "File path to table assigning a color to each virus"
+    type: "file"
+    default: "NULL"
+
+  db:
+    description: "Database(s) used for functional analysis, has to be one or more of KEGG, GO and Reactome. Default: KEGG"
+    type: "string"
+    default: "KEGG"
+    choices: ["KEGG", "GO", "Reactome"]
+
+  ont:
+    description: "If db=GO, GO ontologies used in functional analysis. If multiple, separate by comma"
+    type: "string"
+    default: "BP"
+    choices: ["CC", "MF", "BP"]
+
+  id_type:
+    description: "Type of gene IDs, e.g., ENTREZID or SYMBOL. Default: SYMBOL"
+    type: "string"
+    default: "SYMBOL"
+
+  mem_mb:
+    description: "Memory requirement"
+    type: "string"
+    default: "2000"
+
+
+single_end:
+  snakefile: "functional_analysis"
+
+
+paired_end:
+  snakefile: "functional_analysis"

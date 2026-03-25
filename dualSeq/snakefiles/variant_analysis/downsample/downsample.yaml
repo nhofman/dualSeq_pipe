@@ -1,0 +1,23 @@
+name: 'downsample'
+
+optional_settings:
+  downsample:
+    description: 'Indicate if reads should be downsampled.'
+    type: 'boolean'
+    default: false
+
+  max_cov:
+    description: 'Mean target coverage.'
+    type: 'string'
+    default: '10000'
+
+  seed:
+    description: 'Seed for subsampling.'
+    type: 'string'
+    default: '42'
+
+single_end:
+  snakefile: 'downsample'
+
+paired_end:
+  snakefile: 'downsample'

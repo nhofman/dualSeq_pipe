@@ -1,0 +1,110 @@
+INFECTED_SAMPLES = [entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]
+
+rule all:
+  input:
+    expand("variant_analysis/preprocessing/{sample}_indel.bam", sample=INFECTED_SAMPLES),
+    expand("variant_analysis/preprocessing/{sample}_realign.bam", sample=INFECTED_SAMPLES),
+    expand("variant_analysis/preprocessing/{sample}_dedup.bam", sample=INFECTED_SAMPLES),
+    "variant_analysis/preprocessing.done"
+
+rule remove_spliced:
+    """Remove spliced reads using the CIGAR string."""
+    input:
+        "mapping/virus/{sample}.bam"
+    output:
+        "variant_analysis/preprocessing/{sample}_noSplice.bam"
+    priority: 1
+    log:
+        "variant_analysis/preprocessing/log/{sample}.spliced.log"
+    conda: "../conda_envs/samtools_env.yaml"
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        """
+        samtools view -h {input} | awk '!($6 ~ /N/)' > {output}.sam 2> {log}
+        samtools sort -O bam -o {output} {output}.sam 2>> {log}
+        rm {output}.sam
+        """
+
+rule markDuplicates:
+    """Mark duplicate reads."""
+    input:
+        "mapping/virus/{sample}_noSplice.bam"
+    output:
+        bam="variant_analysis/preprocessing/{sample}_dedup.bam",
+        metric="variant_analysis/preprocessing/Duplicate_Metric/{sample}"
+    priority: 1
+    log:
+        "variant_analysis/preprocessing/log/{sample}.markDuplicates.log"
+    group: "dedup"
+    conda: "../conda_envs/variant_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "picard MarkDuplicates -I {input} -M {output.metric} -O {output.bam} 2>&1 | tee {log}"
+
+rule realign:
+    """Realign reads to correct for mapping errors using the LoFreq's viterbi algorithm."""
+    input:
+        bam="variant_analysis/preprocessing/{sample}_dedup.bam",
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+    output:
+        "variant_analysis/preprocessing/{sample}_realign.bam"
+    priority: 1
+    log:
+        "variant_analysis/preprocessing/log/{sample}.realign.log"
+    group: "realign"
+    conda: "../conda_envs/variant_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "lofreq viterbi -f {input.genome} {input.bam} | samtools sort -o {output} 2>&1 | tee {log}"
+		
+rule indel_qual:
+    """Insert indel qualities with LoFreq's Dindel algorithm."""
+    input:
+        bam="variant_analysis/preprocessing/{sample}_realign.bam",
+        genome=lambda wildcards: config['entries'][wildcards.sample]['combined']['virus_genome']
+    output:
+        "variant_analysis/preprocessing/{sample}_indel.bam"
+    priority: 1
+    log:
+        "variant_analysis/preprocessing/log/{sample}.indelQual.log"
+    group: "indel_qual"
+    conda: "../conda_envs/variant_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        """
+        lofreq indelqual --dindel -f {input.genome} -o {output} {input.bam} 2>&1 | tee {log}
+        """
+
+rule index:
+    """Create index for indel bam file."""
+    input:
+        "variant_analysis/preprocessing/{sample}_indel.bam"
+    output:
+        "variant_analysis/preprocessing/{sample}_indel.bam.bai"
+    priority: 1
+    log:
+        "variant_analysis/preprocessing/log/{sample}.index.log"
+    group: "indel_qual"
+    conda: "../conda_envs/samtools_env.yaml"
+    threads: 1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        """
+        samtools index {input} 2>> {log}
+        """
+			 
+rule done:
+    input:
+        expand("variant_analysis/preprocessing/{sample}_indel.bam.bai", sample=INFECTED_SAMPLES)
+    output:
+        "variant_analysis/preprocessing.done"
+    shell:
+        "touch {output}"

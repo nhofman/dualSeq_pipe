@@ -1,14 +1,8 @@
-# Ignore PyCharm config folder
-.idea
-
 # Ignore all pycache folder
 __pycache__/
 
 # Ignore snakemake folder
 .snakemake/
 
-# Ignore test run results
-/dge_pipeline/tests/ressources/reference/*.bt2
-/dge_pipeline/tests/ressources/reference/*.fai
-/dge_pipeline/tests/ressources/paired_end_run/output_dir
-/dge_pipeline/tests/ressources/single_end_run/output_dir
+# Ignore test run pipeline command
+run_pipeline.sh

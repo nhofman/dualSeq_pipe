@@ -1,0 +1,1 @@
+EBOV_24h	uninfected_24h

@@ -1,0 +1,605 @@
+#!/usr/bin/env python3
+"""
+Dual RNA-Seq analysis pipeline
+
+usage: dualSeq.py --data DATA_FILE --pipeline-config PIPELINE_CONFIG --outdir OUTPUT_FOLDER [--profile PROFILE] [-t CORES] [-j JOBS] [--use-conda] [--conda-frontend {mamba,conda}]
+                  [--conda-prefix CONDA_PREFIX] [--conda-create-envs-only] [--latency-wait LATENCY] [--other [OTHER ...]] [-v] [--verbose] [-h]
+
+Required arguments:
+  --data DATA_FILE      Path to comma- or tab-separated file that lists all input data.
+  --pipeline-config PIPELINE_CONFIG
+                        Path to YAML file that defines rules and rule-specific parameters.
+  --outdir OUTPUT_FOLDER, -o OUTPUT_FOLDER
+                        Path to output folder.
+
+Other arguments:
+  --profile PROFILE     Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. See
+                        also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles
+  -t CORES, --cores CORES
+                        Number of threads/cores (Default: 1).
+  -j JOBS, --jobs JOBS  Maximal number of parallel jobs send to the cluster (Default: 1). Only used in cluster mode.
+  --use-conda           Run job in conda environment, if defined in rule.
+  --conda-frontend {mamba,conda}
+                        Choose frontend for installing environmnents ['conda', 'mamba']. (Default: mamba)
+  --conda-prefix CONDA_PREFIX
+                        Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.
+  --conda-create-envs-only
+                        Only create job-specific environments and exit. --use-conda has to be set.
+  --latency-wait LATENCY
+                        Seconds to wait before checking if all files of a rule were created (Default: 3). Should be increased if using cluster mode.
+  --other [OTHER ...]   Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.). Can be used multiple times.
+  -v, --version         Show program's version number and exit
+  --verbose             Print debugging output
+  -h, --help            Show this help message and exit
+
+"""
+import argparse
+import errno
+import os
+import subprocess
+import shutil
+import filecmp
+import re
+from pathlib import Path
+from typing import Dict, List, Tuple, Any
+import yaml
+import metadata
+
+CURRENT_DIRECTORY = Path(__file__).resolve().parent
+
+SNAKEFILES_LIBRARY = CURRENT_DIRECTORY / "snakefiles"  # type: Path
+
+SNAKEFILES_TARGET_DIRECTORY = 'snakemake_lib'  # type: str
+
+
+def main():
+    """Main function to parse input files and create and execute the snakemake command."""
+    args = parse_arguments()
+    used_modules, paired_end = load_pipeline_config(args.pipeline_config)
+    validate_argsfiles(args.data_file, args.pipeline_config)
+    data = parse_data_file(args.data_file, used_modules, paired_end)
+    create_output_directory(args.output_folder)
+    create_scripts_lib(args.output_folder)
+    snakefile = create_snakefile(args.output_folder, data, used_modules)
+    run_command = ['snakemake', '--snakefile', str(snakefile), '--cores', str(args.cores), '--directory', str(args.output_folder), '--latency-wait', str(args.latency)]
+    if args.verbose:
+        run_command.append('--verbose')
+    if args.use_conda:
+        create_conda_lib(args.output_folder)
+        run_command.extend(['--use-conda', '--conda-frontend', str(args.conda_frontend)])
+        if args.conda_prefix is not None:
+            run_command.extend(['--conda-prefix', str(args.conda_prefix)])
+        if args.conda_create_envs_only:
+            run_command.append('--conda-create-envs-only')
+    if args.profile is not None:
+        args.profile = Path(args.profile).resolve()
+        run_command.extend(['--profile', str(args.profile)])
+    if args.jobs is not None:
+        run_command.extend(['--jobs', str(args.jobs)])
+    if args.other is not None:
+        for elem in args.other:
+            elem = ' '.join(elem)
+            other = '--' + elem
+            run_command.append(other)
+    #print(' '.join(run_command))
+    run_return = subprocess.run(run_command, check=False) #'--rerun-triggers', 'mtime',
+    if run_return.returncode == 0:
+        print("Pipeline finished successfully!")
+    #print(run_return)
+    else:
+        print("Pipeline failed with error code", run_return.returncode)
+    exit(1)
+
+
+def check_columns(col_names: List[str], modules: Dict[str, List['Module']], paired_end: bool) -> List[Tuple[str, str]]:
+    """Function to check the validity of the data file columns."""
+    col2module = [('', '') for _ in col_names]  # type: List[Tuple[str, str]]
+    if 'name' not in col_names:
+        raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('name'))
+    else:
+        col2module[col_names.index('name')] = ('main', 'string')
+    if paired_end:
+        if 'forward_reads' not in col_names:
+            raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('forward_reads'))
+        else:
+            col2module[col_names.index('forward_reads')] = ('main', 'file')
+        if 'reverse_reads' not in col_names:
+            raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('reverse_reads'))
+        else:
+            col2module[col_names.index('reverse_reads')] = ('main', 'file')
+    else:
+        if 'reads' not in col_names:
+            raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('reads'))
+        else:
+            col2module[col_names.index('reads')] = ('main', 'file')
+    if 'condition' not in col_names:
+        raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('condition'))
+    else:
+        col2module[col_names.index('condition')] = ('main', 'string')
+    if 'virus_genome' not in col_names:
+        raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('virus_genome'))
+    else:
+        col2module[col_names.index('virus_genome')] = ('main', 'file')
+    if 'virus_genome_annotation' not in col_names:
+        raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format('virus_genome_annotation'))
+    else:
+        col2module[col_names.index('virus_genome_annotation')] = ('main', 'file')
+
+    for module in [module for module_list in modules.values() for module in module_list]:
+        if len(module.columns) > 0:
+            for col_name, properties in module.columns.items():
+                if col_name not in col_names:
+                    raise InvalidGroupsFileError('Groups file: Column "{}" is missing'.format(col_name))
+                else:
+                    col2module[col_names.index(col_name)] = (module.name, properties.type)
+    return col2module
+
+
+def parse_data_file(data_file: Path, modules: Dict[str, List['Module']], paired_end: bool) -> Dict[str, Dict[str, Dict[str, str]]]:
+    """Function to parse the data file."""
+    table = {} 
+    with data_file.open('r') as file:
+        col_names = file.readline().strip().replace(',','\t').split('\t')
+        col2module = check_columns(col_names, modules, paired_end)
+        for line in file:
+            if len(line.strip()) == 0:
+                continue
+            columns = line.strip().replace(',','\t').split('\t')
+            entries = {}  
+            for index, col in enumerate(columns):
+                if col2module[index] == '' or col2module[index] == 'name':
+                    continue
+                elif col2module[index][0] not in entries:
+                    entries[col2module[index][0]] = {}
+                if col2module[index][1] == 'file' and not col.startswith('/'):
+                    entries[col2module[index][0]][col_names[index]] = str((data_file.parent / col).resolve())
+                else:
+                    entries[col2module[index][0]][col_names[index]] = col
+            table[columns[0]] = entries
+    return table
+
+
+def load_pipeline_config(pipeline_config: Path) -> Tuple[Dict[str, List['Module']], bool]:
+    """Parse pipeline config file."""
+    modules = {"preprocessing": [],
+               "QC": [],
+               "mapping": [],
+               "gene_expression_analysis": [],
+               "variant_analysis": [],
+               "report": []}
+
+    used_modules = {"preprocessing": [],
+                    "QC": [],
+                    "mapping": [],
+                    "gene_expression_analysis": [],
+                    "variant_analysis": [],
+                    "report": []}
+    config = yaml.safe_load(pipeline_config.open('r'))
+    if "preprocessing" in config:
+        if "module" in config["preprocessing"]:
+            if not isinstance(config["preprocessing"]["module"], str):
+                raise InvalidConfigFileError("preprocessing: Only one module as a string is allowed")
+            elif config["preprocessing"]["module"] == '':
+                modules["preprocessing"].append('none')
+            else:
+                modules["preprocessing"].append(config["preprocessing"]["module"])
+        else:
+            modules["preprocessing"].append('none')
+    if "QC" in config:
+        if "modules" in config["QC"]:
+            if "module" in config["QC"]:
+                raise InvalidConfigFileError('QC: Please use either "module" or "modules"')
+            if not isinstance(config["QC"]["modules"], list):
+                raise InvalidConfigFileError("QC: modules must be a LIST of modules")
+            else:
+                for module in config["QC"]["modules"]:
+                    modules["QC"].append(module)
+        elif "module" in config["QC"]:
+            if not isinstance(config["QC"]["module"], str):
+                raise InvalidConfigFileError('QC: Only one module as a string is allowed. For multiple modules use "modules"')
+            else:
+                modules["QC"].append(config["QC"]["module"])
+    if "mapping" in config:
+        if "module" in config["mapping"]:
+            if not isinstance(config["mapping"]["module"], str):
+                raise InvalidConfigFileError("mapping: Only one module as a string is allowed")
+            else:
+                modules["mapping"].append(config["mapping"]["module"])
+        elif "modules" in config["mapping"]:
+            if "module" in config["mapping"]:
+                raise InvalidConfigFileError('mapping: Please use either "module" or "modules"')
+            if not isinstance(config["mapping"]["modules"], list):
+                raise InvalidConfigFileError("mapping: modules must be a LIST of modules")
+            else:
+                for module in config["mapping"]["modules"]:
+                    modules["mapping"].append(module)
+    if "gene_expression_analysis" in config:
+        if "modules" in config["gene_expression_analysis"]:
+            if "module" in config["gene_expression_analysis"]:
+                raise InvalidConfigFileError('gene_expression_analysis: Please use either "module" or "modules"')
+            if not isinstance(config["gene_expression_analysis"]["modules"], list):
+                raise InvalidConfigFileError("gene_expression_analysis: modules must be a LIST of modules")
+            else:
+                for module in config["gene_expression_analysis"]["modules"]:
+                    modules["gene_expression_analysis"].append(module)
+        elif "module" in config["gene_expression_analysis"]:
+            if not isinstance(config["gene_expression_analysis"]["module"], str):
+                raise InvalidConfigFileError('gene_expression_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
+            else:
+                modules["gene_expression_analysis"].append(config["gene_expression_analysis"]["module"])
+    if "variant_analysis" in config:
+        if "modules" in config["variant_analysis"]:
+            if "module" in config["variant_analysis"]:
+                raise InvalidConfigFileError('variant_analysis: Please use either "module" or "modules"')
+            if not isinstance(config["variant_analysis"]["modules"], list):
+                raise InvalidConfigFileError("variant_analysis: modules must be a LIST of modules")
+            else:
+                for module in config["variant_analysis"]["modules"]:
+                    modules["variant_analysis"].append(module)
+        elif "module" in config["variant_analysis"]:
+            if not isinstance(config["variant_analysis"]["module"], str):
+                raise InvalidConfigFileError('variant_analysis: Only one module as a string is allowed. For multiple modules use "modules"')
+            else:
+                modules["variant_analysis"].append(config["variant_analysis"]["module"])
+    if "report" in config:
+        if "modules" in config["report"]:
+            if "module" in config["report"]:
+                raise InvalidConfigFileError('report: Please use either "module" or "modules"')
+            if not isinstance(config["report"]["modules"], list):
+                raise InvalidConfigFileError("report: modules must be a LIST of modules")
+            else:
+                for module in config["report"]["modules"]:
+                    modules["report"].append(module)
+        elif "module" in config["report"]:
+            if not isinstance(config["report"]["module"], str):
+                raise InvalidConfigFileError('report: Only one module as a string is allowed. For multiple modules use "modules"')
+            else:
+                modules["report"].append(config["report"]["module"])
+    if "pipeline" in config:
+        if "paired_end" in config["pipeline"]:
+            if not isinstance(config["pipeline"]["paired_end"], bool) and not (
+                    config["pipeline"]["paired_end"] == 'True' or config["pipeline"]["paired_end"] == 'False'):
+                raise InvalidConfigFileError('Pipeline: paired_end value must be "True" or "False"')
+            else:
+                paired_end = config["pipeline"]["paired_end"]
+        else:
+            raise InvalidConfigFileError('Pipeline: Option "paired_end" must be set')
+
+    for category in modules:
+        for module_name in modules[category]:
+            settings = config[category].get(module_name, {})
+            used_modules[category].append(load_module(category, module_name, settings, pipeline_config, paired_end))
+
+    return used_modules, paired_end
+
+
+def load_module(category: str, module_name: str, settings: Dict[str, str], pipeline_config_path: Path, paired_end: bool) -> 'Module':
+    """Parse module parameters given in the pipeline config file and compare them with specifications defined in module yaml file."""
+    loaded_module = Module(module_name)
+    module_yaml_file = SNAKEFILES_LIBRARY / category / module_name / (module_name + '.yaml')
+    if module_yaml_file.is_file():
+        module_yaml = yaml.safe_load(module_yaml_file.open('r'))
+        if 'required_settings' in module_yaml:
+            for setting_name, properties in module_yaml['required_settings'].items():
+                if setting_name not in settings:
+                    raise InvalidConfigFileError(category.capitalize() + ': Required setting "' + setting_name + '" is missing')
+                else:
+                    if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
+                        loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
+                    elif properties['type'] == 'enum':
+                        loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
+                    else:
+                        loaded_module.add_setting(setting_name, settings[setting_name])
+        if 'optional_settings' in module_yaml:
+            for setting_name, properties in module_yaml['optional_settings'].items():
+                if setting_name not in settings:
+                    loaded_module.add_setting(setting_name, properties['default'])
+                else:
+                    if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
+                        loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
+                    elif properties['type'] == 'enum':
+                        loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
+                    else:
+                        loaded_module.add_setting(setting_name, settings[setting_name])
+        if 'columns' in module_yaml:
+            for column_name, properties in module_yaml['columns'].items():
+                loaded_module.add_column(column_name, ColumnProperties(properties['type'], properties['description']))
+
+        if paired_end:
+            loaded_module.snakefile = SNAKEFILES_LIBRARY / category / module_name / module_yaml['paired_end']['snakefile']
+            if 'required_settings' in module_yaml['paired_end']:
+                for setting_name, properties in module_yaml['paired_end']['required_settings'].items():
+                    if setting_name not in settings:
+                        raise InvalidConfigFileError(category.capitalize() + ': Required setting "' + setting_name + '" is missing')
+                    else:
+                        if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
+                        elif properties['type'] == 'enum':
+                            loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
+                        else:
+                            loaded_module.add_setting(setting_name, settings[setting_name])
+            if 'optional_settings' in module_yaml['paired_end']:
+                for setting_name, properties in module_yaml['paired_end']['optional_settings'].items():
+                    if setting_name not in settings:
+                        loaded_module.add_setting(setting_name, "")
+                    else:
+                        if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
+                        elif properties['type'] == 'enum':
+                            loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
+                        else:
+                            loaded_module.add_setting(setting_name, settings[setting_name])
+            if 'columns' in module_yaml['paired_end']:
+                for column_name, properties in module_yaml['paired_end']['columns'].items():
+                    loaded_module.add_column(column_name, ColumnProperties(properties['type'], properties['description']))
+
+        else:
+            loaded_module.snakefile = SNAKEFILES_LIBRARY / category / module_name / module_yaml['single_end']['snakefile']
+            if 'required_settings' in module_yaml['single_end']:
+                for setting_name, properties in module_yaml['single_end']['required_settings'].items():
+                    if setting_name not in settings:
+                        raise InvalidConfigFileError(category.capitalize() + ': Required setting "' + setting_name + '" is missing')
+                    else:
+                        if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
+                        elif properties['type'] == 'enum':
+                            loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
+                        else:
+                            loaded_module.add_setting(setting_name, settings[setting_name])
+            if 'optional_settings' in module_yaml['single_end']:
+                for setting_name, properties in module_yaml['single_end']['optional_settings'].items():
+                    if setting_name not in settings:
+                        loaded_module.add_setting(setting_name, "")
+                    else:
+                        if properties['type'] == 'file' and not settings[setting_name].startswith('/'):
+                            loaded_module.add_setting(setting_name, str((pipeline_config_path.parent / settings[setting_name]).resolve()))
+                        elif properties['type'] == 'enum':
+                            loaded_module.add_setting(setting_name, properties['choices'][settings[setting_name]])
+                        else:
+                            loaded_module.add_setting(setting_name, settings[setting_name])
+            if 'columns' in module_yaml['single_end']:
+                for column_name, properties in module_yaml['single_end']['columns'].items():
+                    loaded_module.add_column(column_name, ColumnProperties(properties['type'], properties['description']))
+
+    else:
+        raise InvalidConfigFileError(category.capitalize() + ': Unknown module "' + module_name + '"')
+
+    return loaded_module
+
+
+def validate_argsfiles(data_file: Path, pipeline_config: Path):
+    """Validate the data file and pipeline config file."""
+    if not data_file.is_file():
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(data_file))
+    if not pipeline_config.is_file():
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(pipeline_config))
+
+
+def create_output_directory(output_path: Path):
+    """Create the given output directory."""
+    if not output_path.exists():
+        output_path.mkdir(parents=True)
+    elif not output_path.is_dir():
+        raise NotADirectoryError(filename=output_path)
+
+    snakefiles_target_directory = output_path / SNAKEFILES_TARGET_DIRECTORY
+    if not snakefiles_target_directory.exists():
+        snakefiles_target_directory.mkdir(parents=True)
+    elif not snakefiles_target_directory.is_dir():
+        raise NotADirectoryError(filename=snakefiles_target_directory)
+
+
+def create_snakefile(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
+    """Function to create the snakemake files and related scripts for every module in the snakemake target directory."""
+    pipeline_config = create_snakemake_pipeline_config(output_folder, data, modules)
+    # find every rule name
+    re_rule_name = re.compile('^rule (?P<rule_name>.*):$', re.MULTILINE)
+    # find every lib reference
+    re_lib_folder = re.compile(r'lib/(?P<file_name>[^\s]*)', re.MULTILINE)
+    snakefile_module_paths = []
+    # for every Module in modules
+    for module in [module for module_list in modules.values() for module in module_list]:
+        with module.snakefile.open('r') as module_file:
+            module_content = module_file.read()
+            # change rule name from <rule name> to <module name>__<rule name>
+            module_content = re_rule_name.sub(r'rule {}__\g<rule_name>:'.format(module.name.lower().replace('-', '_')), module_content)
+            module_content = re_lib_folder.sub(r'{}/{}_lib/\g<file_name>'.format(SNAKEFILES_TARGET_DIRECTORY, module.name.lower()), module_content)
+            for (wildcard, value) in module.settings.items():
+                module_content = module_content.replace("%%{}%%".format(wildcard.upper()), ','.join(value) if type(value) is list else str(value))
+            module_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / (module.name.lower() + '.sm')
+            with module_path.open('w') as module_output_file:
+                module_output_file.write(module_content)
+                snakefile_module_paths.append(module_path.name)
+            lib_src = module.snakefile.parent / 'lib'
+            if lib_src.is_dir():
+                lib_dest = output_folder / SNAKEFILES_TARGET_DIRECTORY / (module.name.lower() + '_lib')
+                if lib_dest.is_dir():
+                    dir_comp = filecmp.dircmp(str(lib_src), str(lib_dest))
+                    if dir_comp.left_only or dir_comp.diff_files:
+                        copy_lib(lib_src, lib_dest)
+                    else:
+                        for sub in dir_comp.subdirs.values():
+                            if sub.left_only or sub.diff_files:
+                                copy_lib(lib_src, lib_dest)
+                else:
+                    copy_lib(lib_src, lib_dest)
+
+    snakefile_main_path = output_folder / 'Snakefile'
+    with snakefile_main_path.open('w') as snakefile:
+        #snakefile.write('import pandas as pd\n\n')
+        #snakefile.write('genomes = pd.read_csv("{}", sep="\t").set_index("virus", drop=False)\n\n'.format(genome))
+        snakefile.write(
+            'configfile: "{}"\n\n'.format(os.path.join(SNAKEFILES_TARGET_DIRECTORY, pipeline_config.name)))
+        for path in snakefile_module_paths:
+            snakefile.write('include: "{}"\n'.format(os.path.join(SNAKEFILES_TARGET_DIRECTORY, path)))
+        snakefile.write('\n')
+        snakefile.write('rule all:\n')
+        snakefile.write('    input:\n')
+        for module in [module for (category, module_list) in modules.items() for module in module_list if category in ('QC', 'preprocessing', 'mapping', 'gene_expression_analysis', 'variant_analysis', 'report')]:
+            snakefile.write('        rules.{module_name}__all.input,\n'.format(module_name=module.name.lower().replace('-', '_')))
+
+    return snakefile_main_path
+
+
+def create_snakemake_pipeline_config(output_folder: Path, data: Dict[str, Dict[str, Dict[str, Any]]], modules: Dict[str, List['Module']]) -> Path:
+    """Create snakemake config file that contains a dictionary of all input data."""
+    config_path = output_folder / SNAKEFILES_TARGET_DIRECTORY / 'snakefile_config.yaml'
+    m_list = []
+    with config_path.open('w') as pipeline_config:
+        #pipeline_config.write('modules:\n')
+        for module in [module for (category, module_list) in modules.items() for module in module_list]:
+            m_list.append('{module_name}'.format(module_name=module.name.lower().replace('-', '_')))
+        pipeline_config.write('modules: {}'.format(m_list))
+        pipeline_config.write('\nentries:\n')
+        for row, modules in data.items():
+            pipeline_config.write('    "{}":\n'.format(row))
+            for module_name, columns in modules.items():
+                pipeline_config.write('        "{}":\n'.format(module_name))
+                for column, value in columns.items():
+                    pipeline_config.write('            "{}": "{}"\n'.format(column, value))
+    return config_path
+
+
+def create_conda_lib(output_folder: Path):
+    """Create directory of conda YAML files."""
+    lib_src = CURRENT_DIRECTORY / 'conda_envs'
+    lib_dest = output_folder / 'conda_envs'
+    if lib_dest.is_dir():
+        dir_comp = filecmp.dircmp(str(lib_src), str(lib_dest))
+        if dir_comp.left_only or dir_comp.diff_files:
+            copy_lib(lib_src, lib_dest)
+    else:
+        copy_lib(lib_src, lib_dest)
+
+
+def create_scripts_lib(output_folder: Path):
+    """Create directory of miscellaneous scripts."""
+    lib_src = CURRENT_DIRECTORY / 'scripts'
+    lib_dest = output_folder / 'scripts'
+    if lib_dest.is_dir():
+        dir_comp = filecmp.dircmp(str(lib_src), str(lib_dest))
+        if dir_comp.left_only or dir_comp.diff_files:
+            copy_lib(lib_src, lib_dest)
+    else:
+        copy_lib(lib_src, lib_dest)
+
+
+def copy_lib(src_folder: Path, dest_folder: Path):
+    """Copy source directory to output folder."""
+    try:
+        if dest_folder.is_dir():
+            shutil.rmtree(str(dest_folder))
+        shutil.copytree(str(src_folder), str(dest_folder), symlinks=True)
+    except shutil.Error as err:
+        raise err
+
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse required and optional command line arguments."""
+    parser = argparse.ArgumentParser(description=metadata.__program_name__, add_help=False)
+
+    required = parser.add_argument_group('Required arguments')
+    required.add_argument('--data', dest='data_file', required=True, help="Path to comma- or tab-separated file that lists all input data.")
+    required.add_argument('--pipeline-config', dest='pipeline_config', required=True, help="Path to YAML file that defines rules and rule specific parameters.")
+    required.add_argument('--outdir', '-o', dest='output_folder', required=True, help="Path to output folder.")
+
+    other = parser.add_argument_group('Other arguments')
+    other.add_argument('--profile', dest='profile', default=None, type=str,
+                       help="Path to folder containing profile 'config.yaml' for snakemake configuration. Can be used to set default values for command line options, e.g. cluster submission command. " 
+                       "See also: https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles")
+    other.add_argument('-t', '--cores', dest='cores', default=1, type=int,
+                       help="Number of threads/cores (Default: %(default)s).")
+    other.add_argument('-j', '--jobs', dest='jobs', default=1, type=int,
+                       help="Maximal number of parallel jobs send to the cluster (Default: %(default)s). Only used in cluster mode.")
+    other.add_argument('--use-conda', dest='use_conda', action='store_true',
+                       help="Run job in conda environment, if defined in rule.")
+    other.add_argument('--conda-frontend', dest='conda_frontend', default='mamba', type=str, choices=['mamba','conda'],
+                       help="Choose frontend for installing environmnents ['conda', 'mamba']. (Default: %(default)s)")
+    other.add_argument('--conda-prefix', dest='conda_prefix', default=None, type=str,
+                       help="Path to folder where conda directories are created, can be a path relative to invocation dir or an absolute path.")
+    other.add_argument('--conda-create-envs-only', dest='conda_create_envs_only', action='store_true',
+                       help="Only create job-specific environments and exit. --use-conda has to be set.")
+    other.add_argument('--latency-wait', dest='latency', default=3, type=int,
+                       help="Seconds to wait before checking if all files of a rule were created (Default: %(default)s). Should be increased if using cluster mode.")
+    other.add_argument('--other', dest='other', default=None, type=str, nargs="*", action="append",
+                       help="Add additional snakemake command line options, e.g. 'dry-run' ('--' is automatically placed in front.). Can be used multiple times.")
+    other.add_argument('-v', '--version', action='version', version='%(prog)s \nVersion: {}'.format(metadata.__version__),
+                       help="Show program's version number and exit")
+    other.add_argument('--verbose', dest='verbose', action="store_true", help="Print debugging output")
+    other.add_argument('-h', '--help', action="help", help="Show this help message and exit")
+
+    args = parser.parse_args()
+    args.data_file = Path(args.data_file).resolve()
+    args.output_folder = Path(args.output_folder)
+    args.pipeline_config = Path(args.pipeline_config).resolve()
+
+    return args
+
+
+class Module:
+    """Structure class for used modules
+
+        Attributes:
+            name -- name of module
+            snakefile -- path to snakefile of module
+            settings -- dictionary with all user-defined settings
+            columns -- dictionary of all necessary columns in group file
+
+    """
+
+    def __init__(self, name: str, snakefile_path: Path = None):
+        self.name = name  # type: str
+        if snakefile_path is not None:
+            self.snakefile = snakefile_path.resolve()  # type: Path
+        else:
+            self.snakefile = snakefile_path
+        self.settings = {}  # type: Dict[str, Any]
+        self.columns = {}  # type: Dict[str, 'ColumnProperties']
+
+    def add_setting(self, name: str, value: str):
+        self.settings[name] = value
+
+    def get_setting(self, name: str) -> str:
+        return self.settings[name]
+
+    def add_column(self, name: str, value: 'ColumnProperties'):
+        self.columns[name] = value
+
+    def get_column(self, name: str) -> 'ColumnProperties':
+        return self.columns[name]
+
+
+class ColumnProperties:
+    """Structure class for column properties
+
+    """
+
+    def __init__(self, col_type: str, description: str):
+        self.type = col_type
+        self.description = description
+
+
+class InvalidGroupsFileError(Exception):
+    """Exception raised for errors in the data file.
+
+        Attributes:
+            message -- message displayed
+    """
+
+    def __init__(self, message: str):
+        super(InvalidGroupsFileError, self).__init__(message)
+
+
+class InvalidConfigFileError(Exception):
+    """Exception raised for errors in the config file.
+
+        Attributes:
+            message -- message displayed
+    """
+
+    def __init__(self, message: str):
+        super(InvalidConfigFileError, self).__init__(message)
+
+
+if __name__ == '__main__':
+    main()

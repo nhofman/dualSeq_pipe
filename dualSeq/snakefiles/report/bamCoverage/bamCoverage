@@ -1,0 +1,75 @@
+from os import listdir
+from os.path import isfile
+
+rule all:
+    input:
+        expand("report/bigwig/host/{sample}.bigWig", sample=sorted(config['entries'].keys())),
+        expand("report/bigwig/virus/{sample}.bigWig", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()]),
+        "report/bigwig/bamCov.done"
+
+rule create_bigwig_host:
+    """Create bigwig file from host bam file."""
+    input:
+        bam = "mapping/host/{sample}.bam",
+        bai = "mapping/host/{sample}.bam.bai"
+    output:
+        "report/bigwig/host/{sample}.bigWig"
+    priority: 1
+    log:
+        "report/bigwig/log/{sample}.host.log"
+    group: "bigwig_host"
+    conda: "../conda_envs/bigwig_env.yaml"
+    threads:
+        4
+    resources:
+        mem_mb=%%MEM_MB_HOST%%
+    shell:
+        "bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_HOST%% --effectiveGenomeSize %%EFFECTIVEGENOMESIZE_HOST%% --binSize %%BINSIZE_HOST%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_HOST%% 2>&1 | tee {log}"
+
+rule create_bigwig_virus:
+    """Create bigwig file from virus bam file."""
+    input:
+        bam = "mapping/virus/{sample}.bam",
+        bai = "mapping/virus/{sample}.bam.bai"
+    output:
+        "report/bigwig/virus/{sample}.bigWig"
+    priority: 1
+    log:
+        "report/bigwig/log/{sample}.virus.log"
+    group: "bigwig_virus"
+    conda: "../conda_envs/bigwig_env.yaml"
+    threads:
+        4
+    resources:
+        mem_mb=%%MEM_MB_VIRUS%%
+    shell:
+        """
+        genome=`samtools view -H {input.bam} | awk '$1 ~ /^@SQ/{{split($3,a,/:/);print a[2]}}' | awk '{{s+=$1}} END {{print s}}'`
+        echo $genome
+        bamCoverage -b {input.bam} -o {output} -of bigwig -p {threads} --normalizeUsing %%NORMMETHOD_VIRUS%% --effectiveGenomeSize ${{genome}} --binSize %%BINSIZE_VIRUS%% %%ADDITIONAL_BAMCOVERAGE_OPTIONS_VIRUS%% 2>&1 | tee {log}
+        """
+        
+rule done_host:
+    input:
+        expand("report/bigwig/host/{sample}.bigWig", sample=sorted(config['entries'].keys()))
+    output: 
+        temp("report/bigwig/bamCov_host.done")
+    shell:
+        "touch {output}"
+        
+rule done_virus:
+    input:
+        expand("report/bigwig/virus/{sample}.bigWig", sample=[entry for entry in config['entries'].keys() if 'virus_genome' in config['entries'][entry]['main'].keys()])
+    output: 
+        temp("report/bigwig/bamCov_virus.done")
+    shell:
+        "touch {output}"
+
+rule done:
+    input:
+        virus = "report/bigwig/bamCov_virus.done",
+        host = "report/bigwig/bamCov_host.done"
+    output:
+        "report/bigwig/bamCov.done"
+    shell:
+        "touch {output}"

@@ -1,0 +1,19 @@
+
+localrules: none__create_link
+
+rule create_link:
+    input:
+        lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
+    output:
+        "preprocessing/{sample}.fq.gz"
+    priority: 1
+    threads:
+        1
+    shell:
+        """
+        if gzip -t {input} 2>/dev/null; then
+            ln `readlink -f {input}` {output}
+        else
+            gzip -c {input} > {output}
+        fi
+        """

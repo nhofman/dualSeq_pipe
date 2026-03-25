@@ -1,0 +1,26 @@
+
+localrules: none__create_link
+
+rule create_link:
+    input:
+        fwd = lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads'],
+        rev = lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
+    output:
+        fwd = "preprocessing/{sample}_R1.fq.gz",
+        rev = "preprocessing/{sample}_R2.fq.gz"
+    threads:
+        1
+    shell:
+        """
+        if gzip -t {input.fwd} 2>/dev/null; then
+            ln `readlink -f {input.fwd}` {output.fwd}
+        else
+            gzip -c {input.fwd} > {output.fwd}
+        fi
+
+        if gzip -t {input.rev} 2>/dev/null; then
+            ln `readlink -f {input.rev}` {output.rev}
+        else
+            gzip -c {input.rev} > {output.rev}
+        fi
+        """

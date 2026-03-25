@@ -1,0 +1,35 @@
+
+rule all:
+    input:
+        expand("preprocessing/{sample}_{read}.fq.gz", sample=sorted(config['entries'].keys()), read=["R1","R2"]),
+        "preprocessing/fastp.done"
+
+rule trim_reads:
+    """Trim paired-end reads with fastp."""
+    input:
+        reads_forward=lambda wildcards: config['entries'][wildcards.sample]['main']['forward_reads'],
+        reads_reverse=lambda wildcards: config['entries'][wildcards.sample]['main']['reverse_reads']
+    output:
+        fwd="preprocessing/{sample}_R1.fq.gz",
+        rev="preprocessing/{sample}_R2.fq.gz",
+        json="preprocessing/fastp/{sample}_fastp.json",
+        html="preprocessing/fastp/{sample}_fastp.html"
+    priority: 1
+    log:
+        "preprocessing/fastp/log/{sample}.log"
+    group: "fastp"
+    conda: "../conda_envs/fastp_env.yaml"
+    threads:
+        2
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        "fastp -w {threads} --in1 {input.reads_forward} --out1 {output.fwd} --in2 {input.reads_reverse} --out2 {output.rev} -h {output.html} -j {output.json} %%ADDITIONAL_FASTP_OPTIONS%% 2>&1 | tee {log}"
+
+rule done:
+    input:
+        expand("preprocessing/fastp/{sample}_fastp.json", sample=sorted(config['entries'].keys()))
+    output: 
+        "preprocessing/fastp.done"
+    shell:
+        "touch {output}"

@@ -1,0 +1,22 @@
+channels:
+- conda-forge
+- bioconda
+dependencies:
+- r-pheatmap=1.0.13
+- r-ggplot2=3.5.2
+- r-reshape2=1.4.4
+- r-gplots=3.2.0
+- r-gtools=3.9.5
+- r-tidyr=1.3.1
+- r-dplyr=1.1.4
+- r-openxlsx>=4.2.8
+- r-ashr>=2.2-63
+  #- r-svglite
+- r-egg=0.4.5
+- r-vcfr=1.15.0
+- r-gggenomes=1.0.1
+- bioconductor-biocparallel=1.40.0
+- bioconductor-deseq2=1.46.0
+- bioconductor-clusterprofiler=4.14.0
+- bioconductor-org.hs.eg.db>=3.20
+- bioconductor-reactomepa>=1.50.0

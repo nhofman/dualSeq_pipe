@@ -1,0 +1,7 @@
+channels:
+- conda-forge
+- bioconda
+- anaconda
+- defaults
+dependencies:
+- bowtie2=2.5.4

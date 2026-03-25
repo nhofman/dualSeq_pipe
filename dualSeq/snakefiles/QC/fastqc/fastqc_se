@@ -1,0 +1,42 @@
+
+rule all:
+    input:
+        expand("QC/fastqc/{sample}_fastqc.html", sample=sorted(config['entries'].keys())),
+        "QC/fastqc.done"
+
+rule fastqc:
+    """Run FastQC with reads and rename the output files to {sample_name}_*."""
+    input:
+        lambda wildcards: config['entries'][wildcards.sample]['main']['reads']
+    output:
+        "QC/fastqc/{sample}_fastqc.html",
+        "QC/fastqc/{sample}_fastqc.zip"
+    priority: 1
+    log:
+        "QC/fastqc/log/{sample}.log"
+    group:
+        "fastqc"
+    conda: "../conda_envs/fastqc_env.yaml"
+    threads:
+        1
+    resources:
+        mem_mb=%%MEM_MB%%
+    shell:
+        """
+        input_name=`basename {input}`
+        input_name="${{input_name%%.*}}"
+        fastqc %%ADDITIONAL_FASTQC_OPTIONS%% -o QC/fastqc {input} 2>&1 | tee {log}
+        if [[ "${{input_name}}" != "{wildcards.sample}" ]]
+        then
+            mv QC/fastqc/${{input_name}}_fastqc.html {output[0]}
+            mv QC/fastqc/${{input_name}}_fastqc.zip {output[1]}
+        fi
+        """
+
+rule done:
+    input:
+        expand("QC/fastqc/{sample}_fastqc.html", sample=sorted(config['entries'].keys()))
+    output:
+        "QC/fastqc.done"
+    shell:
+        "touch {output}"
