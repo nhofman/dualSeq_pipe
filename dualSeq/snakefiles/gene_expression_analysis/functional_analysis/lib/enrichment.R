@@ -7,7 +7,7 @@ library(openxlsx)
 
 # Over-representation analysis for a set of genes
 calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", GO = T, KEGG = T, REACTOME = F, ont = "BP", p.cut = 0.05, legendlimit = NULL, label.size = 12, dpi = 300,
-                     legend.size = 8, title.size = 8, keytype = "SYMBOL", width = 18, height = 15, category_top = 20, imagetype = "svg", family = family, label_format = 30){
+                     legend.size = 8, title.size = 8, keytype = "SYMBOL", width = 18, height = 15, category_top = 20, imagetype = "pdf", family = family, label_format = 30){
   if(!dir.exists(out.dir)){
     dir.create(out.dir)
   }
@@ -17,11 +17,11 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
     gene_bitr <- data.frame(ENTREZID=geneset)
   }
   theme_plot <- theme(text = element_text(family = family, face = "bold", size = label.size),
-                  legend.text = element_text(size = legend.size, face = "plain"), legend.title = element_text(size = title.size),
-                  axis.title = element_text(size = title.size), axis.text.y = element_text(hjust = 1),
-                  axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")),
-                  axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
-                  axis.line.y.left = element_line(color = "black"), panel.border = element_blank())
+                      legend.text = element_text(size = legend.size, face = "plain"), legend.title = element_text(size = title.size),
+                      axis.title = element_text(size = title.size), axis.text.y = element_text(hjust = 1),
+                      axis.title.x = element_text(margin = margin(7, 0, 0, 0, "mm")),
+                      axis.line.x.top = element_blank(), axis.line.y.right = element_blank(), axis.line.x.bottom = element_line(color = "black"), 
+                      axis.line.y.left = element_line(color = "black"), panel.border = element_blank())
   ora.list <- list()
   if(GO){
     for(o in ont){
@@ -30,11 +30,12 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
         categories <- nrow(data.frame(ora_go))
         if(categories > 0){
           height <- ifelse(categories > 20, 20, categories)
-          plot_go <- dotplot(ora_go, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
+          plot_go <- barplot(ora_go, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
             scale_fill_gradient(limits = legendlimit, low = "red", high = "blue") + theme_plot
-          ggsave(paste(filename,"_",o,"_dotplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
+          ggsave(paste(filename,"_",o,"_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                  plot = egg::set_panel_size(plot_go, width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
           write.table(data.frame(ora_go), file = paste(out.dir, "/", filename, "_", o, ".csv", sep = ""), sep = ",", row.names = FALSE)
+          write.xlsx(data.frame(ora_go), file = paste(out.dir, "/", filename, "_", o, ".xlsx", sep = ""), row.names = FALSE)
         }
         ora.list[[o]] <- ora_go
       }
@@ -47,11 +48,12 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
       if(categories > 0){
         height <- ifelse(categories > 20, 20, categories)
         ora_kegg <- setReadable(ora_kegg, org.Hs.eg.db, keyType = "ENTREZID")
-        plot_kegg <- dotplot(ora_kegg, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
+        plot_kegg <- barplot(ora_kegg, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
           scale_fill_gradient(limits = legendlimit, low = "red", high = "blue") + theme_plot
-        ggsave(paste(filename,"_KEGG_dotplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
+        ggsave(paste(filename,"_KEGG_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                plot = egg::set_panel_size(plot_kegg,width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
         write.table(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.csv", sep = ""), sep = ",", row.names = FALSE)
+        write.xlsx(data.frame(ora_kegg), file = paste(out.dir, "/", filename, "_KEGG.xlsx", sep = ""), row.names = FALSE)
       }
       ora.list[["KEGG"]] <- ora_kegg
     }
@@ -62,11 +64,12 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
       categories <- nrow(data.frame(ora_reactome))
       if(categories > 0){
         height <- ifelse(categories > 20, 20, categories)
-        plot_reactome <- dotplot(ora_reactome, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
+        plot_reactome <- barplot(ora_reactome, showCategory = category_top, font.size = label.size, label_format = label_format) + ggtitle(main) +
           scale_fill_gradient(limits = legendlimit, low = "red", high = "blue") + theme_plot
-        ggsave(paste(filename,"_REACTOME_dotplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
+        ggsave(paste(filename,"_REACTOME_barplot.", imagetype, sep = ""), device = imagetype, path = paste(out.dir, sep = ""),
                plot = egg::set_panel_size(plot_reactome, width = unit(width, "cm"), height = unit(height, "cm")), width = width+10, height = height+2, units = "cm", dpi = dpi)
         write.table(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.csv", sep = ""), sep = ",", row.names = FALSE)
+        write.xlsx(data.frame(ora_reactome), file = paste(out.dir, "/", filename, "_REACTOME.xlsx", sep = ""), row.names = FALSE)
       }
       ora.list[["REACTOME"]] <- ora_reactome
     }
@@ -76,12 +79,16 @@ calc_ora <- function(geneset, main = "", filename, out.dir = "ORA", ink = "-l", 
 
 
 # Gene Set Enrichment Analysis
-calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T, REACTOME = F, nPerm = 1000, p.cut = 0.05, out.dir = "GSEA/"){
+calc_gsea <- function(res, name, ont = "BP", sort.by = "stat", KEGG = T, GO = T, REACTOME = F, keytype = "SYMBOL", nPerm = 1000, p.cut = 0.05, out.dir = "GSEA/"){
   if(!dir.exists(out.dir)){
     dir.create(out.dir)
   }
   gsea.list <- list()
-  gene_bitr <- bitr(res$SYMBOL, fromType="SYMBOL", toType="ENTREZID", "org.Hs.eg.db")
+  if(keytype != "ENTREZID"){
+    gene_bitr <- bitr(res$SYMBOL, fromType=keytype, toType="ENTREZID", "org.Hs.eg.db")
+  }else{
+    gene_bitr <- data.frame(ENTREZID=res$SYMBOL)
+  }
   res <- merge(res, gene_bitr, by = "SYMBOL")
   res <- res[order(res[,sort.by], decreasing = TRUE),]
   geneset_num <- as.numeric(res[,sort.by])

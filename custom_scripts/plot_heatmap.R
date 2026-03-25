@@ -1,4 +1,4 @@
-library(pheatmap)
+#library(pheatmap)
 library(ComplexHeatmap)
 
 # Plot complex heatmap for a data.frame of expression values (rows = genes, columns = virus and time point)

@@ -46,7 +46,7 @@ rule functional_analysis:
         mem_mb=%%MEM_MB%%
     shell:
         """
-        R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --datatable {input} --db %%DB%% --ont %%ONT%% --output_folder {params.output_folder} 2>&1 | tee {log}
+        R --vanilla --file=lib/functional_analysis.R --args --threads {threads} --datatable {input} --db %%DB%% --ont %%ONT%% --id_type %%ID_TYPE%% --output_folder {params.output_folder} 2>&1 | tee {log}
         """
 
 rule done:

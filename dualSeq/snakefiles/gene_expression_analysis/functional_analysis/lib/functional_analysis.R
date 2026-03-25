@@ -6,40 +6,23 @@ input.file <- args[match('--datatable', args) + 1]
 threads <- args[match('--threads', args) + 1]
 db <- args[match('--db', args) + 1]
 ont <- args[match('--ont', args) + 1]
+id.type <- args[match('--id_type', args) + 1]
 output_folder <- args[match('--output_folder', args) + 1]
 
-#load(rdata)
-
 source(paste0(file.dir, "/enrichment.R"))
-#source(paste0(file.dir, "/STRINGdb.R"))
 
 db <- strsplit(db, ",")[[1]]
 KEGG <- "KEGG" %in% db
 GO <- "GO" %in% db
 REACTOME <- "REACTOME" %in% db
-#ont <- ifelse(is.na(ont), "BP", ont)
 ont <- strsplit(ont, ",")[[1]]
 
-#gsea.list <- list()
-#for(n in names(res.list)){
-  n <- gsub("deseq2_results_(.*)\\.csv","\\1",basename(input.file))
-  res <- read.csv(input.file, header = T, row.names = 1) #res.list[[n]]
-  res <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
-  res <- res[order(res$log2FoldChange, decreasing = T),]
-  # GSEA analysis
-  gsea <- calc_gsea(res, n, sort.by = "log2FoldChange", REACTOME = REACTOME, KEGG = KEGG, GO = GO, ont = ont,
-  p.cut = 0.05, out.dir = paste0(output_folder,"/GSEA"))
-  # Protein-protein interaction analysis with STRING
-  #if(nrow(data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05])) > 0){
-  #        try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange>0 & res$padj < 0.05]), filename = paste0(n, "_up"), out.dir = paste0(output_folder, "/STRING")))
-  #}
-  #if(nrow(data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05])) > 0){
-  #        try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL[res$log2FoldChange<0 & res$padj < 0.05]), filename = paste0(n, "_down"), out.dir = paste0(output_folder, "/STRING")))
-  #}
-  #res <- res[order(abs(res$log2FoldChange), decreasing = T),]
-  #if(nrow(res) > 0){
-  #        try(string_ppi(string_db, gene.df = data.frame("SYMBOL"=res$SYMBOL), filename = paste0(n, "_top_absolut"), out.dir = paste0(output_folder, "/STRING")))
-  #}
-  #gc()
-#}
-
+# sort genes by LFC and call GSEA
+n <- gsub("deseq2_results_(.*)\\.csv", "\\1", basename(input.file))
+res <- read.csv(input.file, header = T, row.names = 1) 
+res <- res[rowSums(res[,grep("normalized", colnames(res))])>0,] # remove genes with no read counts
+res <- res[order(res$log2FoldChange, decreasing = T),]
+# GSEA analysis
+gsea <- calc_gsea(res, n, sort.by = "log2FoldChange", REACTOME = REACTOME, KEGG = KEGG, GO = GO, ont = ont, keytype = id.type,
+p.cut = 0.05, out.dir = paste0(output_folder, "/GSEA"))
+  

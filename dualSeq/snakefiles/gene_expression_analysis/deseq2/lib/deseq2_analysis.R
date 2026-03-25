@@ -190,7 +190,6 @@ res.list <- list()
 padj_cut <- 0.05
 
 for(n in 1:nrow(comparisons.df)) {
-  #res.list <- mclapply(1:nrow(comparisons.df), function(n){
   print(comparisons.df[n,])
   cond_1 <- comparisons.df[n,1] # e.g. infected
   cond_2 <- comparisons.df[n,2] # e.g. uninfected
@@ -231,10 +230,7 @@ for(n in 1:nrow(comparisons.df)) {
   write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", cond_1, "_vs_", cond_2, ".xlsx", sep = ""), overwrite = T)
 
   res.list[[paste(cond_1, cond_2, sep="_vs_")]] <- res 
-  #return(res)
-}#, mc.cores = threads)
-
-#names(res.list.shrunk) <- comparisons.df[,2]
+}
 
 lfc.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), function(x){x.df <- data.frame(res.list[[x]][,c("SYMBOL","log2FoldChange")]); colnames(x.df) <- c("SYMBOL",x); return(x.df)}))
 rownames(lfc.df) <- lfc.df$SYMBOL

@@ -228,6 +228,19 @@ All analysis results can be found in the output directory specified by the user 
 ## ADVICER
 
 An interactive visualization of the analysis results of the virus infection study can be viewed on the Analysis Dashboard for Virus-Induced CEll Response based on RNA-Seq data (ADVICER). ADVICER is an [R Shiny app](https://shiny.posit.co/) that is publicly available under https://advicer.computational.bio/. 
+
+## Custom scripts
+
+The folder `custom_scripts` contains custom R scripts that were used to compare the differential gene expression between time points and viruses. The necessary R packages can be found in the respective scripts. The comparisons are based on the DESeq2 analyses of the dualSeq pipeline. 
+`compare_time_points.R`:
+	- Compare DEGs between time points by generating UpSet plots (for each virus)
+	- Compare DEGs for *virus_24h vs Mock 24h*, *virus_24h vs virus_BPL*, *virus_BPL vs Mock_BPL*
+`compare_viruses.R`:
+	- Compare DEGs across specified viruses (*common host reponse*)
+		- UpSet plot
+	- ComplexHeatmap of common host response
+	- Overrepresentation analysis of common host response
+
 ## Citation
 
 **Sequence data availability:**

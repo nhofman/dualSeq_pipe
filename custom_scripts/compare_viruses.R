@@ -5,8 +5,8 @@ library(gplots)
 library(UpSetR)
 library(enrichplot)
 
-source("plot_heatmap.R")
-source("enrichment.R")
+#source("plot_heatmap.R")
+#source("enrichment.R")
 
 # Convert lists of DEG to binary table
 list2binary <- function(data.list, filename){
@@ -26,7 +26,7 @@ list2binary <- function(data.list, filename){
   return(data.binary)
 }
 
-load("deseq2.RData") # load data from DESeq2 analysis
+#load("deseq2.RData") # load data from DESeq2 analysis
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
 res.list <- res.list[mixedorder(names(res.list))]
 
@@ -94,7 +94,7 @@ virus.heat2 <- plotHeatmap(lfc.df.common, filename = paste0(out.dir,"/Heatmap_co
 ora <- calc_ora(genes.common, filename ="ORA_common", GO = T, REACTOME = T, KEGG = T, ont = c("CC","BP","MF"), #legendlimit=c(0.003, 0.0425),
                 p.cut = 0.05, label.size = 8, legend.size = 6, title.size = 8, imagetype = "pdf", ink = "--export-type=svg",
                 width = 10, height = 7, family = "Helvetica", out.dir = paste0(output_folder, "common_pattern"), 
-                label_format = function(x) stringr::str_wrap(x, width = 50), category_top = 40)
+                label_format = function(x) stringr::str_wrap(x, width = 50), category_top = 20)
 
 # Plot heatplot for ORA result
 offspring.tbl_tree <- utils::getFromNamespace("offspring.tbl_tree", "tidytree")

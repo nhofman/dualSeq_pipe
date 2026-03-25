@@ -1,6 +1,8 @@
 library(UpSetR)
 library(ggplot2)
 library(ggpattern)
+library(gtools)
+library(gplots)
 
 # Convert lists of DEG to binary table
 list2binary <- function(data.list, filename){
@@ -20,8 +22,12 @@ list2binary <- function(data.list, filename){
   return(data.binary)
 }
 
-load("deseq2.RData") # load data from DESeq2 analysis
+#load("deseq2.RData") # load data from DESeq2 analysis
 output_folder <- paste0(output_folder, "compare_times/")
+if(!dir.exists(output_folder)){
+  dir.create(output_folder)
+}
+
 virus.levels <- c("H1N1","H5N1","RVFV","SFSV","RSV","NiV","EBOV","MARV","LASV")
 res.list <- res.list[mixedorder(names(res.list))]
 
@@ -50,9 +56,10 @@ for(virus in virus.levels){
 }
 
 # Get DEG for BPL-treated vs. Mock 
+LFC.cut <- 0
 res.list.filter.BPL <- sapply(names(res.list)[grep("BPL_vs_Mock", names(res.list))], function(n){
   x <- res.list[[n]]
-  return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > 0),])
+  return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
 }, simplify = F)
 
 # Plot # DEG for infected 24h vs. Mock and infected 24h vs. BPL-treated and BPL-treated vs. Mock
@@ -79,6 +86,7 @@ res.list.filter.24h <- sapply(names(res.list)[grep("24h", names(res.list))], fun
   return(x[which(apply(x[,grep("normalized", colnames(x))],1,max) >= 10 & x$padj < 0.05 & abs(x$log2FoldChange) > LFC.cut),])
 })
 
+# Get the intersection between the two lists of DEG
 intersect.24h <- Reduce(rbind, sapply(virus.levels, function(v){
   virus.list <- sapply(res.list.filter.24h[grep(v,names(res.list.filter.24h))],function(x){
     if(nrow(x)>0){
@@ -103,10 +111,9 @@ intersect.24h[is.nan(intersect.24h$Percentage), "Percentage"] <- 0
 intersect.24h$Group2 <- gsub("_", " ", sub(".*:.*","intersect",intersect.24h$Group))
 intersect.24h$Group2 <- sub("Virus BPL","BPL-Virus",intersect.24h$Group2)
 intersect.24h$Group2 <- factor(intersect.24h$Group2, levels = c("Virus vs BPL-Virus", "intersect", "Virus vs Mock"))
-#intersect.24h$Group <- factor(intersect.24h$Group, levels = c("BPL_24h", "Mock_24h:BPL_24h", "Mock_24h"))
 intersect.24h$Virus <- factor(intersect.24h$Virus, levels = virus.levels)
 plot_24h <- ggplot(intersect.24h, aes(x=Percentage, y=Virus, group=Group2, fill=Group2)) 
-plot_24h <- ggplot(intersect.24h[intersect.24h$Virus!="LASV",], aes(x=Count, y=Virus, group=Group2, fill=Group2)) 
+#plot_24h <- ggplot(intersect.24h[intersect.24h$Virus!="LASV",], aes(x=Count, y=Virus, group=Group2, fill=Group2)) 
 plot_24h <- plot_24h + 
   geom_col_pattern(aes(pattern=Group2), pattern_fill = "grey40", pattern_color = "grey40", pattern_density = 0.5, pattern_spacing = 0.025) + 
   xlab("Ratio of DEG") + scale_pattern_manual(values = c("none", "stripe", "none")) + 

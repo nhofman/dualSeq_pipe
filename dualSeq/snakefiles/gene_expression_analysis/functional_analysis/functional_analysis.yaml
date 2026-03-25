@@ -26,6 +26,11 @@ optional_settings:
     default: "BP"
     choices: ["CC", "MF", "BP"]
 
+  id_type:
+    description: "Type of gene IDs, e.g., ENTREZID or SYMBOL. Default: SYMBOL"
+    type: "string"
+    default: "SYMBOL"
+
   mem_mb:
     description: "Memory requirement"
     type: "string"
