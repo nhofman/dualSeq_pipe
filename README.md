@@ -133,9 +133,9 @@ preprocessing:
   module: "fastp"
 
 mapping:
-  module: "star"
+  module: "combined"
   
-  star:
+  combined:
     host_genome: "/path/to/human/genome.fasta"
     host_gtf: "/path/to/human/genome.gtf"
     star_index_dir: "/path/to/human/star_idx/"
