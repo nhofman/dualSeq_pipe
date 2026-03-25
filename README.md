@@ -255,10 +255,9 @@ Hofmann N, Bartkuhn M, Becker S, Biedenkopf N, Böttcher-Friebertshäuser E, Bri
 ## Contact
 
 Nina Hofmann<br />
-nina.hofmann@computational.bio<br />
+advicer@computational.bio<br />
 
 Bioinformatics and Systems Biology<br />
 Justus Liebig University Giessen<br />
-Heinrich-Buff-Ring 58<br />
 35392 Giessen<br />
 Germany
