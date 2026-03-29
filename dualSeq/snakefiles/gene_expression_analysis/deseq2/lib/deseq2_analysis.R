@@ -79,13 +79,13 @@ for(x in names(color)){
 }
 
 # Plot raw countdata and normalized countdata 
-pdf(paste(output_folder, "/counts_raw_legend.pdf", sep = ""), width = 60, height = 15)
+pdf(paste(output_folder, "/counts_raw.pdf", sep = ""), width = 60, height = 15)
 par(mar=c(5, 5, 5, 2) + 0.1, lwd = 2, cex.lab = 1.5, cex = 3, xpd = T)
 boxplot(countdata, outline = FALSE, las = 2, ylab = "Raw reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata)))
 legend("top", legend = names(color), fill = color, horiz = T, inset = c(-0.2))
 dev.off()
 
-pdf(paste(output_folder, "/counts_norm_legend.pdf", sep = ""), width = 60, height = 15)
+pdf(paste(output_folder, "/counts_norm.pdf", sep = ""), width = 60, height = 15)
 par(mar=c(5, 5, 5, 2) + 0.1, lwd = 2, cex.lab = 1.5, cex = 3, xpd = T)
 boxplot(countdata.normalized, outline = FALSE, las = 2, ylab = "DESeq2 normalized reads", xlab = "", col = colnames.col, names = sub("[^_.]+_","",colnames(countdata.normalized)))
 legend("top", legend = names(color), fill = color, horiz = T, inset = c(-0.2))
@@ -178,8 +178,8 @@ if("pheatmap" %in% rownames(installed.packages())) {
 }
 
 # Create all DESeq2 comparisons from comparison table
-if(!dir.exists(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))) {
-  dir.create(paste(output_folder, "deseq2_comparisons_shrunken", sep = ""))
+if(!dir.exists(paste(output_folder, "deseq2_comparisons", sep = ""))) {
+  dir.create(paste(output_folder, "deseq2_comparisons", sep = ""))
 }
 if(!dir.exists(paste(output_folder, "plots", sep = ""))) {
   dir.create(paste(output_folder, "plots", sep = ""))
@@ -196,8 +196,8 @@ for(n in 1:nrow(comparisons.df)) {
   # calculate log2 fold changes for condition cond_1 vs. cond_2
   res <- results(deseq.results, contrast = c("condition", cond_1, cond_2), parallel = FALSE, alpha = padj_cut)
   res.list.raw[[paste(cond_1, cond_2, sep="_vs_")]] <- res 
-  write.csv(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", cond_1, "_vs_", cond_2, "_unshrunken.csv", sep = ""), row.names = TRUE, col.names = NA)
-  write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", cond_1, "_vs_", cond_2, "_unshrunken.xlsx", sep = ""), rowNames = TRUE, overwrite = T)
+  write.csv(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons/deseq2_results_", cond_1, "_vs_", cond_2, "_unshrunken.csv", sep = ""), row.names = TRUE, col.names = NA)
+  write.xlsx(as.data.frame(res), file = paste(output_folder, "deseq2_comparisons/deseq2_results_", cond_1, "_vs_", cond_2, "_unshrunken.xlsx", sep = ""), rowNames = TRUE, overwrite = T)
   
   resLFC <- lfcShrink(deseq.results, contrast = c("condition", cond_1, cond_2), type = "ashr", res = res)
   
@@ -226,8 +226,8 @@ for(n in 1:nrow(comparisons.df)) {
   colnames(res)[11:(ncol(res))] <- paste0("normalized_", colnames(res)[11:(ncol(res))])
   res_filter <- res[rowSums(res[,grep("normalized",colnames(res))])>0,] # remove genes with no read counts
   res_filter <- res_filter[order(res_filter$log2FoldChange, decreasing = TRUE),] # sort for LFC
-  write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", cond_1, "_vs_", cond_2, ".csv", sep = ""), row.names = TRUE, col.names = NA)
-  write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons_shrunken/deseq2_results_", cond_1, "_vs_", cond_2, ".xlsx", sep = ""), overwrite = T)
+  write.csv(res_filter, file = paste(output_folder, "deseq2_comparisons/deseq2_results_", cond_1, "_vs_", cond_2, ".csv", sep = ""), row.names = TRUE, col.names = NA)
+  write.xlsx(res_filter, paste(output_folder, "deseq2_comparisons/deseq2_results_", cond_1, "_vs_", cond_2, ".xlsx", sep = ""), overwrite = T)
 
   res.list[[paste(cond_1, cond_2, sep="_vs_")]] <- res 
 }
@@ -241,9 +241,9 @@ padj.df <- Reduce(function(x,y)merge(x,y,by="SYMBOL"),lapply(names(res.list), fu
 rownames(padj.df) <- padj.df$SYMBOL
 padj.df <- padj.df[,-1, drop = FALSE]
 padj.df <- padj.df[,mixedorder(colnames(padj.df))]
-write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons_shrunken/expression_data_all.xlsx", sep = ""), rowNames = T, overwrite = T)
-write.csv(lfc.df, file = paste(output_folder,"deseq2_comparisons_shrunken/LFC_data_all.csv", sep = ""), row.names = T)
-write.csv(padj.df, file = paste(output_folder,"deseq2_comparisons_shrunken/padj_data_all.csv", sep = ""), row.names = T)
+write.xlsx(list(log2FoldChange=lfc.df, padj=padj.df), file = paste(output_folder,"deseq2_comparisons/expression_data_all.xlsx", sep = ""), rowNames = T, overwrite = T)
+write.csv(lfc.df, file = paste(output_folder,"deseq2_comparisons/LFC_data_all.csv", sep = ""), row.names = T)
+write.csv(padj.df, file = paste(output_folder,"deseq2_comparisons/padj_data_all.csv", sep = ""), row.names = T)
 
 lfc.df[is.na(lfc.df)] <- 0
 
@@ -263,8 +263,8 @@ for(sample in names(res.list)) {
 }
 colnames(count.genes) <- c("Sample", "Count", "Direction", "LFC_cutoff")
 count.genes <- as.data.frame(count.genes)
-write.csv(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.csv", sep = ""), row.names = FALSE, col.names = TRUE)
-write.xlsx(count.genes, file = paste(output_folder, "deseq2_comparisons_shrunken/gene_count.xlsx", sep = ""), rowNames = FALSE, colNames = TRUE, overwrite = T)
+write.csv(count.genes, file = paste(output_folder, "gene_count.csv", sep = ""), row.names = FALSE, col.names = TRUE)
+write.xlsx(count.genes, file = paste(output_folder, "gene_count.xlsx", sep = ""), rowNames = FALSE, colNames = TRUE, overwrite = T)
 
 count.genes <- separate(separate(count.genes, "Sample", c("Virus","Mock"), "_[^_]*_vs_", F), "Mock", c("Control","Time"), "_")
 #count.genes <- separate(count.genes, "Sample", c("Virus","Control"), "_[^_]*_vs_", F)

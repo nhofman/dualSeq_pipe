@@ -225,10 +225,6 @@ All analysis results can be found in the output directory specified by the user 
 	- VCF statistic plots (pdf, png)
 	- Plot of variant positions on genome (pdf, png) 
 
-## ADVICER
-
-An interactive visualization of the analysis results of the virus infection study can be viewed on the Analysis Dashboard for Virus-Induced CEll Response based on RNA-Seq data (ADVICER). ADVICER is an [R Shiny app](https://shiny.posit.co/) that is publicly available under https://advicer.computational.bio/. 
-
 ## Custom scripts
 
 The folder `custom_scripts` contains custom R scripts that were used to compare the differential gene expression between time points and viruses. The necessary R packages can be found in the respective scripts. The comparisons are based on the DESeq2 analyses of the dualSeq pipeline. 
@@ -242,6 +238,11 @@ The folder `custom_scripts` contains custom R scripts that were used to compare 
 	- ComplexHeatmap of common host response
 	- Overrepresentation analysis of common host response
 
+## Interactive visualization 
+
+An interactive visualization of the analysis results of the virus infection study can be viewed on the Analysis Dashboard for Virus-Induced CEll Response based on RNA-Seq data (**ADVICER**). ADVICER is an R Shiny app that is publicly available under https://advicer.computational.bio/. Link to GitHub Repo: https://github.com/nhofman/ADVICER
+
+
 ## Citation
 
 **Sequence data availability:**
@@ -250,7 +251,7 @@ The raw sequence data of the time-resolved virus infection study were deposited 
 
 **Paper on infection study:**
 
-Hofmann N, Bartkuhn M, Becker S, Biedenkopf N, Böttcher-Friebertshäuser E, Brinkrolf K, Dietzel E, Fehling SK, Goesmann A, Heindl MR, Hoffmann S, Karl N, Maisner A, Mostafa A, Kornecki L, Müller-Kräuter H, Müller-Ruttloff C, Nist A, Pleschka S, Sauerhering L, Stiewe T, Strecker T, Wilhelm J, Wuerth JD, Ziebuhr J, Weber F, Schmitz ML.2024.Distinct negative-sense RNA viruses induce a common set of transcripts encoding proteins forming an extensive network. J Virol98:e00935-24.https://doi.org/10.1128/jvi.00935-24
+> Hofmann N, Bartkuhn M, Becker S, Biedenkopf N, Böttcher-Friebertshäuser E, Brinkrolf K, Dietzel E, Fehling SK, Goesmann A, Heindl MR, Hoffmann S, Karl N, Maisner A, Mostafa A, Kornecki L, Müller-Kräuter H, Müller-Ruttloff C, Nist A, Pleschka S, Sauerhering L, Stiewe T, Strecker T, Wilhelm J, Wuerth JD, Ziebuhr J, Weber F, Schmitz ML.2024.Distinct negative-sense RNA viruses induce a common set of transcripts encoding proteins forming an extensive network. J Virol98:e00935-24.https://doi.org/10.1128/jvi.00935-24
 
 ## Contact
 
